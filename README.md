@@ -125,3 +125,38 @@ Email + password via Supabase. New projects require email confirmation by defaul
 so the first sign-up lands on a "check your inbox" state. To skip that while
 developing, turn off **Confirm email** under Authentication → Sign In / Providers →
 Email in the Supabase dashboard.
+
+---
+
+## Deployment
+
+Live at **https://getwayfare.netlify.app** (Netlify project `getwayfare`, team
+`bm611`). `wayfare.netlify.app` was already claimed by another account.
+
+`netlify.toml` carries the whole build contract:
+
+- **SPA rewrite** — `/*` to `/index.html` at status 200. Without it every deep
+  link 404s on first load, which would break invite links outright.
+- **`SECRETS_SCAN_OMIT_KEYS`** — Vite compiles `VITE_*` values into the client
+  bundle by design, and Netlify's secrets scanner fails the build when it finds
+  env var values in the output. The Supabase publishable key is meant to be
+  public; RLS is what protects the data.
+- Fingerprinted assets are cached immutably, `index.html` never is.
+
+Build env vars are set on the Netlify project (`VITE_SUPABASE_URL`,
+`VITE_SUPABASE_PUBLISHABLE_KEY`), scoped to builds.
+
+### Two manual steps
+
+Both need an OAuth grant or dashboard access, so they cannot be scripted:
+
+1. **Connect the repo** for automatic deploys — in
+   [project configuration](https://app.netlify.com/projects/getwayfare/configuration/deploys),
+   *Build & deploy -> Continuous deployment -> Link repository*, pick
+   `bm611/wayfare`, branch `main`. Build settings come from `netlify.toml`, so
+   leave them blank.
+2. **Point Supabase auth at the live domain** — in
+   [URL configuration](https://supabase.com/dashboard/project/upactqlphkfuuxcqdxow/auth/url-configuration),
+   set Site URL to `https://getwayfare.netlify.app` and add both
+   `https://getwayfare.netlify.app/**` and `http://localhost:5180/**` as redirect
+   URLs. Until this is done, confirmation and recovery emails point at localhost.
