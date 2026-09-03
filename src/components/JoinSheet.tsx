@@ -5,6 +5,7 @@ import { Field } from "./Field";
 import { Button } from "./Button";
 import { ErrorNote } from "./States";
 import { joinTrip } from "../hooks/useMembers";
+import { errorMessage } from "../lib/errors";
 
 export function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export function JoinSheet({ open, onClose }: { open: boolean; onClose: () => voi
       onClose();
       navigate(`/trip/${tripId}`);
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "That code did not work.");
+      setFailure(errorMessage(err, "That code did not work."));
       setBusy(false);
     }
   }

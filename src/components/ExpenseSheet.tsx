@@ -5,6 +5,7 @@ import { Field, Select, TextArea } from "./Field";
 import { Button } from "./Button";
 import { ErrorNote } from "./States";
 import { CATEGORY_LIST } from "../lib/categories";
+import { errorMessage } from "../lib/errors";
 import { money, symbolFor, todayISO } from "../lib/format";
 import { CURRENCIES, convert, rateBetween } from "../lib/fx";
 import { useRates } from "../hooks/useRates";
@@ -99,7 +100,7 @@ export function ExpenseSheet({
       else await onCreate(draft);
       onClose();
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Could not save that expense.");
+      setFailure(errorMessage(err, "Could not save that expense."));
     } finally {
       setSaving(false);
     }
@@ -112,7 +113,7 @@ export function ExpenseSheet({
       await onDelete(editing.id);
       onClose();
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Could not delete that expense.");
+      setFailure(errorMessage(err, "Could not delete that expense."));
       setSaving(false);
     }
   }

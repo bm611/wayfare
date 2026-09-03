@@ -4,6 +4,7 @@ import { Field } from "./Field";
 import { Button } from "./Button";
 import { ErrorNote } from "./States";
 import { BASE_CURRENCY } from "../lib/fx";
+import { errorMessage } from "../lib/errors";
 import { symbolFor } from "../lib/format";
 import type { TripInput } from "../lib/types";
 
@@ -65,7 +66,7 @@ export function TripSheet({
       });
       close();
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Could not save the trip.");
+      setFailure(errorMessage(err, "Could not save the trip."));
     } finally {
       setSaving(false);
     }

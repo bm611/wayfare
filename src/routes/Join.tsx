@@ -5,6 +5,7 @@ import { Ticket } from "../components/Ticket";
 import { Brand } from "../components/Brand";
 import { ErrorNote } from "../components/States";
 import { joinTrip } from "../hooks/useMembers";
+import { errorMessage } from "../lib/errors";
 
 /** Redeems an invite link the moment a signed-in traveller lands on it. */
 export function Join() {
@@ -20,7 +21,7 @@ export function Join() {
     joinTrip(code)
       .then((tripId) => navigate(`/trip/${tripId}`, { replace: true }))
       .catch((err: unknown) =>
-        setFailure(err instanceof Error ? err.message : "That invite code did not work."),
+        setFailure(errorMessage(err, "That invite code did not work.")),
       );
   }, [code, navigate]);
 

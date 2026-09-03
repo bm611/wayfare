@@ -8,6 +8,7 @@ import { Button } from "../components/Button";
 import { ErrorNote } from "../components/States";
 import { Brand } from "../components/Brand";
 import { useAuth } from "../hooks/useAuth";
+import { errorMessage } from "../lib/errors";
 import { REDIRECT_KEY } from "../App";
 
 type Mode = "signin" | "signup";
@@ -47,7 +48,7 @@ export function Auth() {
         if (needsConfirmation) setSent(true);
       }
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setFailure(errorMessage(err, "Something went wrong. Try again."));
     } finally {
       setBusy(false);
     }

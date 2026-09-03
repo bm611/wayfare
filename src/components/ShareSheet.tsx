@@ -5,6 +5,7 @@ import { Button } from "./Button";
 import { ErrorNote, Shimmer } from "./States";
 import type { Membership } from "../hooks/useMembers";
 import { cx } from "../lib/cx";
+import { errorMessage } from "../lib/errors";
 
 export function ShareSheet({
   open,
@@ -44,7 +45,7 @@ export function ShareSheet({
     try {
       await removeMember(userId);
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Could not remove that person.");
+      setFailure(errorMessage(err, "Could not remove that person."));
     }
   }
 
