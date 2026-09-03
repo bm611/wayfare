@@ -116,7 +116,7 @@ export function Trips() {
         )}
       </div>
 
-      <TripSheet open={tripSheet} onClose={() => setTripSheet(false)} onCreate={createTrip} />
+      <TripSheet open={tripSheet} onClose={() => setTripSheet(false)} onSave={createTrip} />
       <JoinSheet open={joinSheet} onClose={() => setJoinSheet(false)} />
     </main>
   );

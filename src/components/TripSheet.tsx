@@ -6,7 +6,7 @@ import { ErrorNote } from "./States";
 import { BASE_CURRENCY } from "../lib/fx";
 import { errorMessage } from "../lib/errors";
 import { symbolFor } from "../lib/format";
-import type { TripInput } from "../lib/types";
+import type { Trip, TripInput } from "../lib/types";
 
 const BLANK = {
   name: "",
@@ -19,26 +19,52 @@ const BLANK = {
 export function TripSheet({
   open,
   onClose,
-  onCreate,
+  onSave,
+  trip,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: TripInput) => Promise<unknown>;
+  onSave: (input: TripInput) => Promise<unknown>;
+  trip?: Trip;
 }) {
-  const [form, setForm] = useState(BLANK);
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      eyebrow={trip ? "Edit itinerary" : "New itinerary"}
+      title={trip ? "Update your trip" : "Where are you headed?"}
+    >
+      <TripForm trip={trip} onClose={onClose} onSave={onSave} />
+    </Sheet>
+  );
+}
+
+function TripForm({
+  trip,
+  onClose,
+  onSave,
+}: {
+  trip?: Trip;
+  onClose: () => void;
+  onSave: (input: TripInput) => Promise<unknown>;
+}) {
+  const [form, setForm] = useState(() =>
+    trip
+      ? {
+          name: trip.name,
+          destination: trip.destination ?? "",
+          start_date: trip.start_date ?? "",
+          end_date: trip.end_date ?? "",
+          budget: String(trip.budget),
+        }
+      : BLANK,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const set = (key: keyof typeof BLANK) => (e: { target: { value: string } }) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  function close() {
-    setForm(BLANK);
-    setErrors({});
-    setFailure(null);
-    onClose();
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,16 +81,16 @@ export function TripSheet({
     setSaving(true);
     setFailure(null);
     try {
-      await onCreate({
+      await onSave({
         name: form.name.trim(),
         destination: form.destination.trim() || null,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
         budget,
-        currency: BASE_CURRENCY,
-        accent: "clay",
+        currency: trip?.currency ?? BASE_CURRENCY,
+        accent: trip?.accent ?? "clay",
       });
-      close();
+      onClose();
     } catch (err) {
       setFailure(errorMessage(err, "Could not save the trip."));
     } finally {
@@ -73,57 +99,55 @@ export function TripSheet({
   }
 
   return (
-    <Sheet open={open} onClose={close} eyebrow="New itinerary" title="Where are you headed?">
-      <form onSubmit={submit} className="flex flex-col gap-5">
-        {failure && <ErrorNote message={failure} />}
+    <form onSubmit={submit} className="flex flex-col gap-5">
+      {failure && <ErrorNote message={failure} />}
 
+      <Field
+        label="Trip name"
+        placeholder="Lisbon with the Ferrante crew"
+        value={form.name}
+        onChange={set("name")}
+        error={errors.name}
+        autoFocus
+        maxLength={80}
+      />
+
+      <Field
+        label="Destination"
+        placeholder="Lisbon, Portugal"
+        value={form.destination}
+        onChange={set("destination")}
+        maxLength={120}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Depart" type="date" value={form.start_date} onChange={set("start_date")} />
         <Field
-          label="Trip name"
-          placeholder="Lisbon with the Ferrante crew"
-          value={form.name}
-          onChange={set("name")}
-          error={errors.name}
-          autoFocus
-          maxLength={80}
+          label="Return"
+          type="date"
+          value={form.end_date}
+          onChange={set("end_date")}
+          error={errors.end_date}
         />
+      </div>
 
-        <Field
-          label="Destination"
-          placeholder="Lisbon, Portugal"
-          value={form.destination}
-          onChange={set("destination")}
-          maxLength={120}
-        />
+      <Field
+        label="Budget"
+        type="number"
+        inputMode="decimal"
+        step="0.01"
+        min="0"
+        placeholder="2500"
+        prefix={symbolFor(BASE_CURRENCY)}
+        value={form.budget}
+        onChange={set("budget")}
+        error={errors.budget}
+        hint="In euros. Leave blank to just track spend — you can log costs in any currency."
+      />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Depart" type="date" value={form.start_date} onChange={set("start_date")} />
-          <Field
-            label="Return"
-            type="date"
-            value={form.end_date}
-            onChange={set("end_date")}
-            error={errors.end_date}
-          />
-        </div>
-
-        <Field
-          label="Budget"
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          min="0"
-          placeholder="2500"
-          prefix={symbolFor(BASE_CURRENCY)}
-          value={form.budget}
-          onChange={set("budget")}
-          error={errors.budget}
-          hint="In euros. Leave blank to just track spend — you can log costs in any currency."
-        />
-
-        <Button type="submit" variant="accent" full loading={saving}>
-          Start the ledger
-        </Button>
-      </form>
-    </Sheet>
+      <Button type="submit" variant="accent" full loading={saving}>
+        {trip ? "Save changes" : "Start the ledger"}
+      </Button>
+    </form>
   );
 }

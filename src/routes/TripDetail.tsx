@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Plus, Trash, UsersThree } from "@phosphor-icons/react";
+import { ArrowLeft, PencilSimple, Plus, Trash, UsersThree } from "@phosphor-icons/react";
 import { Barcode, Postmark, Ticket } from "../components/Ticket";
 import { BudgetMeter } from "../components/BudgetMeter";
 import { CountUp } from "../components/CountUp";
@@ -12,6 +12,7 @@ import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { IconButton, IconGroup, IconGroupDivider } from "../components/Brand";
 import { ShareSheet } from "../components/ShareSheet";
+import { TripSheet } from "../components/TripSheet";
 import {
   EmptyState,
   ErrorNote,
@@ -41,7 +42,7 @@ export function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { trip, loading: tripLoading, error: tripError, removeTrip } = useTrip(id);
+  const { trip, loading: tripLoading, error: tripError, updateTrip, removeTrip } = useTrip(id);
   const {
     expenses,
     loading: expensesLoading,
@@ -56,6 +57,7 @@ export function TripDetail() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [tripSheetOpen, setTripSheetOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const membership = useMembers(id);
@@ -142,6 +144,7 @@ export function TripDetail() {
         onBack={() => navigate("/")}
         onAdd={openNew}
         onShare={() => setShareOpen(true)}
+        onEdit={isOwner ? () => setTripSheetOpen(true) : undefined}
         onDelete={isOwner ? () => setConfirmOpen(true) : undefined}
       />
 
@@ -307,6 +310,13 @@ export function TripDetail() {
         onLeave={() => void leave()}
       />
 
+      <TripSheet
+        open={tripSheetOpen}
+        onClose={() => setTripSheetOpen(false)}
+        onSave={updateTrip}
+        trip={trip}
+      />
+
       <Sheet
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -335,11 +345,13 @@ function TopBar({
   onBack,
   onAdd,
   onShare,
+  onEdit,
   onDelete,
 }: {
   onBack: () => void;
   onAdd?: () => void;
   onShare?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
   return (
@@ -356,14 +368,20 @@ function TopBar({
           Add expense
         </Button>
       )}
-      {(onShare || onDelete) && (
+      {(onShare || onEdit || onDelete) && (
         <IconGroup>
           {onShare && (
             <IconButton flush label="Share this trip" onClick={onShare}>
               <UsersThree size={16} weight="bold" />
             </IconButton>
           )}
-          {onShare && onDelete && <IconGroupDivider />}
+          {onShare && (onEdit || onDelete) && <IconGroupDivider />}
+          {onEdit && (
+            <IconButton flush label="Edit trip details" onClick={onEdit}>
+              <PencilSimple size={16} weight="bold" />
+            </IconButton>
+          )}
+          {onEdit && onDelete && <IconGroupDivider />}
           {onDelete && (
             <IconButton flush label="Delete this trip" onClick={onDelete} tone="danger">
               <Trash size={16} weight="bold" />
