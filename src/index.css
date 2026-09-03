@@ -21,6 +21,8 @@
   --color-clay: #b5543c;
   --color-clay-deep: #8d3d29;
   --color-clay-wash: #f4e3dc;
+  /* Clay lifted until it survives a photograph behind it. */
+  --color-clay-light: #eb9b7d;
 
   --color-cat-flights: #40697d;
   --color-cat-stays: #8a5a44;
@@ -157,5 +159,22 @@
 @layer utilities {
   @keyframes shimmer {
     100% { transform: translateX(100%); }
+  }
+
+  /* A pass whose destination shot is still being drawn. Reads as a photograph
+     coming up in the tray rather than as a generic loading skeleton. */
+  .developing::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent 25%,
+      color-mix(in srgb, var(--color-clay-wash) 65%, transparent) 50%,
+      transparent 75%
+    );
+    transform: translateX(-100%);
+    animation: shimmer 2.8s var(--ease-out-expo) infinite;
   }
 }

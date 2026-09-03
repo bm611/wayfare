@@ -69,15 +69,42 @@ export function Barcode({ seed, className }: { seed: number; className?: string 
   );
 }
 
-/** Rotated visa-style postmark carrying the trip's three letter code. */
-export function Postmark({ code, caption }: { code: string; caption: string }) {
+/**
+ * Rotated visa-style postmark carrying the trip's three letter code. Clay on
+ * paper by default; over a destination shot it inks in paper instead, since
+ * clay on a photograph is the first thing to disappear.
+ */
+export function Postmark({
+  code,
+  caption,
+  onImage = false,
+}: {
+  code: string;
+  caption: string;
+  onImage?: boolean;
+}) {
   return (
-    <div className="-rotate-[7deg] select-none rounded-lg border-[1.5px] border-clay/40 px-2.5 py-1.5 text-center ring-1 ring-inset ring-clay/15">
-      <div className="tabular text-[15px] font-semibold leading-none tracking-[0.14em] text-clay/85">
+    <div
+      className={cx(
+        "-rotate-[7deg] select-none rounded-lg border-[1.5px] px-2.5 py-1.5 text-center ring-1 ring-inset transition-colors duration-500",
+        onImage ? "border-paper/55 ring-paper/20" : "border-clay/40 ring-clay/15",
+      )}
+    >
+      <div
+        className={cx(
+          "tabular text-[15px] font-semibold leading-none tracking-[0.14em] transition-colors duration-500",
+          onImage ? "text-paper/95" : "text-clay/85",
+        )}
+      >
         {code}
       </div>
-      <div className="my-1 h-px bg-clay/25" />
-      <div className="tabular text-[7.5px] leading-none tracking-[0.2em] text-clay/60">
+      <div className={cx("my-1 h-px transition-colors duration-500", onImage ? "bg-paper/40" : "bg-clay/25")} />
+      <div
+        className={cx(
+          "tabular text-[7.5px] leading-none tracking-[0.2em] transition-colors duration-500",
+          onImage ? "text-paper/70" : "text-clay/60",
+        )}
+      >
         {caption}
       </div>
     </div>

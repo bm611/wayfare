@@ -21,8 +21,17 @@ export type Trip = {
   currency: string;
   accent: string;
   share_code: string | null;
+  /** Storage path of the generated destination shot, once there is one. */
+  cover_path: string | null;
+  /** The string the cover was drawn from, so we can tell when it went stale. */
+  cover_subject: string | null;
+  cover_status: CoverStatus;
+  cover_claimed_at: string | null;
   created_at: string;
 };
+
+/** Where a trip's cover is in its lifecycle. Written only by the server. */
+export type CoverStatus = "idle" | "pending" | "ready" | "failed";
 
 export type Expense = {
   id: string;
@@ -53,7 +62,10 @@ export type TripMember = TripMemberRow & {
   is_you: boolean;
 };
 
-export type TripInput = Omit<Trip, "id" | "user_id" | "created_at" | "share_code">;
+export type TripInput = Omit<
+  Trip,
+  "id" | "user_id" | "created_at" | "share_code" | `cover_${string}`
+>;
 export type ExpenseInput = Omit<Expense, "id" | "user_id" | "created_at">;
 
 /** Minimal hand-written shape so the client is typed without codegen. */
@@ -90,6 +102,14 @@ export type Database = {
       join_trip: {
         Args: { p_code: string };
         Returns: string;
+      };
+      claim_trip_cover: {
+        Args: { p_trip: string };
+        Returns: boolean;
+      };
+      set_trip_cover: {
+        Args: { p_trip: string; p_path: string | null; p_subject: string | null };
+        Returns: undefined;
       };
     };
     Enums: Record<never, never>;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Trip, TripInput } from "../lib/types";
+import type { CoverPatch } from "./useTripCovers";
 import { useAuth } from "./useAuth";
 
 export type TripWithSpend = Trip & { spent: number; entries: number };
@@ -73,7 +74,29 @@ export function useTrips() {
     setTrips((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { trips, loading, error, reload: load, createTrip, deleteTrip };
+  /**
+   * Folds cover progress into the list without refetching everything.
+   * Returns the previous array untouched when nothing moved — the cover poll
+   * runs on a timer, and a new array every tick would rerender the whole list.
+   */
+  const applyCovers = useCallback((patches: CoverPatch[]) => {
+    setTrips((prev) => {
+      const byId = new Map(patches.map((patch) => [patch.id, patch]));
+      let changed = false;
+      const next = prev.map((trip) => {
+        const patch = byId.get(trip.id);
+        if (!patch) return trip;
+        if (patch.cover_status === trip.cover_status && patch.cover_path === trip.cover_path) {
+          return trip;
+        }
+        changed = true;
+        return { ...trip, cover_path: patch.cover_path, cover_status: patch.cover_status };
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  return { trips, loading, error, reload: load, createTrip, deleteTrip, applyCovers };
 }
 
 export function useTrip(tripId: string | undefined) {

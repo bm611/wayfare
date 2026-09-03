@@ -11,10 +11,13 @@ export const BudgetMeter = memo(function BudgetMeter({
   spent,
   budget,
   size = "md",
+  onImage = false,
 }: {
   spent: number;
   budget: number;
   size?: "sm" | "md";
+  /** Over a destination shot the clay fill loses its contrast, so it goes pale. */
+  onImage?: boolean;
 }) {
   const hasBudget = budget > 0;
   const ratio = hasBudget ? spent / budget : 0;
@@ -36,8 +39,18 @@ export const BudgetMeter = memo(function BudgetMeter({
           <span
             key={i}
             className={cx(
-              "seg flex-1 rounded-[1.5px]",
-              isFilled ? (over ? "bg-clay-deep" : "bg-clay") : "bg-line-soft",
+              "seg flex-1 rounded-[1.5px] transition-colors duration-500",
+              isFilled
+                ? over
+                  ? onImage
+                    ? "bg-clay-light"
+                    : "bg-clay-deep"
+                  : onImage
+                    ? "bg-paper/90"
+                    : "bg-clay"
+                : onImage
+                  ? "bg-paper/15"
+                  : "bg-line-soft",
             )}
             style={{ "--i": i } as React.CSSProperties}
           />

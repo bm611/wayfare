@@ -10,14 +10,18 @@ import { EmptyState, ErrorNote, RouteArt, TripCardSkeleton } from "../components
 import { CountUp } from "../components/CountUp";
 import { useAuth } from "../hooks/useAuth";
 import { useTrips } from "../hooks/useTrips";
+import { useTripCovers } from "../hooks/useTripCovers";
 import { symbolFor, tripPhase } from "../lib/format";
 import { BASE_CURRENCY } from "../lib/fx";
 
 export function Trips() {
   const { user, signOut } = useAuth();
-  const { trips, loading, error, reload, createTrip } = useTrips();
+  const { trips, loading, error, reload, createTrip, applyCovers } = useTrips();
   const [tripSheet, setTripSheet] = useState(false);
   const [joinSheet, setJoinSheet] = useState(false);
+
+  // Draws the destination shot behind each pass, and watches for it to land.
+  useTripCovers(trips, applyCovers);
 
   // Every trip is euro-denominated, so a single total is always meaningful.
   const summary = useMemo(() => {

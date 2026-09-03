@@ -10,6 +10,17 @@
   # fails the build as a leak.
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# `npm run dev:netlify` runs the app with the site's environment variables.
+# Note that Netlify Dev does not route `-background` functions, so trip covers
+# only actually generate on a deployed environment, not locally.
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+
 # Wayfare is a single-page app: every deep link (/trip/<id>, /join/<code>) has to
 # be served index.html so React Router can resolve it client-side. Without this
 # a shared invite link 404s on first load.
