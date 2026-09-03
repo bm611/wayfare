@@ -1,0 +1,30 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Vite compiles VITE_* values into the client bundle by design, and the
+  # Supabase publishable key is meant to be public (RLS is what protects the
+  # data). Without this, Netlify's secrets scanner sees them in dist/ and
+  # fails the build as a leak.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY"
+
+# Wayfare is a single-page app: every deep link (/trip/<id>, /join/<code>) has to
+# be served index.html so React Router can resolve it client-side. Without this
+# a shared invite link 404s on first load.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    # Vite fingerprints these filenames, so they are safe to cache forever.
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
