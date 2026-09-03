@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Wayfare — "Boarding Pass" design system
+   Warm paper, ink, a single clay accent. Numbers always monospace.
+   ------------------------------------------------------------------ */
+@theme {
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-paper: #f7f2e9;
+  --color-paper-deep: #efe7d9;
+  --color-card: #fffcf6;
+  --color-ink: #1a1714;
+  --color-ink-soft: #6f6459;
+  --color-ink-faint: #a79d91;
+  --color-line: #e3d9ca;
+  --color-line-soft: #efe7db;
+
+  --color-clay: #b5543c;
+  --color-clay-deep: #8d3d29;
+  --color-clay-wash: #f4e3dc;
+
+  --color-cat-flights: #40697d;
+  --color-cat-stays: #8a5a44;
+  --color-cat-food: #a8761f;
+  --color-cat-activities: #55713f;
+  --color-cat-transport: #66628a;
+  --color-cat-shopping: #9d4f61;
+  --color-cat-other: #7a736a;
+
+  --radius-ticket: 1.5rem;
+
+  --shadow-lift: 0 1px 2px rgb(26 23 20 / 0.04), 0 12px 28px -14px rgb(26 23 20 / 0.18);
+  --shadow-sheet: 0 -8px 48px -12px rgb(26 23 20 / 0.28);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    overscroll-behavior-y: none;
+  }
+
+  /* Numerals never jitter while they animate. */
+  .tabular,
+  code,
+  kbd {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  input,
+  textarea,
+  select {
+    /* iOS refuses to stop zooming below 16px. */
+    font-size: 16px;
+  }
+
+  ::selection {
+    background: var(--color-clay-wash);
+    color: var(--color-clay-deep);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-clay);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Fixed, non-scrolling paper grain. Never inside a scroll container. */
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.34;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  }
+
+  /* Diagonal hatching used on ticket stubs. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  .tear {
+    border-top: 1.5px dashed var(--color-line);
+  }
+
+  .safe-b {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .press {
+    transition: transform 0.16s var(--ease-out-expo), opacity 0.16s var(--ease-out-expo);
+  }
+  .press:active {
+    transform: scale(0.975);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer utilities {
+  /* Segmented meter reveal — pure CSS cascade so no card re-renders on mount. */
+  @keyframes seg-in {
+    from { transform: scaleY(0.2); opacity: 0; }
+    to   { transform: scaleY(1);   opacity: 1; }
+  }
+  .seg {
+    transform-origin: center;
+    animation: seg-in 0.42s var(--ease-out-expo) both;
+    animation-delay: calc(var(--i) * 16ms);
+  }
+
+  /* Boarding light on the active trip's stub. */
+  @keyframes beacon {
+    0%, 100% { opacity: 0.35; transform: scale(0.82); }
+    50%      { opacity: 1;    transform: scale(1); }
+  }
+  .beacon { animation: beacon 2.4s ease-in-out infinite; }
+}
+
+@layer utilities {
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+}
