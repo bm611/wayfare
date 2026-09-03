@@ -1,4 +1,5 @@
 import { PaperPlaneTilt } from "@phosphor-icons/react";
+import { cx } from "../lib/cx";
 
 export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
   return (
@@ -17,16 +18,22 @@ export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
   );
 }
 
-/** Small circular icon button used across the top bars. */
+/**
+ * Icon button for the top bars. Standalone it carries its own card surface so it
+ * reads as a sibling of the primary button; inside an IconGroup the shell is the
+ * group's, so `flush` drops the border and shrinks it to fit the padding.
+ */
 export function IconButton({
   label,
   onClick,
   tone = "neutral",
+  flush = false,
   children,
 }: {
   label: string;
   onClick: () => void;
   tone?: "neutral" | "danger";
+  flush?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -34,13 +41,31 @@ export function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`press grid size-9 shrink-0 place-items-center rounded-full border border-line text-ink-soft ${
+      className={cx(
+        "press grid shrink-0 place-items-center text-ink-soft",
+        flush
+          ? "size-[30px] rounded-xl"
+          : "size-9 rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]",
         tone === "danger"
-          ? "hover:border-clay/40 hover:bg-clay-wash hover:text-clay-deep"
-          : "hover:bg-paper-deep hover:text-ink"
-      }`}
+          ? "hover:bg-clay-wash hover:text-clay-deep"
+          : "hover:bg-paper-deep hover:text-ink",
+      )}
     >
       {children}
     </button>
   );
+}
+
+/** Binds the secondary top-bar actions into one segmented pill. */
+export function IconGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-px rounded-2xl border border-line bg-card p-[3px] shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]">
+      {children}
+    </div>
+  );
+}
+
+/** Hairline between two buttons sharing an IconGroup. */
+export function IconGroupDivider() {
+  return <span aria-hidden className="mx-px h-4 w-px shrink-0 bg-line" />;
 }

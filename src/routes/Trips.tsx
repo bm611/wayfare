@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Plus, SignOut, Ticket as TicketIcon } from "@phosphor-icons/react";
-import { Brand, IconButton } from "../components/Brand";
+import { Brand, IconButton, IconGroup, IconGroupDivider } from "../components/Brand";
 import { TripCard } from "../components/TripCard";
 import { TripSheet } from "../components/TripSheet";
 import { JoinSheet } from "../components/JoinSheet";
@@ -34,20 +34,23 @@ export function Trips() {
 
   return (
     <main className="grain mx-auto max-w-[560px] px-5 pb-16 pt-6">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-2.5">
         <div className="flex-1 truncate">
           <Brand size="lg" />
         </div>
-        <Button variant="accent" onClick={() => setTripSheet(true)} className="h-9 gap-1.5 px-3.5 text-[14px]">
+        <Button size="sm" variant="accent" onClick={() => setTripSheet(true)}>
           <Plus size={15} weight="bold" />
           New trip
         </Button>
-        <IconButton label="Join a trip with a code" onClick={() => setJoinSheet(true)}>
-          <TicketIcon size={16} weight="bold" />
-        </IconButton>
-        <IconButton label="Sign out" onClick={() => void signOut()}>
-          <SignOut size={16} weight="bold" />
-        </IconButton>
+        <IconGroup>
+          <IconButton flush label="Join a trip with a code" onClick={() => setJoinSheet(true)}>
+            <TicketIcon size={16} weight="bold" />
+          </IconButton>
+          <IconGroupDivider />
+          <IconButton flush label="Sign out" onClick={() => void signOut()}>
+            <SignOut size={16} weight="bold" />
+          </IconButton>
+        </IconGroup>
       </header>
 
       <section className="mt-10">

@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cx } from "../lib/cx";
 
 type Variant = "solid" | "accent" | "quiet" | "danger";
+type Size = "md" | "sm";
 
 const VARIANTS: Record<Variant, string> = {
   solid:
@@ -12,8 +13,16 @@ const VARIANTS: Record<Variant, string> = {
   danger: "bg-transparent text-clay-deep border-clay/35 hover:bg-clay-wash",
 };
 
+/* Heights live here rather than in a caller's className: same-property utilities
+   can't be overridden from outside, so `h-9` would lose to the base `h-12`. */
+const SIZES: Record<Size, string> = {
+  md: "h-12 gap-2 px-5 text-[15px]",
+  sm: "h-9 gap-1.5 px-4 text-[14px]",
+};
+
 export function Button({
   variant = "solid",
+  size = "md",
   loading = false,
   full = false,
   children,
@@ -22,6 +31,7 @@ export function Button({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
+  size?: Size;
   loading?: boolean;
   full?: boolean;
   children: ReactNode;
@@ -31,9 +41,10 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={cx(
-        "press inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-5",
-        "text-[15px] font-medium tracking-[-0.01em]",
+        "press inline-flex items-center justify-center rounded-2xl border",
+        "font-medium tracking-[-0.01em]",
         "disabled:pointer-events-none disabled:opacity-45",
+        SIZES[size],
         VARIANTS[variant],
         full && "w-full",
         className,

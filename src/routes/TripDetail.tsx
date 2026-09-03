@@ -10,7 +10,7 @@ import { ExpenseRow } from "../components/ExpenseRow";
 import { ExpenseSheet } from "../components/ExpenseSheet";
 import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
-import { IconButton } from "../components/Brand";
+import { IconButton, IconGroup, IconGroupDivider } from "../components/Brand";
 import { ShareSheet } from "../components/ShareSheet";
 import {
   EmptyState,
@@ -343,7 +343,7 @@ function TopBar({
   onDelete?: () => void;
 }) {
   return (
-    <header className="flex items-center gap-2">
+    <header className="flex items-center gap-2.5">
       <IconButton label="Back to all trips" onClick={onBack}>
         <ArrowLeft size={16} weight="bold" />
       </IconButton>
@@ -351,20 +351,25 @@ function TopBar({
       <div className="flex-1" />
 
       {onAdd && (
-        <Button variant="accent" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-[14px]">
+        <Button size="sm" variant="accent" onClick={onAdd}>
           <Plus size={15} weight="bold" />
           Add expense
         </Button>
       )}
-      {onShare && (
-        <IconButton label="Share this trip" onClick={onShare}>
-          <UsersThree size={16} weight="bold" />
-        </IconButton>
-      )}
-      {onDelete && (
-        <IconButton label="Delete this trip" onClick={onDelete} tone="danger">
-          <Trash size={16} weight="bold" />
-        </IconButton>
+      {(onShare || onDelete) && (
+        <IconGroup>
+          {onShare && (
+            <IconButton flush label="Share this trip" onClick={onShare}>
+              <UsersThree size={16} weight="bold" />
+            </IconButton>
+          )}
+          {onShare && onDelete && <IconGroupDivider />}
+          {onDelete && (
+            <IconButton flush label="Delete this trip" onClick={onDelete} tone="danger">
+              <Trash size={16} weight="bold" />
+            </IconButton>
+          )}
+        </IconGroup>
       )}
     </header>
   );
