@@ -44,8 +44,8 @@ export function IconButton({
       className={cx(
         "press grid shrink-0 place-items-center text-ink-soft",
         flush
-          ? "size-[30px] rounded-xl"
-          : "size-9 rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]",
+          ? "size-11 rounded-xl"
+          : "size-11 rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]",
         tone === "danger"
           ? "hover:bg-clay-wash hover:text-clay-deep"
           : "hover:bg-paper-deep hover:text-ink",
@@ -59,7 +59,7 @@ export function IconButton({
 /** Binds the secondary top-bar actions into one segmented pill. */
 export function IconGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-9 shrink-0 items-center gap-px rounded-2xl border border-line bg-card p-[3px] shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]">
+    <div className="flex shrink-0 items-center rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]">
       {children}
     </div>
   );

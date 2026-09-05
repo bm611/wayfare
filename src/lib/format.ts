@@ -77,8 +77,8 @@ export function tripPhase(trip: { start_date: string | null; end_date: string | 
   if (today > end) return { kind: "past" };
   return {
     kind: "active",
-    day: Math.floor((today - start) / 86_400_000) + 1,
-    total: Math.floor((end - start) / 86_400_000) + 1,
+    day: Math.round((today - start) / 86_400_000) + 1,
+    total: Math.round((end - start) / 86_400_000) + 1,
   };
 }
 

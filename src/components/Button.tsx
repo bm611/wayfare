@@ -17,7 +17,7 @@ const VARIANTS: Record<Variant, string> = {
    can't be overridden from outside, so `h-9` would lose to the base `h-12`. */
 const SIZES: Record<Size, string> = {
   md: "h-12 gap-2 px-5 text-[15px]",
-  sm: "h-9 gap-1.5 px-4 text-[14px]",
+  sm: "h-11 gap-1.5 px-3 text-[14px]",
 };
 
 export function Button({

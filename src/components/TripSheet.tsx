@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Sheet } from "./Sheet";
 import { Field } from "./Field";
 import { Button } from "./Button";
@@ -27,47 +27,81 @@ export function TripSheet({
   onSave: (input: TripInput) => Promise<unknown>;
   trip?: Trip;
 }) {
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const formId = useId();
+
   return (
     <Sheet
       open={open}
       onClose={onClose}
+      dirty={dirty}
+      busy={busy}
       eyebrow={trip ? "Edit itinerary" : "New itinerary"}
       title={trip ? "Update your trip" : "Where are you headed?"}
+      footer={<Button type="submit" form={formId} variant="accent" full loading={busy}>
+        {trip ? "Save changes" : "Start the ledger"}
+      </Button>}
     >
-      <TripForm trip={trip} onClose={onClose} onSave={onSave} />
+      <TripForm
+        formId={formId}
+        trip={trip}
+        onClose={onClose}
+        onSave={onSave}
+        onDirtyChange={setDirty}
+        onBusyChange={setBusy}
+      />
     </Sheet>
   );
 }
 
 function TripForm({
+  formId,
   trip,
   onClose,
   onSave,
+  onDirtyChange,
+  onBusyChange,
 }: {
+  formId: string;
   trip?: Trip;
   onClose: () => void;
   onSave: (input: TripInput) => Promise<unknown>;
+  onDirtyChange: (dirty: boolean) => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
-  const [form, setForm] = useState(() =>
-    trip
-      ? {
-          name: trip.name,
-          destination: trip.destination ?? "",
-          start_date: trip.start_date ?? "",
-          end_date: trip.end_date ?? "",
-          budget: String(trip.budget),
-        }
-      : BLANK,
+  const initial = useMemo(
+    () =>
+      trip
+        ? {
+            name: trip.name,
+            destination: trip.destination ?? "",
+            start_date: trip.start_date ?? "",
+            end_date: trip.end_date ?? "",
+            budget: String(trip.budget),
+          }
+        : BLANK,
+    [trip],
   );
+  const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const set = (key: keyof typeof BLANK) => (e: { target: { value: string } }) =>
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  useEffect(() => {
+    onDirtyChange(false);
+    onBusyChange(false);
+  }, [onDirtyChange, onBusyChange]);
+
+  const set = (key: keyof typeof BLANK) => (e: { target: { value: string } }) => {
+    const next = { ...form, [key]: e.target.value };
+    setForm(next);
+    onDirtyChange(Object.keys(BLANK).some((field) => next[field as keyof typeof BLANK] !== initial[field as keyof typeof BLANK]));
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     const next: Record<string, string> = {};
     if (!form.name.trim()) next.name = "Give the trip a name.";
     const budget = form.budget === "" ? 0 : Number(form.budget);
@@ -79,6 +113,7 @@ function TripForm({
     if (Object.keys(next).length) return;
 
     setSaving(true);
+    onBusyChange(true);
     setFailure(null);
     try {
       await onSave({
@@ -95,11 +130,12 @@ function TripForm({
       setFailure(errorMessage(err, "Could not save the trip."));
     } finally {
       setSaving(false);
+      onBusyChange(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
+    <form id={formId} onSubmit={submit} className="flex flex-col gap-5">
       {failure && <ErrorNote message={failure} />}
 
       <Field
@@ -120,7 +156,7 @@ function TripForm({
         maxLength={120}
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
         <Field label="Depart" type="date" value={form.start_date} onChange={set("start_date")} />
         <Field
           label="Return"
@@ -145,9 +181,6 @@ function TripForm({
         hint="In euros. Leave blank to just track spend — you can log costs in any currency."
       />
 
-      <Button type="submit" variant="accent" full loading={saving}>
-        {trip ? "Save changes" : "Start the ledger"}
-      </Button>
     </form>
   );
 }

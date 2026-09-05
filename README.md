@@ -52,6 +52,30 @@ via `*.local`.
 | `npm run build` | Typecheck + production bundle |
 | `npm run preview` | Serve the built bundle |
 
+### UI regression tests
+
+Run `npx playwright install chromium` once, then `npm run test:ui`.
+To use an existing Google Chrome installation instead, run
+`PLAYWRIGHT_CHROME=1 npm run test:ui`.
+The suite starts Vite on port 5187 with a test-only Supabase URL and mocks
+all account and trip requests. It does not send emails or modify real trips.
+Screenshots are saved under `test-results/`.
+
+### Everyday use
+
+- Trips are grouped into active, upcoming, dates-open and past trips.
+- Active trips prioritize remaining budget. Available per day divides the
+  remaining budget by days left **including today**, with zero available when
+  over budget. Average spent/day includes pre-trip bookings.
+- Search the ledger by title or note, filter by category or payer, or choose a
+  category in the collapsible spending breakdown.
+- The expense action stays within reach. The last successfully used payment
+  currency is remembered per trip on this device; notes are optional.
+- Shared budgets track the whole group's expenses, not debts or bill splitting.
+  Other travellers' entries open read-only.
+- Trip and expense forms confirm before discarding changes. Sheets trap and
+  restore keyboard focus and keep their save actions outside the scrolling form.
+
 ---
 
 ## Currency
@@ -125,6 +149,12 @@ Email + password via Supabase. New projects require email confirmation by defaul
 so the first sign-up lands on a "check your inbox" state. To skip that while
 developing, turn off **Confirm email** under Authentication → Sign In / Providers →
 Email in the Supabase dashboard.
+
+Sign-in includes password visibility and password reset. Recovery emails return
+to `/auth?mode=recovery`, where the user can set a new password. Ensure this URL
+is permitted in Supabase's redirect allowlist for each deployed origin; the
+domain-wide redirect entries below also cover it. Confirmation and reset resends
+have a 60-second UI cooldown in addition to Supabase's server-side rate limits.
 
 ---
 

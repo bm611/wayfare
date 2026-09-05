@@ -34,8 +34,8 @@ export function Trips() {
 
   return (
     <main className="grain mx-auto max-w-[560px] px-5 pb-16 pt-6">
-      <header className="flex items-center gap-2.5">
-        <div className="flex-1 truncate">
+      <header className="grid grid-cols-[1fr_auto] items-center gap-2.5 min-[380px]:flex">
+        <div className="col-span-2 flex-1">
           <Brand size="lg" />
         </div>
         <Button size="sm" variant="accent" onClick={() => setTripSheet(true)}>
@@ -109,9 +109,19 @@ export function Trips() {
             variants={{ show: { transition: { staggerChildren: 0.07 } } }}
             className="flex flex-col gap-4"
           >
-            {trips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} shared={trip.user_id !== user?.id} />
-            ))}
+            {([
+              ["active", "Active trips"], ["upcoming", "Upcoming trips"],
+              ["undated", "Dates open"], ["past", "Past trips"],
+            ] as const).map(([phase, label]) => {
+              const group = trips.filter((trip) => tripPhase(trip).kind === phase);
+              if (!group.length) return null;
+              return <li key={phase} className="mb-4">
+                <h2 className="mb-3 text-sm font-semibold text-ink-soft">{label} <span className="tabular ml-1">{group.length}</span></h2>
+                <ul className="flex flex-col gap-4">
+                  {group.map((trip) => <TripCard key={trip.id} trip={trip} shared={trip.user_id !== user?.id} />)}
+                </ul>
+              </li>;
+            })}
           </motion.ul>
         )}
       </div>

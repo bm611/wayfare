@@ -4,7 +4,7 @@ import { cx } from "../lib/cx";
 
 const CONTROL =
   "w-full rounded-xl border border-line bg-card px-3.5 py-3 text-ink placeholder:text-ink-faint " +
-  "transition-colors focus:border-clay/55 focus:outline-none";
+  "transition-colors focus:border-clay";
 
 function Shell({
   label,
@@ -23,15 +23,15 @@ function Shell({
     <div className="flex flex-col gap-2">
       <label
         htmlFor={htmlFor}
-        className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft"
+        className="text-[13px] font-medium text-ink-soft"
       >
         {label}
       </label>
       {children}
       {error ? (
-        <p className="text-[12.5px] text-clay-deep">{error}</p>
+        <p id={`${htmlFor}-description`} role="alert" className="text-[12.5px] text-clay-deep">{error}</p>
       ) : hint ? (
-        <p className="text-[12.5px] text-ink-faint">{hint}</p>
+        <p id={`${htmlFor}-description`} className="text-[12.5px] text-ink-faint">{hint}</p>
       ) : null}
     </div>
   );
@@ -43,6 +43,7 @@ export function Field({
   error,
   prefix,
   className,
+  autoFocus,
   ...rest
 }: InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -62,6 +63,9 @@ export function Field({
         <input
           id={id}
           {...rest}
+          aria-invalid={!!error || undefined}
+          aria-describedby={error || hint ? `${id}-description` : undefined}
+          data-autofocus={autoFocus || undefined}
           className={cx(
             CONTROL,
             prefix && "pl-9",
@@ -88,7 +92,7 @@ export function TextArea({
   const id = useId();
   return (
     <Shell label={label} hint={hint} error={error} htmlFor={id}>
-      <textarea id={id} rows={2} {...rest} className={cx(CONTROL, "resize-none", className)} />
+      <textarea id={id} rows={2} {...rest} aria-invalid={!!error || undefined} aria-describedby={error || hint ? `${id}-description` : undefined} className={cx(CONTROL, "resize-none", className)} />
     </Shell>
   );
 }
@@ -108,7 +112,7 @@ export function Select({
   const id = useId();
   return (
     <Shell label={label} hint={hint} error={error} htmlFor={id}>
-      <select id={id} {...rest} className={cx(CONTROL, "appearance-none pr-9", className)}>
+      <select id={id} {...rest} aria-invalid={!!error || undefined} aria-describedby={error || hint ? `${id}-description` : undefined} className={cx(CONTROL, "pr-9", className)}>
         {children}
       </select>
     </Shell>

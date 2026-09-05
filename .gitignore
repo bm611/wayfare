@@ -28,3 +28,7 @@ dist-ssr
 
 # Written by Netlify Dev when it boots the edge functions runtime.
 deno.lock
+
+# Browser test artifacts
+test-results/
+playwright-report/

@@ -1,14 +1,16 @@
 import { CATEGORY_LIST } from "../lib/categories";
 import { money, symbolFor } from "../lib/format";
-import type { Expense } from "../lib/types";
+import type { CategoryKey, Expense } from "../lib/types";
 
 /** No cards here — hierarchy comes from a single rule and generous spacing. */
 export function CategorySplit({
   expenses,
   currency,
+  onSelect,
 }: {
   expenses: Expense[];
   currency: string;
+  onSelect: (category: CategoryKey) => void;
 }) {
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
   if (total === 0) return null;
@@ -26,9 +28,7 @@ export function CategorySplit({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="tabular text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
-        Where it went
-      </h2>
+      <p className="text-xs text-ink-soft">Choose a category to see its expenses.</p>
 
       <div className="flex h-3 gap-[3px]">
         {rows.map(({ meta, amount }) => (
@@ -43,7 +43,8 @@ export function CategorySplit({
 
       <ul className="divide-y divide-line-soft">
         {rows.map(({ meta, amount }) => (
-          <li key={meta.key} className="flex items-center gap-3 py-2.5">
+          <li key={meta.key}>
+            <button type="button" onClick={() => onSelect(meta.key)} className="press flex min-h-11 w-full items-center gap-3 py-2.5 text-left hover:bg-paper">
             <span
               className="size-2 shrink-0 rounded-full"
               style={{ backgroundColor: meta.color }}
@@ -57,6 +58,7 @@ export function CategorySplit({
               {symbol}
               {money(amount)}
             </span>
+            </button>
           </li>
         ))}
       </ul>
