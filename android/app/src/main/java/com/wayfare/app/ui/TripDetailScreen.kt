@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,29 +19,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +81,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripDetailScreen(
     accountId: String,
@@ -101,8 +107,18 @@ fun TripDetailScreen(
         containerColor = Paper,
         topBar = {
             TopAppBar(
-                title = { Brand() },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
+                title = {
+                    Text(
+                        trip?.name.orEmpty(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
+                },
                 actions = {
                     IconButton(onClick = viewModel::refresh) { Icon(Icons.Outlined.Refresh, "Refresh") }
                     if (trip != null) {
@@ -113,25 +129,29 @@ fun TripDetailScreen(
                         }
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Paper),
             )
         },
-        floatingActionButton = {
-            if (trip != null) ExtendedFloatingActionButton(
-                onClick = { editingExpense = null; showExpense = true },
-                containerColor = Clay,
-                contentColor = Color.White,
-                icon = { Icon(Icons.Outlined.Add, null) },
-                text = { Text("Add expense") },
-            )
+        bottomBar = {
+            if (trip != null) {
+                Surface(color = Paper) {
+                    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
+                        PrimaryButton("Add expense", Modifier.fillMaxWidth()) {
+                            editingExpense = null
+                            showExpense = true
+                        }
+                    }
+                }
+            }
         },
     ) { insets ->
         when {
             state.loading && trip == null -> Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Clay)
+                CircularProgressIndicator(color = Rausch)
             }
             trip == null -> Column(Modifier.padding(insets).padding(20.dp)) {
                 Notice(state.error ?: "That trip is no longer available.", true)
-                TextButton(onClick = onBack) { Text("Back to all trips") }
+                TextButton(onClick = onBack) { Text("Back to all trips", color = Rausch) }
             }
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing && !state.loading,
@@ -147,8 +167,6 @@ fun TripDetailScreen(
                     modifier = Modifier,
                     onOpenExpense = { expense ->
                         when {
-                            // Editing a row the server has never seen would PATCH
-                            // an id that is not there yet.
                             expense.syncState != SyncState.Synced -> unsyncedExpense = expense
                             expense.userId == accountId -> { editingExpense = expense; showExpense = true }
                             else -> readOnlyExpense = expense
@@ -204,10 +222,10 @@ fun TripDetailScreen(
     )
     if (trip != null && showDeleteTrip) AlertDialog(
         onDismissRequest = { showDeleteTrip = false },
-        title = { Text("Delete ${trip.name}?") },
+        title = { Text("Delete ${trip.name}?", fontWeight = FontWeight.Bold) },
         text = { Text("The trip and its entire expense ledger will be removed for every traveller.") },
-        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete") } },
-        dismissButton = { TextButton(onClick = { showDeleteTrip = false }) { Text("Keep trip") } },
+        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete", color = Rausch, fontWeight = FontWeight.SemiBold) } },
+        dismissButton = { TextButton(onClick = { showDeleteTrip = false }) { Text("Keep trip", color = Ink) } },
     )
 }
 
@@ -234,72 +252,38 @@ private fun TripDetailContent(
 
     LazyColumn(
         modifier.fillMaxSize().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         state.error?.let { item { Notice(it, true, Modifier.padding(top = 12.dp)) } }
         item {
-            Surface(
-                Modifier.fillMaxWidth().padding(top = 14.dp),
-                shape = RoundedCornerShape(24.dp), color = Card, shadowElevation = 3.dp,
-            ) {
-                Column {
-                    if (coverUrl != null) {
-                        AsyncImage(
-                            model = coverUrl,
-                            contentDescription = trip.destination?.let { "Destination cover for $it" },
-                            modifier = Modifier.fillMaxWidth().height(145.dp),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        )
-                    }
-                    Column(Modifier.padding(20.dp)) {
-                        Text(phaseLabel(trip), color = Clay, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text(trip.name, Modifier.padding(top = 5.dp), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            listOfNotNull(trip.destination, dateRange(trip.startDate, trip.endDate)).joinToString(" · "),
-                            color = InkSoft,
-                            fontSize = 13.sp,
-                        )
-                        HorizontalDivider(Modifier.padding(vertical = 18.dp), color = Line)
-                        val showRemaining = phase is TripPhase.Active && trip.budget.signum() > 0
-                        Text(if (showRemaining) if (remaining.signum() < 0) "Over budget" else "Budget remaining" else "Total spent", color = InkSoft)
-                        Text(
-                            money(if (showRemaining) remaining.abs() else spent, trip.currency),
-                            Modifier.padding(top = 3.dp), fontSize = 36.sp, fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            if (trip.budget.signum() > 0) "${money(spent, trip.currency)} spent of ${money(trip.budget, trip.currency)}"
-                            else "No budget set — just keeping count.",
-                            color = InkSoft, fontSize = 13.sp,
-                        )
-                        availablePerDay?.let {
-                            Text("${money(it, trip.currency)} available/day remaining", Modifier.padding(top = 15.dp), fontWeight = FontWeight.Medium)
-                            Text("Across $daysLeft ${if (daysLeft == 1L) "day" else "days"}, including today.", color = InkSoft, fontSize = 12.sp)
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        BudgetMeter(spent, trip.budget)
-                        Row(Modifier.padding(top = 17.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-                            DetailMetric("REMAINING", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—")
-                            DetailMetric("AVG / DAY", perDay?.let { money(it, trip.currency) } ?: "—")
-                            DetailMetric("ENTRIES", counted.size.toString())
-                        }
-                        if (state.members.size > 1) Text(
-                            "Group budget · includes everyone’s expenses. This tracks spending, not who owes whom.",
-                            Modifier.padding(top = 16.dp), color = InkSoft, fontSize = 12.sp,
-                        )
-                    }
-                }
-            }
+            HeroCard(trip, coverUrl, phase)
+        }
+        item {
+            BudgetCard(
+                trip = trip,
+                spent = spent,
+                remaining = remaining,
+                perDay = perDay,
+                availablePerDay = availablePerDay,
+                daysLeft = daysLeft,
+                entries = counted.size,
+                showRemaining = phase is TripPhase.Active && trip.budget.signum() > 0,
+                memberCount = state.members.size,
+            )
         }
         if (counted.isNotEmpty()) item {
             CategoryBreakdown(counted, trip.currency, viewModel::setCategory)
         }
         item {
-            Text("The ledger", Modifier.padding(top = 16.dp), fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text("Ledger", Modifier.padding(top = 4.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
-                state.query, viewModel::setQuery, Modifier.fillMaxWidth().padding(top = 10.dp),
-                label = { Text("Search titles and notes") }, singleLine = true,
+                state.query, viewModel::setQuery, Modifier.fillMaxWidth().padding(top = 12.dp),
+                placeholder = { Text("Search titles and notes", color = InkFaint) },
+                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = InkFaint) },
+                singleLine = true,
+                shape = RoundedCornerShape(50),
             )
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterMenu(
                     label = state.category?.label ?: "All categories",
                     options = listOf("All categories" to null) + Category.entries.map { it.label to it },
@@ -315,24 +299,160 @@ private fun TripDetailContent(
             }
         }
         if (state.filteredExpenses.isEmpty()) item {
-            Text(
-                if (state.expenses.isEmpty()) "No expenses yet. Add the first one when it lands."
-                else "No entries match these filters.",
-                Modifier.fillMaxWidth().padding(vertical = 34.dp), color = InkSoft,
-            )
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 36.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    Modifier.size(60.dp).clip(CircleShape).background(PaperDeep),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Outlined.Payments, null, tint = InkFaint, modifier = Modifier.size(26.dp)) }
+                Text(
+                    if (state.expenses.isEmpty()) "No expenses yet. Add the first one when it lands."
+                    else "No entries match these filters.",
+                    Modifier.padding(top = 14.dp),
+                    color = InkSoft,
+                    fontSize = 14.sp,
+                )
+            }
         }
         items(state.filteredExpenses, key = Expense::id) { expense ->
             ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
         }
-        item { Spacer(Modifier.height(96.dp)) }
+        item { Spacer(Modifier.height(20.dp)) }
     }
 }
 
 @Composable
-private fun DetailMetric(label: String, value: String) {
+private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
     Column {
-        Text(label, color = InkFaint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp)
-        Text(value, Modifier.padding(top = 3.dp), fontWeight = FontWeight.Medium, fontSize = 12.sp)
+        Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(18.dp))) {
+            if (coverUrl != null) {
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = trip.destination?.let { "Destination cover for $it" },
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                )
+            } else {
+                Box(
+                    Modifier.fillMaxSize().background(PaperDeep),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        trip.name.trim().take(1).uppercase().ifBlank { "W" },
+                        color = InkFaint,
+                        fontSize = 64.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+        Text(
+            phaseLabel(trip),
+            Modifier.padding(top = 16.dp),
+            color = Rausch,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.3.sp,
+        )
+        Text(
+            trip.name,
+            Modifier.padding(top = 4.dp),
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.4).sp,
+        )
+        Text(
+            listOfNotNull(trip.destination, dateRange(trip.startDate, trip.endDate)).joinToString(" · ").ifBlank { "Dates open" },
+            Modifier.padding(top = 4.dp),
+            color = InkSoft,
+            fontSize = 14.sp,
+        )
+    }
+}
+
+@Composable
+private fun BudgetCard(
+    trip: Trip,
+    spent: BigDecimal,
+    remaining: BigDecimal,
+    perDay: BigDecimal?,
+    availablePerDay: BigDecimal?,
+    daysLeft: Long?,
+    entries: Int,
+    showRemaining: Boolean,
+    memberCount: Int,
+) {
+    Surface(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = PaperDeep,
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape).background(Paper),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Outlined.Wallet, null, tint = Rausch, modifier = Modifier.size(18.dp)) }
+                Text(
+                    if (showRemaining) if (remaining.signum() < 0) "Over budget" else "Budget remaining" else "Total spent",
+                    Modifier.padding(start = 10.dp),
+                    color = InkSoft,
+                    fontSize = 14.sp,
+                )
+            }
+            Text(
+                money(if (showRemaining) remaining.abs() else spent, trip.currency),
+                Modifier.padding(top = 12.dp),
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.5).sp,
+            )
+            Text(
+                if (trip.budget.signum() > 0) "${money(spent, trip.currency)} spent of ${money(trip.budget, trip.currency)}"
+                else "No budget set — just keeping count.",
+                Modifier.padding(top = 2.dp),
+                color = InkSoft,
+                fontSize = 13.sp,
+            )
+            availablePerDay?.let {
+                Text(
+                    "${money(it, trip.currency)} available/day remaining",
+                    Modifier.padding(top = 14.dp),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
+                Text(
+                    "Across $daysLeft ${if (daysLeft == 1L) "day" else "days"}, including today.",
+                    Modifier.padding(top = 2.dp),
+                    color = InkSoft,
+                    fontSize = 12.sp,
+                )
+            }
+            if (trip.budget.signum() > 0) {
+                Spacer(Modifier.height(16.dp))
+                BudgetMeter(spent, trip.budget, Modifier.clip(RoundedCornerShape(50)))
+            }
+            HorizontalDivider(Modifier.padding(vertical = 18.dp), color = LineSoft)
+            Row(Modifier.fillMaxWidth()) {
+                DetailMetric("REMAINING", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—", Modifier.weight(1f))
+                DetailMetric("AVG / DAY", perDay?.let { money(it, trip.currency) } ?: "—", Modifier.weight(1f))
+                DetailMetric("ENTRIES", entries.toString(), Modifier.weight(1f))
+            }
+            if (memberCount > 1) Text(
+                "Group budget · includes everyone’s expenses. This tracks spending, not who owes whom.",
+                Modifier.padding(top = 16.dp), color = InkSoft, fontSize = 12.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(label, color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+        Text(value, Modifier.padding(top = 4.dp), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 }
 
@@ -341,19 +461,22 @@ private fun CategoryBreakdown(expenses: List<Expense>, currency: String, onSelec
     val total = expenses.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount }
     val groups = expenses.groupBy(Expense::category).mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount } }
         .toList().sortedByDescending { it.second }
-    Surface(Modifier.fillMaxWidth().padding(top = 14.dp), shape = RoundedCornerShape(18.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, Line)) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Spending by category", fontWeight = FontWeight.SemiBold)
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, LineSoft)) {
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.AutoMirrored.Outlined.TrendingUp, null, tint = Ink, modifier = Modifier.size(18.dp))
+                Text("Spending by category", Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            }
             groups.forEach { (category, amount) ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { onSelect(category) }.padding(vertical = 10.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onSelect(category) }.padding(vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(9.dp).background(CategoryColors.getValue(category.wireName), CircleShape))
-                    Text(category.label, Modifier.weight(1f).padding(start = 10.dp))
+                    Box(Modifier.size(10.dp).background(CategoryColors.getValue(category.wireName), CircleShape))
+                    Text(category.label, Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
                     val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
                     Text("$percent%", color = InkFaint, fontSize = 12.sp)
-                    Text(money(amount, currency), Modifier.padding(start = 12.dp), fontWeight = FontWeight.Medium)
+                    Text(money(amount, currency), Modifier.padding(start = 12.dp), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
             }
         }
@@ -362,25 +485,28 @@ private fun CategoryBreakdown(expenses: List<Expense>, currency: String, onSelec
 
 @Composable
 private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(38.dp).background(CategoryColors.getValue(expense.category.wireName).copy(alpha = 0.13f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Box(Modifier.size(9.dp).background(CategoryColors.getValue(expense.category.wireName), CircleShape)) }
-        Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
-            Text(expense.title, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                listOfNotNull(dayLabel(expense.spentOn), payer.takeIf { shared }).joinToString(" · "),
-                color = InkSoft, fontSize = 12.sp,
-            )
+    Column {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(42.dp).background(CategoryColors.getValue(expense.category.wireName).copy(alpha = 0.14f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Box(Modifier.size(10.dp).background(CategoryColors.getValue(expense.category.wireName), CircleShape)) }
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(expense.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOfNotNull(dayLabel(expense.spentOn), payer.takeIf { shared }).joinToString(" · "),
+                    color = InkSoft, fontSize = 13.sp,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(money(expense.amount, currency), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                SyncBadge(expense.syncState)
+            }
         }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(money(expense.amount, currency), fontWeight = FontWeight.SemiBold)
-            SyncBadge(expense.syncState)
-        }
+        HorizontalDivider(color = LineSoft)
     }
 }
 
@@ -388,7 +514,14 @@ private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared
 private fun <T> FilterMenu(label: String, options: List<Pair<String, T>>, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        OutlinedButton(
+            onClick = { open = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(50),
+        ) {
+            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.size(18.dp), tint = Ink)
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { (text, value) -> DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); open = false }) }
         }
@@ -410,13 +543,13 @@ private fun ShareTripDialog(
     val link = "https://getwayfare.netlify.app/join/${trip.shareCode}"
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Share ${trip.name}") },
+        title = { Text("Share ${trip.name}", fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 trip.shareCode?.let {
                     Text("INVITE CODE", color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text(it, Modifier.padding(vertical = 10.dp), fontSize = 27.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 4.sp)
-                    ClayButton("Share invite link", Modifier.fillMaxWidth()) {
+                    Text(it, Modifier.padding(vertical = 10.dp), fontSize = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+                    PrimaryButton("Share invite link", Modifier.fillMaxWidth()) {
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, "Join ${trip.name} on Wayfare: $link")
@@ -426,7 +559,11 @@ private fun ShareTripDialog(
                 Text("ON THIS TRIP", Modifier.padding(top = 22.dp, bottom = 6.dp), color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 members.forEach { member ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(member.displayName ?: "Traveller", Modifier.weight(1f))
+                        Box(
+                            Modifier.size(38.dp).clip(CircleShape).background(PaperDeep),
+                            contentAlignment = Alignment.Center,
+                        ) { Text((member.displayName ?: "T").take(1).uppercase(), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+                        Text(member.displayName ?: "Traveller", Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
                         Text(if (member.role == "owner") "Organiser" else "Member", color = InkSoft, fontSize = 12.sp)
                         if (trip.ownerId == accountId && member.userId != accountId) IconButton(onClick = {
                             scope.launch { onRemove(member.userId).onFailure { error = it.message } }
@@ -437,10 +574,11 @@ private fun ShareTripDialog(
                 if (trip.ownerId != accountId) OutlinedButton(
                     onClick = { scope.launch { onLeave().onFailure { error = it.message } } },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) { Text("Leave this trip", color = ClayDeep) }
+                    shape = RoundedCornerShape(50),
+                ) { Text("Leave this trip", color = RauschDark) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Rausch, fontWeight = FontWeight.SemiBold) } },
     )
 }
 
@@ -455,10 +593,10 @@ private fun UnsyncedExpenseDialog(
     val failed = expense.syncState == SyncState.Failed
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (failed) "This entry did not save" else "Still saving") },
+        title = { Text(if (failed) "This entry did not save" else "Still saving", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("${expense.title} · ${money(expense.amount, currency)}", fontWeight = FontWeight.Medium)
+                Text("${expense.title} · ${money(expense.amount, currency)}", fontWeight = FontWeight.SemiBold)
                 Text(
                     if (failed) {
                         "It is kept here so nothing is lost, but it is not counted in the trip total " +
@@ -473,11 +611,11 @@ private fun UnsyncedExpenseDialog(
                 expense.syncError?.let { Notice(it, error = failed) }
             }
         },
-        confirmButton = { TextButton(onClick = onRetry) { Text("Try again") } },
+        confirmButton = { TextButton(onClick = onRetry) { Text("Try again", color = Rausch, fontWeight = FontWeight.SemiBold) } },
         dismissButton = {
             Row {
-                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = ClayDeep) }
-                TextButton(onClick = onDismiss) { Text("Close") }
+                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = RauschDark) }
+                TextButton(onClick = onDismiss) { Text("Close", color = Ink) }
             }
         },
     )

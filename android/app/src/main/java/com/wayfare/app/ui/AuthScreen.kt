@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,12 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wayfare.app.feature.AuthUiState
 import com.wayfare.app.feature.AuthViewModel
 
 private enum class AuthMode { SignIn, SignUp, Reset }
+
+private val FieldShape = RoundedCornerShape(14.dp)
+private val FocusedField = RoundedCornerShape(14.dp)
 
 @Composable
 fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
@@ -47,7 +53,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
         horizontalAlignment = Alignment.Start,
     ) {
         Brand()
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(40.dp))
         Text(
             when (mode) {
                 AuthMode.SignIn -> "Your trips, ready when you are."
@@ -55,9 +61,9 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
                 AuthMode.Reset -> "Find your way back in."
             },
             fontSize = 34.sp,
-            lineHeight = 38.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = (-0.7).sp,
+            lineHeight = 39.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.6).sp,
         )
         Text(
             when (mode) {
@@ -71,15 +77,12 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
         )
 
         if (mode == AuthMode.SignUp) {
-            OutlinedTextField(
-                name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Display name") },
-                singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            )
+            AuthField(name, { name = it }, "Display name", ImeAction.Next)
             Spacer(Modifier.height(12.dp))
         }
-        OutlinedTextField(
-            email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = if (mode == AuthMode.Reset) ImeAction.Done else ImeAction.Next),
+        AuthField(
+            email, { email = it }, "Email", if (mode == AuthMode.Reset) ImeAction.Done else ImeAction.Next,
+            keyboardType = KeyboardType.Email,
         )
         if (mode != AuthMode.Reset) {
             Spacer(Modifier.height(12.dp))
@@ -87,13 +90,15 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
                 password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                shape = FieldShape,
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
             )
         }
 
         (localError ?: state.error)?.let { Notice(it, error = true, modifier = Modifier.padding(top = 14.dp)) }
         state.message?.let { Notice(it, modifier = Modifier.padding(top = 14.dp)) }
 
-        ClayButton(
+        PrimaryButton(
             text = when (mode) {
                 AuthMode.SignIn -> "Sign in"
                 AuthMode.SignUp -> "Create account"
@@ -123,22 +128,43 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
             },
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp),
         ) {
-            Text(if (mode == AuthMode.SignIn) "New here? Create an account" else "Back to sign in")
+            Text(
+                if (mode == AuthMode.SignIn) "New here? Create an account" else "Back to sign in",
+                color = Rausch,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
         if (mode == AuthMode.SignIn) {
             TextButton(
                 onClick = { mode = AuthMode.Reset; localError = null; viewModel.clearNotice() },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Forgot your password?") }
+            ) { Text("Forgot your password?", color = InkSoft) }
         }
         if (state.message?.contains("confirm", ignoreCase = true) == true && email.isNotBlank()) {
             TextButton(
                 enabled = !state.busy,
                 onClick = { viewModel.resendConfirmation(email) },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Resend confirmation") }
+            ) { Text("Resend confirmation", color = Rausch, fontWeight = FontWeight.SemiBold) }
         }
     }
+}
+
+@Composable
+private fun AuthField(
+    value: String,
+    onChange: (String) -> Unit,
+    label: String,
+    imeAction: ImeAction,
+    keyboardType: KeyboardType = KeyboardType.Text,
+) {
+    OutlinedTextField(
+        value, onChange, Modifier.fillMaxWidth(), label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        shape = FieldShape,
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
+    )
 }
 
 @Composable
@@ -151,18 +177,26 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
         verticalArrangement = Arrangement.Center,
     ) {
         Brand()
-        Text("Choose a new password", Modifier.padding(top = 44.dp), fontSize = 34.sp, fontWeight = FontWeight.SemiBold)
-        Text("Once saved, this password works on both Android and the web app.", Modifier.padding(top = 10.dp, bottom = 26.dp), color = InkSoft)
+        Text("Choose a new password", Modifier.padding(top = 40.dp), fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+        Text(
+            "Once saved, this password works on both Android and the web app.",
+            Modifier.padding(top = 10.dp, bottom = 26.dp),
+            color = InkSoft,
+        )
         OutlinedTextField(
             password, { password = it }, Modifier.fillMaxWidth(), label = { Text("New password") },
             visualTransformation = PasswordVisualTransformation(), singleLine = true,
+            shape = FieldShape,
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
         )
         OutlinedTextField(
             confirmation, { confirmation = it }, Modifier.fillMaxWidth().padding(top = 12.dp),
             label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true,
+            shape = FieldShape,
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
         )
         (localError ?: state.error)?.let { Notice(it, true, Modifier.padding(top = 14.dp)) }
-        ClayButton("Save password", Modifier.fillMaxWidth().padding(top = 22.dp), state.busy) {
+        PrimaryButton("Save password", Modifier.fillMaxWidth().padding(top = 22.dp), state.busy) {
             localError = when {
                 password.length < 6 -> "Use a password of at least six characters."
                 password != confirmation -> "Those passwords do not match."
@@ -171,7 +205,7 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
             if (localError == null) viewModel.updatePassword(password)
         }
         TextButton(onClick = viewModel::cancelRecovery, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text("Cancel")
+            Text("Cancel", color = Ink)
         }
     }
 }

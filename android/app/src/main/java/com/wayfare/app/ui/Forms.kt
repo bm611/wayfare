@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -80,8 +81,8 @@ fun TripFormDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
-                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true)
-                OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true)
+                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+                OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true, shape = RoundedCornerShape(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     DateField("Depart", start, { start = it }, Modifier.weight(1f))
                     DateField("Return", end, { end = it }, Modifier.weight(1f))
@@ -91,6 +92,7 @@ fun TripFormDialog(
                     placeholder = { Text("2500") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     supportingText = { Text("Leave blank to track spend without a limit.") },
+                    shape = RoundedCornerShape(14.dp),
                 )
             }
         },
@@ -110,7 +112,7 @@ fun TripFormDialog(
                         .onFailure { error = it.message ?: "Could not save the trip." }
                     busy = false
                 }
-            }) { Text(if (busy) "Saving…" else if (trip == null) "Start the ledger" else "Save changes") }
+            }) { Text(if (busy) "Saving…" else if (trip == null) "Start the ledger" else "Save changes", color = Rausch, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = ::dismiss) { Text("Cancel") } },
     )
@@ -150,7 +152,7 @@ fun ExpenseFormDialog(
                     expense.note?.let { Text(it) }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Close", color = Rausch, fontWeight = FontWeight.SemiBold) } },
         )
         return
     }
@@ -185,26 +187,37 @@ fun ExpenseFormDialog(
                     OutlinedTextField(
                         amount, { amount = it }, Modifier.weight(1f), label = { Text("Amount") }, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(14.dp),
                     )
                     CurrencyPicker(paidIn, { paidIn = it })
                 }
                 if (paidIn != currency && converted != null) {
                     Notice("≈ ${money(converted, currency)} · 1 $paidIn = ${fx.rateBetween(paidIn, currency, snapshot)?.setScale(4, java.math.RoundingMode.HALF_UP)} $currency${if (snapshot.stale) " · offline rate" else ""}")
                 }
-                OutlinedTextField(title, { title = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("For") }, singleLine = true)
+                OutlinedTextField(title, { title = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("For") }, singleLine = true, shape = RoundedCornerShape(14.dp))
                 Text("Category", color = InkSoft)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Category.entries.forEach { item ->
-                        FilterChip(selected = category == item, onClick = { category = item }, label = { Text(item.label) })
+                        FilterChip(
+                            selected = category == item,
+                            onClick = { category = item },
+                            label = { Text(item.label) },
+                            shape = RoundedCornerShape(50),
+                            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Ink,
+                                selectedLabelColor = androidx.compose.ui.graphics.Color.White,
+                            ),
+                        )
                     }
                 }
                 DateField("Date", spentOn, { spentOn = it ?: LocalDate.now() }, Modifier.fillMaxWidth())
                 OutlinedTextField(
                     note, { note = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Note (optional)") },
                     minLines = 2, maxLines = 4,
+                    shape = RoundedCornerShape(14.dp),
                 )
                 if (expense != null && onDelete != null) {
-                    OutlinedButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth()) { Text("Delete entry", color = ClayDeep) }
+                    OutlinedButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(50)) { Text("Delete entry", color = RauschDark) }
                 }
             }
         },
@@ -230,7 +243,7 @@ fun ExpenseFormDialog(
                     }.onFailure { error = it.message ?: "Could not save that expense." }
                     busy = false
                 }
-            }) { Text(if (busy) "Saving…" else if (expense == null) "Add to ledger" else "Save changes") }
+            }) { Text(if (busy) "Saving…" else if (expense == null) "Add to ledger" else "Save changes", color = Rausch, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = ::dismiss) { Text("Cancel") } },
     )
@@ -238,7 +251,7 @@ fun ExpenseFormDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Delete this entry?") },
         text = { Text("This cannot be undone.") },
-        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete") } },
+        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete", color = RauschDark, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Keep") } },
     )
     if (discard) AlertDialog(
@@ -261,6 +274,7 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
         enabled = false,
         label = { Text(label) },
         trailingIcon = { Icon(Icons.Outlined.CalendarMonth, null) },
+        shape = RoundedCornerShape(14.dp),
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             disabledTextColor = Ink,
             disabledBorderColor = Line,
@@ -277,7 +291,7 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
                 TextButton(onClick = {
                     onChange(picker.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() })
                     open = false
-                }) { Text("Use date") }
+                }) { Text("Use date", color = Rausch, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 Row {
@@ -294,7 +308,7 @@ private fun CurrencyPicker(value: String, onChange: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Column {
         Text("Paid in", color = InkSoft, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
-        OutlinedButton(onClick = { open = true }) { Text(value) }
+        OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(50)) { Text(value) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             FxRepository.CURRENCIES.forEach { currency ->
                 DropdownMenuItem(text = { Text(currency) }, onClick = { onChange(currency); open = false })
