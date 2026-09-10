@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing leaves the device. The Supabase session, the cached ledger and the
+  unsent expense outbox are all account-scoped; restoring them onto another
+  device or another user's phone would hand over someone's trips.
+-->
+<full-backup-content>
+    <exclude domain="root" />
+    <exclude domain="file" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+</full-backup-content>
