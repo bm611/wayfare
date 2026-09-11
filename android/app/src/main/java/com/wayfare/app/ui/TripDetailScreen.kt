@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.Delete
@@ -99,6 +101,7 @@ fun TripDetailScreen(
     var showEditTrip by remember { mutableStateOf(false) }
     var showDeleteTrip by remember { mutableStateOf(false) }
     var showShare by remember { mutableStateOf(false) }
+    var showActions by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     OnResume(viewModel::onResume)
@@ -124,8 +127,21 @@ fun TripDetailScreen(
                     if (trip != null) {
                         IconButton(onClick = { showShare = true }) { Icon(Icons.Outlined.Group, "Share") }
                         if (trip.ownerId == accountId) {
-                            IconButton(onClick = { showEditTrip = true }) { Icon(Icons.Outlined.Edit, "Edit trip") }
-                            IconButton(onClick = { showDeleteTrip = true }) { Icon(Icons.Outlined.Delete, "Delete trip") }
+                            Box {
+                                IconButton(onClick = { showActions = true }) { Icon(Icons.Outlined.MoreHoriz, "Trip options") }
+                                DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Edit trip") },
+                                        leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                                        onClick = { showActions = false; showEditTrip = true },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Delete trip", color = RauschDark) },
+                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = RauschDark) },
+                                        onClick = { showActions = false; showDeleteTrip = true },
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -136,7 +152,7 @@ fun TripDetailScreen(
             if (trip != null) {
                 Surface(color = Paper) {
                     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
-                        PrimaryButton("Add expense", Modifier.fillMaxWidth()) {
+                        PrimaryButton("Add expense", Modifier.fillMaxWidth(), icon = Icons.Outlined.Add) {
                             editingExpense = null
                             showExpense = true
                         }
@@ -317,7 +333,9 @@ private fun TripDetailContent(
             }
         }
         items(state.filteredExpenses, key = Expense::id) { expense ->
-            ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
+            Box(Modifier.animateItem()) {
+                ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
+            }
         }
         item { Spacer(Modifier.height(20.dp)) }
     }
@@ -326,7 +344,8 @@ private fun TripDetailContent(
 @Composable
 private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
     Column {
-        Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(18.dp))) {
+        Box(Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(24.dp))) {
+            DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) {
                 AsyncImage(
                     model = coverUrl,
@@ -334,18 +353,6 @@ private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 )
-            } else {
-                Box(
-                    Modifier.fillMaxSize().background(PaperDeep),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        trip.name.trim().take(1).uppercase().ifBlank { "W" },
-                        color = InkFaint,
-                        fontSize = 64.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
             }
         }
         Text(
@@ -386,8 +393,9 @@ private fun BudgetCard(
 ) {
     Surface(
         Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = PaperDeep,
+        shape = RoundedCornerShape(24.dp),
+        color = RauschWash,
+        contentColor = Ink,
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -405,7 +413,8 @@ private fun BudgetCard(
             Text(
                 money(if (showRemaining) remaining.abs() else spent, trip.currency),
                 Modifier.padding(top = 12.dp),
-                fontSize = 34.sp,
+                color = if (showRemaining && remaining.signum() < 0) RauschDark else Ink,
+                fontSize = 38.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp,
             )
@@ -436,9 +445,9 @@ private fun BudgetCard(
             }
             HorizontalDivider(Modifier.padding(vertical = 18.dp), color = LineSoft)
             Row(Modifier.fillMaxWidth()) {
-                DetailMetric("REMAINING", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—", Modifier.weight(1f))
-                DetailMetric("AVG / DAY", perDay?.let { money(it, trip.currency) } ?: "—", Modifier.weight(1f))
-                DetailMetric("ENTRIES", entries.toString(), Modifier.weight(1f))
+                DetailMetric(if (remaining.signum() < 0) "Over budget" else "Remaining", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—", Modifier.weight(1f))
+                DetailMetric("Daily average", perDay?.let { money(it, trip.currency) } ?: "—", Modifier.weight(1f))
+                DetailMetric("Entries", entries.toString(), Modifier.weight(1f))
             }
             if (memberCount > 1) Text(
                 "Group budget · includes everyone’s expenses. This tracks spending, not who owes whom.",
@@ -451,7 +460,7 @@ private fun BudgetCard(
 @Composable
 private fun DetailMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
-        Text(label, color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+        Text(label, color = InkSoft, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         Text(value, Modifier.padding(top = 4.dp), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 }
@@ -472,7 +481,7 @@ private fun CategoryBreakdown(expenses: List<Expense>, currency: String, onSelec
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onSelect(category) }.padding(vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(10.dp).background(CategoryColors.getValue(category.wireName), CircleShape))
+                    Icon(categoryIcon(category), null, Modifier.size(22.dp), tint = CategoryColors.getValue(category.wireName))
                     Text(category.label, Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
                     val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
                     Text("$percent%", color = InkFaint, fontSize = 12.sp)
@@ -491,9 +500,9 @@ private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(42.dp).background(CategoryColors.getValue(expense.category.wireName).copy(alpha = 0.14f), CircleShape),
+                Modifier.size(48.dp).background(CategoryColors.getValue(expense.category.wireName).copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Box(Modifier.size(10.dp).background(CategoryColors.getValue(expense.category.wireName), CircleShape)) }
+            ) { Icon(categoryIcon(expense.category), expense.category.label, Modifier.size(23.dp), tint = CategoryColors.getValue(expense.category.wireName)) }
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(expense.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
@@ -591,7 +600,7 @@ private fun UnsyncedExpenseDialog(
     onDiscard: () -> Unit,
 ) {
     val failed = expense.syncState == SyncState.Failed
-    AlertDialog(
+    ExpenseSheet(
         onDismissRequest = onDismiss,
         title = { Text(if (failed) "This entry did not save" else "Still saving", fontWeight = FontWeight.Bold) },
         text = {

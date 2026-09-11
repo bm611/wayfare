@@ -1,5 +1,11 @@
 package com.wayfare.app.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +22,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FlightTakeoff
+import androidx.compose.material.icons.outlined.Hotel
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.DirectionsTransit
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,17 +39,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.wayfare.app.core.Category
 import com.wayfare.app.core.SyncState
 import com.wayfare.app.core.Trip
 import com.wayfare.app.core.TripPhase
@@ -54,7 +78,7 @@ fun Brand(modifier: Modifier = Modifier, showWordmark: Boolean = true) {
                 .background(Brush.linearGradient(listOf(GradientStart, GradientEnd))),
             contentAlignment = Alignment.Center,
         ) {
-            Text("W", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Icon(Icons.Outlined.FlightTakeoff, null, Modifier.size(22.dp), tint = Color.White)
         }
         if (showWordmark) {
             Text(
@@ -74,11 +98,16 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) .97f else 1f, spring(stiffness = 600f), label = "Button press")
     Button(
         onClick = onClick,
-        modifier = modifier.height(54.dp),
+        modifier = modifier.height(54.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        interactionSource = interactionSource,
         enabled = enabled && !busy,
         colors = ButtonDefaults.buttonColors(
             containerColor = Rausch,
@@ -86,12 +115,16 @@ fun PrimaryButton(
             disabledContainerColor = Rausch.copy(alpha = 0.4f),
             disabledContentColor = Color.White,
         ),
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(16.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
     ) {
         if (busy) {
             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
         } else {
+            icon?.let {
+                Icon(it, null, Modifier.size(20.dp))
+                Spacer(Modifier.size(8.dp))
+            }
             Text(text, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }
     }
@@ -120,11 +153,13 @@ fun TicketCard(
 ) {
     val trip = summary.trip
     Column(
-        modifier.fillMaxWidth().padding(bottom = 6.dp).clickable(onClick = onClick),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick)
+            .padding(bottom = 8.dp),
     ) {
         Box(
-            Modifier.fillMaxWidth().height(196.dp).clip(RoundedCornerShape(16.dp)),
+            Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(24.dp)),
         ) {
+            DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) {
                 AsyncImage(
                     model = coverUrl,
@@ -132,18 +167,6 @@ fun TicketCard(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-            } else {
-                Box(
-                    Modifier.fillMaxSize().background(placeholderBrush(trip)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        trip.name.trim().take(1).uppercase().ifBlank { "W" },
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 56.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
             }
             Surface(
                 color = Color.White.copy(alpha = 0.94f),
@@ -169,14 +192,7 @@ fun TicketCard(
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
             ) {
-                Text(
-                    tripCode(trip),
-                    Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    color = Rausch,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                )
+                Icon(Icons.Outlined.NorthEast, null, Modifier.padding(10.dp).size(18.dp), tint = Ink)
             }
         }
         Text(
@@ -218,18 +234,38 @@ fun TicketCard(
     }
 }
 
-private val PlaceholderGradients = listOf(
-    listOf(Color(0xFF3D6EB4), Color(0xFF6C5CA8)),
-    listOf(Color(0xFFB0724A), Color(0xFFC08A24)),
-    listOf(Color(0xFF52843F), Color(0xFF3D6EB4)),
-    listOf(Color(0xFFB94E73), Color(0xFFE31C5F)),
-    listOf(Color(0xFF6C5CA8), Color(0xFF3D6EB4)),
-    listOf(Color(0xFFC08A24), Color(0xFFB94E73)),
-)
+@Composable
+fun DestinationArtwork(modifier: Modifier = Modifier, trip: Trip? = null) {
+    val coastal = ((trip?.id?.hashCode() ?: 0) and 1) == 0
+    val sky = if (coastal) Color(0xFFE8EEE9) else Color(0xFFF3E6DB)
+    val far = if (coastal) Color(0xFF93B2A5) else Color(0xFFCDA58B)
+    val near = if (coastal) Color(0xFF527F77) else Color(0xFF976F60)
+    Canvas(modifier.background(sky)) {
+        drawCircle(Color(0xFFFFF8E8), size.height * .17f, Offset(size.width * .76f, size.height * .28f))
+        val hills = Path().apply {
+            moveTo(0f, size.height * .72f)
+            cubicTo(size.width * .22f, size.height * .05f, size.width * .4f, size.height * .85f, size.width * .65f, size.height * .52f)
+            quadraticTo(size.width * .86f, size.height * .27f, size.width, size.height * .52f)
+            lineTo(size.width, size.height); lineTo(0f, size.height); close()
+        }
+        drawPath(hills, far)
+        val foreground = Path().apply {
+            moveTo(0f, size.height * .85f)
+            cubicTo(size.width * .3f, size.height * .48f, size.width * .6f, size.height * 1.1f, size.width, size.height * .63f)
+            lineTo(size.width, size.height); lineTo(0f, size.height); close()
+        }
+        drawPath(foreground, near)
+    }
+}
 
-private fun placeholderBrush(trip: Trip): Brush {
-    val pair = PlaceholderGradients[(trip.id.hashCode() and 0x7fffffff) % PlaceholderGradients.size]
-    return Brush.linearGradient(pair)
+fun categoryIcon(category: Category): ImageVector = when (category) {
+    Category.Flights -> Icons.Outlined.FlightTakeoff
+    Category.Stays -> Icons.Outlined.Hotel
+    Category.Food -> Icons.Outlined.Restaurant
+    Category.Activities -> Icons.Outlined.PhotoCamera
+    Category.Transport -> Icons.Outlined.DirectionsTransit
+    Category.Shopping -> Icons.Outlined.ShoppingBag
+    Category.Other -> Icons.AutoMirrored.Outlined.ReceiptLong
 }
 
 @Composable
@@ -243,13 +279,15 @@ private fun phaseColor(trip: Trip): Color = when (tripPhase(trip)) {
 fun BudgetMeter(spent: BigDecimal, budget: BigDecimal, modifier: Modifier = Modifier) {
     val ratio = if (budget.signum() <= 0) 0f
     else spent.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+    val animatedRatio by animateFloatAsState(ratio, tween(450), label = "Budget progress")
     Box(
         modifier.fillMaxWidth().height(6.dp)
+            .semantics { progressBarRangeInfo = ProgressBarRangeInfo(ratio, 0f..1f) }
             .clip(RoundedCornerShape(50)).background(LineSoft),
     ) {
-        if (ratio > 0f) {
+        if (animatedRatio > 0f) {
             Box(
-                Modifier.fillMaxHeight().fillMaxWidth(ratio)
+                Modifier.fillMaxHeight().fillMaxWidth(animatedRatio)
                     .clip(RoundedCornerShape(50)).background(Rausch),
             )
         }

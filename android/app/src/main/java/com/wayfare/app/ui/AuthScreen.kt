@@ -1,5 +1,9 @@
 package com.wayfare.app.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -48,15 +52,19 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.Center,
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start,
     ) {
         Brand()
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(24.dp))
+        Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(24.dp))) {
+            DestinationArtwork(modifier = Modifier.fillMaxSize())
+        }
+        Spacer(Modifier.height(28.dp))
         Text(
             when (mode) {
-                AuthMode.SignIn -> "Your trips, ready when you are."
+                AuthMode.SignIn -> "Go places.\nKeep the memories."
                 AuthMode.SignUp -> "Make room for the next stamp."
                 AuthMode.Reset -> "Find your way back in."
             },
@@ -67,7 +75,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
         )
         Text(
             when (mode) {
-                AuthMode.SignIn -> "Sign in to pick up your travel ledger."
+                AuthMode.SignIn -> "A little planning. More room for the good stuff. Sign in to your trips and travel budget."
                 AuthMode.SignUp -> "Create an account to keep every trip in one place."
                 AuthMode.Reset -> "We’ll email you a secure password reset link."
             },

@@ -8,14 +8,17 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wayfare.app.R
 
 // Airbnb-inspired palette. Rausch is the signature brand accent, kept warm and
 // confident against an almost-white canvas with hairline dividers.
-val Rausch = Color(0xFFFF385C)
+val Rausch = Color(0xFFD92D50)
 val RauschDeep = Color(0xFFE31C5F)
 val RauschDark = Color(0xFFC13515)
 val RauschWash = Color(0xFFFFEEF1)
@@ -66,49 +69,56 @@ private val WayfareColors = lightColorScheme(
     onError = Color.White,
 )
 
+private val TravelFont = FontFamily(
+    Font(R.font.manrope, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.manrope, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.manrope, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.manrope, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+)
+
 private val WayfareTypography = Typography(
     displaySmall = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold,
+        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
         fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-0.6).sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold,
+        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
         fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.4).sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold,
+        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
         fontSize = 22.sp, lineHeight = 27.sp, letterSpacing = (-0.2).sp,
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
+        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
         fontSize = 19.sp, lineHeight = 24.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
+        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp, lineHeight = 21.sp,
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal,
+        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
         fontSize = 16.sp, lineHeight = 23.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal,
+        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
         fontSize = 14.sp, lineHeight = 20.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal,
+        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
         fontSize = 13.sp, lineHeight = 18.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
+        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp, lineHeight = 20.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
+        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.2.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold,
+        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
         fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.4.sp,
     ),
 )

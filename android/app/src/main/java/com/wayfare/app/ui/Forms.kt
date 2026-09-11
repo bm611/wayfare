@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +24,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -41,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.wayfare.app.core.Category
 import com.wayfare.app.core.Expense
 import com.wayfare.app.core.ExpenseDraft
@@ -140,7 +147,7 @@ fun ExpenseFormDialog(
     onRememberCurrency: suspend (String) -> Unit = {},
 ) {
     if (readOnly && expense != null) {
-        AlertDialog(
+        ExpenseSheet(
             onDismissRequest = onDismiss,
             title = { Text(expense.title) },
             text = {
@@ -175,13 +182,17 @@ fun ExpenseFormDialog(
         paidIn != (expense?.originalCurrency ?: initialPaidIn) || category != (expense?.category ?: Category.Food) ||
         spentOn != (expense?.spentOn ?: LocalDate.now()) || note != expense?.note.orEmpty()
 
-    fun dismiss() { if (dirty && !busy) discard = true else onDismiss() }
+    fun dismiss() {
+        if (busy) return
+        if (dirty) discard = true else onDismiss()
+    }
 
-    AlertDialog(
+    ExpenseSheet(
         onDismissRequest = ::dismiss,
+        canDismiss = !dirty && !busy,
         title = { Text(if (expense == null) "What did it cost?" else "Fix the details", fontWeight = FontWeight.SemiBold) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -202,10 +213,12 @@ fun ExpenseFormDialog(
                             selected = category == item,
                             onClick = { category = item },
                             label = { Text(item.label) },
+                            leadingIcon = { Icon(categoryIcon(item), null, Modifier.size(18.dp)) },
                             shape = RoundedCornerShape(50),
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Ink,
                                 selectedLabelColor = androidx.compose.ui.graphics.Color.White,
+                                selectedLeadingIconColor = androidx.compose.ui.graphics.Color.White,
                             ),
                         )
                     }
@@ -222,7 +235,10 @@ fun ExpenseFormDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            PrimaryButton(
+                text = if (expense == null) "Add to ledger" else "Save changes",
+                busy = busy,
+            ) {
                 val rate = if (paidIn == currency) null else fx.rateBetween(paidIn, currency, snapshot)
                 error = when {
                     parsed == null || parsed.signum() <= 0 -> "Enter an amount above zero."
@@ -243,7 +259,7 @@ fun ExpenseFormDialog(
                     }.onFailure { error = it.message ?: "Could not save that expense." }
                     busy = false
                 }
-            }) { Text(if (busy) "Saving…" else if (expense == null) "Add to ledger" else "Save changes", color = Rausch, fontWeight = FontWeight.SemiBold) }
+            }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = ::dismiss) { Text("Cancel") } },
     )
@@ -261,6 +277,53 @@ fun ExpenseFormDialog(
         confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
         dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ExpenseSheet(
+    onDismissRequest: () -> Unit,
+    title: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    dismissButton: @Composable () -> Unit = {},
+    canDismiss: Boolean = true,
+) {
+    val currentCanDismiss by rememberUpdatedState(canDismiss)
+    val currentOnDismiss by rememberUpdatedState(onDismissRequest)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { value ->
+            if (value == SheetValue.Hidden && !currentCanDismiss) {
+                currentOnDismiss()
+                false
+            } else true
+        },
+    )
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        sheetMaxWidth = Dp.Unspecified,
+        containerColor = Paper,
+        contentColor = Ink,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            androidx.compose.material3.ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
+                Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 20.dp)) { title() }
+            }
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+            ) { text() }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                dismissButton()
+                confirmButton()
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

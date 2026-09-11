@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Person
@@ -98,13 +100,13 @@ fun TripsScreen(
                         Brand(Modifier.weight(1f))
                         IconButton(
                             onClick = { showJoin = true },
-                            modifier = Modifier.clip(CircleShape).background(PaperDeep).size(42.dp),
+                            modifier = Modifier.clip(CircleShape).background(PaperDeep).size(48.dp),
                         ) { Icon(Icons.Outlined.ConfirmationNumber, "Join a trip", Modifier.size(20.dp)) }
                         Spacer(Modifier.size(8.dp))
                         Box {
                             IconButton(
                                 onClick = { showMenu = true },
-                                modifier = Modifier.clip(CircleShape).background(PaperDeep).size(42.dp),
+                                modifier = Modifier.clip(CircleShape).background(PaperDeep).size(48.dp),
                             ) { Icon(Icons.Outlined.Person, "Account", Modifier.size(20.dp)) }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                 DropdownMenuItem(
@@ -123,18 +125,20 @@ fun TripsScreen(
                 }
                 item {
                     Column {
-                        Text("Trips", style = androidx.compose.material3.MaterialTheme.typography.displaySmall)
+                        Text("Your next chapter.", style = androidx.compose.material3.MaterialTheme.typography.displaySmall)
                         Text(
                             if (state.trips.isEmpty()) "Your first journey is waiting."
-                            else {
-                                val spent = state.trips.fold(BigDecimal.ZERO) { total, summary -> total + summary.spent }
-                                "${state.trips.size} ${if (state.trips.size == 1) "trip" else "trips"} · ${money(spent)} logged"
-                            },
+                            else "${state.trips.size} ${if (state.trips.size == 1) "trip" else "trips"}. All your plans, in one place.",
                             Modifier.padding(top = 6.dp, bottom = 18.dp),
                             color = InkSoft,
                             fontSize = 15.sp,
                         )
-                        PrimaryButton("Plan a new trip", Modifier.fillMaxWidth()) { showTripForm = true }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            PrimaryButton("New trip", icon = Icons.Outlined.Add) { showTripForm = true }
+                            TextButton(onClick = { showJoin = true }, modifier = Modifier.padding(start = 12.dp)) {
+                                Text("Join a friend", color = Ink, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
                 state.error?.let { message -> item { Notice(message, true) } }
@@ -147,15 +151,15 @@ fun TripsScreen(
                 } else if (state.trips.isEmpty()) {
                     item {
                         Column(
-                            Modifier.fillMaxWidth().padding(vertical = 54.dp),
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(PaperDeep).padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(
-                                Modifier.size(72.dp).clip(CircleShape).background(PaperDeep),
+                                Modifier.size(72.dp).clip(CircleShape).background(RauschWash),
                                 contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.SearchOff, null, tint = InkFaint, modifier = Modifier.size(30.dp)) }
+                            ) { Icon(Icons.Outlined.Explore, null, tint = Rausch, modifier = Modifier.size(32.dp)) }
                             Text(
-                                "No trips yet",
+                                "Good trips start here",
                                 Modifier.padding(top = 18.dp),
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -197,6 +201,7 @@ fun TripsScreen(
                                 TicketCard(
                                     summary = summary,
                                     coverUrl = container.repository.coverUrl(summary.trip.coverPath),
+                                    modifier = Modifier.animateItem(),
                                     onClick = { onOpenTrip(summary.trip.id) },
                                 )
                             }
