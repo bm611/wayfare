@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.wayfare.app.AppContainer
 import com.wayfare.app.core.TripDraft
 import com.wayfare.app.core.TripSummary
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 data class TripsUiState(
     val trips: List<TripSummary> = emptyList(),
     val loading: Boolean = true,
+    /** Only ever true for a refresh the traveller asked for, so the spinner answers a gesture. */
     val refreshing: Boolean = false,
     val error: String? = null,
 )
@@ -24,6 +26,7 @@ class TripsViewModel(
     private val repository = container.repository
     private val _state = MutableStateFlow(TripsUiState())
     val state: StateFlow<TripsUiState> = _state.asStateFlow()
+    private var refreshJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -32,12 +35,17 @@ class TripsViewModel(
                 container.covers.watch(trips.map(TripSummary::trip))
             }
         }
-        refresh()
+        sync(silent = true)
     }
 
-    fun refresh() {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(refreshing = true, error = null)
+    /** Pull-to-refresh and the menu item: the traveller asked, so show the indicator. */
+    fun refresh() = sync(silent = false)
+
+    private fun sync(silent: Boolean) {
+        // A silent sync is housekeeping; it never fights one already on its way.
+        if (silent && refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
+            _state.value = _state.value.copy(refreshing = !silent, error = null)
             runCatching { repository.refreshAll() }
                 .onFailure { _state.value = _state.value.copy(error = it.message) }
             _state.value = _state.value.copy(refreshing = false, loading = false)
@@ -52,9 +60,13 @@ class TripsViewModel(
         repository.joinTrip(code).also { repository.refreshTrip(it) }
     }
 
-    /** Called when the screen comes back to the foreground. */
+    /**
+     * Called when the screen comes back to the foreground, including on the way
+     * back from a trip. The ledger catches up quietly: a spinner here would read
+     * as the app re-loading a screen the traveller is already looking at.
+     */
     fun onResume() {
         container.refreshRates()
-        refresh()
+        sync(silent = true)
     }
 }

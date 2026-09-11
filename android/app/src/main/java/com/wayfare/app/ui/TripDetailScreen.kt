@@ -1,6 +1,7 @@
 package com.wayfare.app.ui
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -170,7 +171,7 @@ fun TripDetailScreen(
                 TextButton(onClick = onBack) { Text("Back to all trips", color = Clay) }
             }
             else -> PullToRefreshBox(
-                isRefreshing = state.refreshing && !state.loading,
+                isRefreshing = state.refreshing,
                 onRefresh = viewModel::refresh,
                 modifier = Modifier.fillMaxSize().padding(insets),
             ) {
@@ -394,13 +395,14 @@ private fun BudgetCard(
     Surface(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = ClayWash,
+        color = Card,
         contentColor = Ink,
+        border = BorderStroke(1.dp, Line),
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(34.dp).clip(CircleShape).background(Card),
+                    Modifier.size(34.dp).clip(CircleShape).background(ClayWash),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Outlined.Wallet, null, tint = Clay, modifier = Modifier.size(18.dp)) }
                 Text(
@@ -470,7 +472,7 @@ private fun CategoryBreakdown(expenses: List<Expense>, currency: String, onSelec
     val total = expenses.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount }
     val groups = expenses.groupBy(Expense::category).mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount } }
         .toList().sortedByDescending { it.second }
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, LineSoft)) {
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = Color.Transparent, border = BorderStroke(1.dp, LineSoft)) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.AutoMirrored.Outlined.TrendingUp, null, tint = Ink, modifier = Modifier.size(18.dp))
@@ -600,7 +602,7 @@ private fun UnsyncedExpenseDialog(
     onDiscard: () -> Unit,
 ) {
     val failed = expense.syncState == SyncState.Failed
-    ExpenseSheet(
+    FormSheet(
         onDismissRequest = onDismiss,
         title = { Text(if (failed) "This entry did not save" else "Still saving", fontWeight = FontWeight.Bold) },
         text = {

@@ -82,11 +82,12 @@ fun TripFormDialog(
 
     fun dismiss() { if (dirty && !busy) discard = true else onDismiss() }
 
-    AlertDialog(
+    FormSheet(
         onDismissRequest = ::dismiss,
+        canDismiss = !dirty && !busy,
         title = { Text(if (trip == null) "Where are you headed?" else "Update your trip", fontWeight = FontWeight.SemiBold) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
                 OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true, shape = RoundedCornerShape(14.dp))
                 OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true, shape = RoundedCornerShape(14.dp))
@@ -104,7 +105,10 @@ fun TripFormDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            PrimaryButton(
+                text = if (trip == null) "Start the ledger" else "Save changes",
+                busy = busy,
+            ) {
                 val amount = budget.ifBlank { "0" }.toBigDecimalOrNull()
                 error = when {
                     name.isBlank() -> "Give the trip a name."
@@ -119,7 +123,7 @@ fun TripFormDialog(
                         .onFailure { error = it.message ?: "Could not save the trip." }
                     busy = false
                 }
-            }) { Text(if (busy) "Saving…" else if (trip == null) "Start the ledger" else "Save changes", color = Clay, fontWeight = FontWeight.SemiBold) }
+            }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = ::dismiss) { Text("Cancel") } },
     )
@@ -147,7 +151,7 @@ fun ExpenseFormDialog(
     onRememberCurrency: suspend (String) -> Unit = {},
 ) {
     if (readOnly && expense != null) {
-        ExpenseSheet(
+        FormSheet(
             onDismissRequest = onDismiss,
             title = { Text(expense.title) },
             text = {
@@ -187,7 +191,7 @@ fun ExpenseFormDialog(
         if (dirty) discard = true else onDismiss()
     }
 
-    ExpenseSheet(
+    FormSheet(
         onDismissRequest = ::dismiss,
         canDismiss = !dirty && !busy,
         title = { Text(if (expense == null) "What did it cost?" else "Fix the details", fontWeight = FontWeight.SemiBold) },
@@ -279,9 +283,13 @@ fun ExpenseFormDialog(
     )
 }
 
+/**
+ * Every form in the app arrives the same way: a sheet up from the bottom edge,
+ * title, scrolling body, then the actions pinned under it.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ExpenseSheet(
+internal fun FormSheet(
     onDismissRequest: () -> Unit,
     title: @Composable () -> Unit,
     text: @Composable () -> Unit,

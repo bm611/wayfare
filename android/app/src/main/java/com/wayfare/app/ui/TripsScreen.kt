@@ -84,7 +84,7 @@ fun TripsScreen(
 
     Scaffold(containerColor = Paper) { insets ->
         PullToRefreshBox(
-            isRefreshing = state.refreshing && !state.loading,
+            isRefreshing = state.refreshing,
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize().padding(insets),
         ) {
