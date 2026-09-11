@@ -5,6 +5,7 @@ import { CheckCircle } from "@phosphor-icons/react";
 import { Ticket } from "../components/Ticket";
 import { Field } from "../components/Field";
 import { Button } from "../components/Button";
+import { GoogleMark } from "../components/GoogleMark";
 import { ErrorNote } from "../components/States";
 import { Brand } from "../components/Brand";
 import { useAuth } from "../hooks/useAuth";
@@ -30,6 +31,7 @@ export function Auth() {
     loading,
     recoveringPassword,
     signIn,
+    signInWithGoogle,
     signUp,
     requestPasswordReset,
     updatePassword,
@@ -45,6 +47,7 @@ export function Auth() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -88,6 +91,20 @@ export function Auth() {
       setFailure(errorMessage(err, "Something went wrong. Try again."));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function google() {
+    if (busy || googleBusy) return;
+    setGoogleBusy(true);
+    setFailure(null);
+    try {
+      // Resolves once the redirect is under way, so the spinner stays up until the
+      // browser leaves the page rather than flickering off first.
+      await signInWithGoogle();
+    } catch (err) {
+      setFailure(errorMessage(err, "Could not start Google sign-in."));
+      setGoogleBusy(false);
     }
   }
 
@@ -199,6 +216,27 @@ export function Auth() {
                 <p>This reset link is invalid or has expired. Request a new one to continue.</p>
                 <button type="button" className="min-h-11 text-clay underline" onClick={() => { cancelRecovery(); setMode("forgot"); }}>Request a new link</button>
               </div>}
+
+              {(mode === "signin" || mode === "signup") && (
+                <>
+                  <Button
+                    type="button"
+                    variant="google"
+                    full
+                    loading={googleBusy}
+                    disabled={loading || busy}
+                    onClick={google}
+                  >
+                    <GoogleMark />
+                    Continue with Google
+                  </Button>
+                  <div className="flex items-center gap-3" aria-hidden="true">
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">or</span>
+                    <span className="h-px flex-1 bg-line" />
+                  </div>
+                </>
+              )}
 
               {mode === "signup" && (
                 <Field

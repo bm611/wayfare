@@ -42,6 +42,10 @@ android {
             "SUPABASE_KEY",
             quoted(configured("SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY")),
         )
+        // The *web* OAuth client id from Google Cloud — the same one pasted into Supabase's
+        // Google provider. Credential Manager mints ID tokens for it; the Android client id
+        // only has to exist so Google will trust this package + signing certificate.
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", quoted(configured("GOOGLE_WEB_CLIENT_ID")))
         buildConfigField(
             "String",
             "COVER_ENDPOINT",
@@ -89,6 +93,7 @@ dependencies {
     implementation(libs.ktor.json)
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
+    implementation(libs.supabase.compose.auth)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.storage)
     ksp(libs.androidx.room.compiler)

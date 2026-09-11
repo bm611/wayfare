@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +28,7 @@ import com.wayfare.app.feature.TripDetailViewModel
 import com.wayfare.app.feature.TripsViewModel
 import com.wayfare.app.ui.AuthScreen
 import com.wayfare.app.ui.Paper
-import com.wayfare.app.ui.Rausch
+import com.wayfare.app.ui.Clay
 import com.wayfare.app.ui.RecoveryScreen
 import com.wayfare.app.ui.TripDetailScreen
 import com.wayfare.app.ui.TripsScreen
@@ -74,11 +75,11 @@ class MainActivity : ComponentActivity() {
 private fun WayfareApp(authViewModel: AuthViewModel, container: AppContainer) {
     val auth by authViewModel.state.collectAsStateWithLifecycle()
     when {
-        auth.initializing -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Rausch)
+        auth.initializing -> Box(Modifier.fillMaxSize().background(Paper), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Clay)
         }
         auth.recovery -> RecoveryScreen(auth, authViewModel)
-        auth.userId == null -> AuthScreen(auth, authViewModel)
+        auth.userId == null -> AuthScreen(auth, authViewModel, container)
         else -> {
             val accountId = requireNotNull(auth.userId)
             val navController = rememberNavController()

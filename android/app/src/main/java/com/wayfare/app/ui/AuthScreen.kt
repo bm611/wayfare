@@ -1,7 +1,9 @@
 package com.wayfare.app.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,8 +38,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wayfare.app.AppContainer
 import com.wayfare.app.feature.AuthUiState
 import com.wayfare.app.feature.AuthViewModel
+import io.github.jan.supabase.compose.auth.composable.GoogleDialogType
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
+import io.github.jan.supabase.compose.auth.composeAuth
 
 private enum class AuthMode { SignIn, SignUp, Reset }
 
@@ -44,15 +51,23 @@ private val FieldShape = RoundedCornerShape(14.dp)
 private val FocusedField = RoundedCornerShape(14.dp)
 
 @Composable
-fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
+fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppContainer) {
     var mode by rememberSaveable { mutableStateOf(AuthMode.SignIn) }
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // Credential Manager where the device supports it. ComposeAuth runs `fallback` when it
+    // does not; onGoogleResult sends a device that tries and fails down the same path.
+    val googleSignIn = container.supabase.composeAuth.rememberSignInWithGoogle(
+        onResult = viewModel::onGoogleResult,
+        type = GoogleDialogType.BOTTOM_SHEET,
+        fallback = { viewModel.signInWithGoogleInBrowser() },
+    )
+
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
+        Modifier.fillMaxSize().background(Paper).safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start,
     ) {
@@ -84,6 +99,22 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
             lineHeight = 21.sp,
         )
 
+        if (mode != AuthMode.Reset) {
+            GoogleButton(Modifier.fillMaxWidth(), busy = state.googleBusy) {
+                localError = null
+                viewModel.onGoogleFlowStarted()
+                googleSignIn.startFlow()
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HorizontalDivider(Modifier.weight(1f), color = LineSoft)
+                Text("or", Modifier.padding(horizontal = 12.dp), color = InkFaint, fontSize = 13.sp)
+                HorizontalDivider(Modifier.weight(1f), color = LineSoft)
+            }
+        }
+
         if (mode == AuthMode.SignUp) {
             AuthField(name, { name = it }, "Display name", ImeAction.Next)
             Spacer(Modifier.height(12.dp))
@@ -99,7 +130,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 shape = FieldShape,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
             )
         }
 
@@ -138,7 +169,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
         ) {
             Text(
                 if (mode == AuthMode.SignIn) "New here? Create an account" else "Back to sign in",
-                color = Rausch,
+                color = Clay,
                 fontWeight = FontWeight.SemiBold,
             )
         }
@@ -153,7 +184,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
                 enabled = !state.busy,
                 onClick = { viewModel.resendConfirmation(email) },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Resend confirmation", color = Rausch, fontWeight = FontWeight.SemiBold) }
+            ) { Text("Resend confirmation", color = Clay, fontWeight = FontWeight.SemiBold) }
         }
     }
 }
@@ -171,7 +202,7 @@ private fun AuthField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         shape = FieldShape,
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
     )
 }
 
@@ -181,7 +212,7 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
     var confirmation by rememberSaveable { mutableStateOf("") }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
     Column(
-        Modifier.fillMaxSize().imePadding().padding(24.dp),
+        Modifier.fillMaxSize().background(Paper).imePadding().padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Brand()
@@ -195,13 +226,13 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
             password, { password = it }, Modifier.fillMaxWidth(), label = { Text("New password") },
             visualTransformation = PasswordVisualTransformation(), singleLine = true,
             shape = FieldShape,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
         )
         OutlinedTextField(
             confirmation, { confirmation = it }, Modifier.fillMaxWidth().padding(top = 12.dp),
             label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true,
             shape = FieldShape,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Rausch, cursorColor = Rausch),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
         )
         (localError ?: state.error)?.let { Notice(it, true, Modifier.padding(top = 14.dp)) }
         PrimaryButton("Save password", Modifier.fillMaxWidth().padding(top = 22.dp), state.busy) {

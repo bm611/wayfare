@@ -136,8 +136,8 @@ fun TripDetailScreen(
                                         onClick = { showActions = false; showEditTrip = true },
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Delete trip", color = RauschDark) },
-                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = RauschDark) },
+                                        text = { Text("Delete trip", color = ClayDeep) },
+                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ClayDeep) },
                                         onClick = { showActions = false; showDeleteTrip = true },
                                     )
                                 }
@@ -163,11 +163,11 @@ fun TripDetailScreen(
     ) { insets ->
         when {
             state.loading && trip == null -> Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Rausch)
+                CircularProgressIndicator(color = Clay)
             }
             trip == null -> Column(Modifier.padding(insets).padding(20.dp)) {
                 Notice(state.error ?: "That trip is no longer available.", true)
-                TextButton(onClick = onBack) { Text("Back to all trips", color = Rausch) }
+                TextButton(onClick = onBack) { Text("Back to all trips", color = Clay) }
             }
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing && !state.loading,
@@ -240,7 +240,7 @@ fun TripDetailScreen(
         onDismissRequest = { showDeleteTrip = false },
         title = { Text("Delete ${trip.name}?", fontWeight = FontWeight.Bold) },
         text = { Text("The trip and its entire expense ledger will be removed for every traveller.") },
-        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete", color = Rausch, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete", color = Clay, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = { showDeleteTrip = false }) { Text("Keep trip", color = Ink) } },
     )
 }
@@ -358,7 +358,7 @@ private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
         Text(
             phaseLabel(trip),
             Modifier.padding(top = 16.dp),
-            color = Rausch,
+            color = Clay,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.3.sp,
@@ -394,15 +394,15 @@ private fun BudgetCard(
     Surface(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = RauschWash,
+        color = ClayWash,
         contentColor = Ink,
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(34.dp).clip(CircleShape).background(Paper),
+                    Modifier.size(34.dp).clip(CircleShape).background(Card),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Wallet, null, tint = Rausch, modifier = Modifier.size(18.dp)) }
+                ) { Icon(Icons.Outlined.Wallet, null, tint = Clay, modifier = Modifier.size(18.dp)) }
                 Text(
                     if (showRemaining) if (remaining.signum() < 0) "Over budget" else "Budget remaining" else "Total spent",
                     Modifier.padding(start = 10.dp),
@@ -413,7 +413,7 @@ private fun BudgetCard(
             Text(
                 money(if (showRemaining) remaining.abs() else spent, trip.currency),
                 Modifier.padding(top = 12.dp),
-                color = if (showRemaining && remaining.signum() < 0) RauschDark else Ink,
+                color = if (showRemaining && remaining.signum() < 0) ClayDeep else Ink,
                 fontSize = 38.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp,
@@ -584,10 +584,10 @@ private fun ShareTripDialog(
                     onClick = { scope.launch { onLeave().onFailure { error = it.message } } },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     shape = RoundedCornerShape(50),
-                ) { Text("Leave this trip", color = RauschDark) }
+                ) { Text("Leave this trip", color = ClayDeep) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Rausch, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Clay, fontWeight = FontWeight.SemiBold) } },
     )
 }
 
@@ -620,10 +620,10 @@ private fun UnsyncedExpenseDialog(
                 expense.syncError?.let { Notice(it, error = failed) }
             }
         },
-        confirmButton = { TextButton(onClick = onRetry) { Text("Try again", color = Rausch, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = onRetry) { Text("Try again", color = Clay, fontWeight = FontWeight.SemiBold) } },
         dismissButton = {
             Row {
-                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = RauschDark) }
+                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = ClayDeep) }
                 TextButton(onClick = onDismiss) { Text("Close", color = Ink) }
             }
         },

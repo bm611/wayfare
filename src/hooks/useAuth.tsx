@@ -9,6 +9,7 @@ type AuthValue = {
   loading: boolean;
   recoveringPassword: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ needsConfirmation: boolean }>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -55,6 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       recoveringPassword,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      async signInWithGoogle() {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          // Back to /auth rather than /: the route forwards to whatever invite path was
+          // stashed before the redirect, the same as it does after a password sign-in.
+          options: { redirectTo: `${window.location.origin}/auth` },
+        });
         if (error) throw error;
       },
       async signUp(email, password, displayName) {

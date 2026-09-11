@@ -9,7 +9,11 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:ui": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:run": "bash scripts/android-run.sh",
+    "android:build": "bash scripts/android-build.sh",
+    "android:serve": "bash scripts/android-serve.sh",
+    "android:devices": "bash scripts/android-devices.sh"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

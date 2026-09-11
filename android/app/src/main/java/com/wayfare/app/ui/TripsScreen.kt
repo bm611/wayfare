@@ -145,7 +145,7 @@ fun TripsScreen(
                 if (state.loading) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Rausch)
+                            CircularProgressIndicator(color = Clay)
                         }
                     }
                 } else if (state.trips.isEmpty()) {
@@ -155,9 +155,9 @@ fun TripsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(
-                                Modifier.size(72.dp).clip(CircleShape).background(RauschWash),
+                                Modifier.size(72.dp).clip(CircleShape).background(ClayWash),
                                 contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.Explore, null, tint = Rausch, modifier = Modifier.size(32.dp)) }
+                            ) { Icon(Icons.Outlined.Explore, null, tint = Clay, modifier = Modifier.size(32.dp)) }
                             Text(
                                 "Good trips start here",
                                 Modifier.padding(top = 18.dp),
@@ -172,7 +172,7 @@ fun TripsScreen(
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                             TextButton(onClick = { showJoin = true }, Modifier.padding(top = 6.dp)) {
-                                Text("I have an invite code", color = Rausch, fontWeight = FontWeight.SemiBold)
+                                Text("I have an invite code", color = Clay, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -262,7 +262,7 @@ private fun JoinTripDialog(
                     onJoin(code).onFailure { error = it.message ?: "That code did not work." }
                     busy = false
                 }
-            }) { Text(if (busy) "Joining…" else "Join", color = Rausch, fontWeight = FontWeight.SemiBold) }
+            }) { Text(if (busy) "Joining…" else "Join", color = Clay, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Ink) } },
     )

@@ -8,6 +8,9 @@ import com.wayfare.app.data.Preferences
 import com.wayfare.app.data.WayfareRepository
 import com.wayfare.app.data.local.WayfareDatabase
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.ExternalAuthAction
+import io.github.jan.supabase.compose.auth.ComposeAuth
+import io.github.jan.supabase.compose.auth.googleNativeLogin
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.storage.Storage
@@ -44,6 +47,17 @@ class AppContainer(application: Application) {
         install(Auth) {
             scheme = "wayfare"
             host = "auth"
+            // Keeps the OAuth hop in a Custom Tab over the app rather than handing the user
+            // off to whatever browser they have installed and hoping they navigate back.
+            defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
+        }
+        install(ComposeAuth) {
+            // Left unconfigured when no client id is set: ComposeAuth then reports the
+            // platform as unsupported and the screen falls through to the OAuth flow,
+            // which needs nothing beyond the Google provider Supabase already has.
+            if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
+                googleNativeLogin(serverClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID)
+            }
         }
         install(Postgrest)
         install(Storage)

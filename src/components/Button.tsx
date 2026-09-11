@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cx } from "../lib/cx";
 
-type Variant = "solid" | "accent" | "quiet" | "danger";
+type Variant = "solid" | "accent" | "quiet" | "danger" | "google";
 type Size = "md" | "sm";
 
 const VARIANTS: Record<Variant, string> = {
@@ -11,6 +11,8 @@ const VARIANTS: Record<Variant, string> = {
     "bg-clay text-[#fff8f4] border-clay-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] hover:bg-clay-deep",
   quiet: "bg-transparent text-ink-soft border-line hover:bg-paper-deep hover:text-ink",
   danger: "bg-transparent text-clay-deep border-clay/35 hover:bg-clay-wash",
+  /* Google requires its mark on a neutral surface, so this one is a card, not a tint. */
+  google: "bg-card text-ink border-line hover:bg-paper-deep",
 };
 
 /* Heights live here rather than in a caller's className: same-property utilities

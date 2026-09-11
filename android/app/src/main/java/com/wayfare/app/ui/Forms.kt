@@ -119,7 +119,7 @@ fun TripFormDialog(
                         .onFailure { error = it.message ?: "Could not save the trip." }
                     busy = false
                 }
-            }) { Text(if (busy) "Saving…" else if (trip == null) "Start the ledger" else "Save changes", color = Rausch, fontWeight = FontWeight.SemiBold) }
+            }) { Text(if (busy) "Saving…" else if (trip == null) "Start the ledger" else "Save changes", color = Clay, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = ::dismiss) { Text("Cancel") } },
     )
@@ -159,7 +159,7 @@ fun ExpenseFormDialog(
                     expense.note?.let { Text(it) }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Close", color = Rausch, fontWeight = FontWeight.SemiBold) } },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Close", color = Clay, fontWeight = FontWeight.SemiBold) } },
         )
         return
     }
@@ -217,8 +217,8 @@ fun ExpenseFormDialog(
                             shape = RoundedCornerShape(50),
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Ink,
-                                selectedLabelColor = androidx.compose.ui.graphics.Color.White,
-                                selectedLeadingIconColor = androidx.compose.ui.graphics.Color.White,
+                                selectedLabelColor = Paper,
+                                selectedLeadingIconColor = Paper,
                             ),
                         )
                     }
@@ -230,7 +230,7 @@ fun ExpenseFormDialog(
                     shape = RoundedCornerShape(14.dp),
                 )
                 if (expense != null && onDelete != null) {
-                    OutlinedButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(50)) { Text("Delete entry", color = RauschDark) }
+                    OutlinedButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(50)) { Text("Delete entry", color = ClayDeep) }
                 }
             }
         },
@@ -267,7 +267,7 @@ fun ExpenseFormDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Delete this entry?") },
         text = { Text("This cannot be undone.") },
-        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete", color = RauschDark, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete", color = ClayDeep, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Keep") } },
     )
     if (discard) AlertDialog(
@@ -304,7 +304,7 @@ internal fun ExpenseSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         sheetMaxWidth = Dp.Unspecified,
-        containerColor = Paper,
+        containerColor = Card,
         contentColor = Ink,
     ) {
         Column(Modifier.fillMaxWidth()) {
@@ -354,7 +354,7 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
                 TextButton(onClick = {
                     onChange(picker.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() })
                     open = false
-                }) { Text("Use date", color = Rausch, fontWeight = FontWeight.SemiBold) }
+                }) { Text("Use date", color = Clay, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 Row {

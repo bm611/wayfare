@@ -16,44 +16,45 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wayfare.app.R
 
-// Airbnb-inspired palette. Rausch is the signature brand accent, kept warm and
-// confident against an almost-white canvas with hairline dividers.
-val Rausch = Color(0xFFD92D50)
-val RauschDeep = Color(0xFFE31C5F)
-val RauschDark = Color(0xFFC13515)
-val RauschWash = Color(0xFFFFEEF1)
-val GradientStart = Color(0xFFE61E4D)
-val GradientEnd = Color(0xFFD70466)
+// Mirrors the web app's "boarding pass" palette (src/index.css): warm paper,
+// ink, and a single clay accent. Values are the CSS custom properties verbatim
+// so the two clients stay in step.
+val Clay = Color(0xFFB5543C)
+val ClayDeep = Color(0xFF8D3D29)
+val ClayWash = Color(0xFFF4E3DC)
+/** Accent buttons ink their label in warmed-off-white, never pure white. */
+val OnClay = Color(0xFFFFF8F4)
 
-val Paper = Color(0xFFFFFFFF)
-val PaperDeep = Color(0xFFF7F7F7)
-val Card = Color(0xFFFFFFFF)
-val Ink = Color(0xFF222222)
-val InkSoft = Color(0xFF6A6A6A)
-val InkFaint = Color(0xFF929292)
-val Line = Color(0xFFDDDDDD)
-val LineSoft = Color(0xFFEBEBEB)
+val Paper = Color(0xFFF7F2E9)
+val PaperDeep = Color(0xFFEFE7D9)
+val Card = Color(0xFFFFFCF6)
+val Ink = Color(0xFF1A1714)
+val InkSoft = Color(0xFF6F6459)
+val InkFaint = Color(0xFF786D61)
+val Line = Color(0xFFE3D9CA)
+val LineSoft = Color(0xFFEFE7DB)
 
-val Success = Color(0xFF008A05)
-val Star = Color(0xFFFFB400)
+// The one status colour the web palette has no token for, borrowed from the
+// activities category so it sits on paper rather than glowing off it.
+val Success = Color(0xFF55713F)
 
 val CategoryColors = mapOf(
-    "flights" to Color(0xFF3D6EB4),
-    "stays" to Color(0xFFB0724A),
-    "food" to Color(0xFFC08A24),
-    "activities" to Color(0xFF52843F),
-    "transport" to Color(0xFF6C5CA8),
-    "shopping" to Color(0xFFB94E73),
+    "flights" to Color(0xFF40697D),
+    "stays" to Color(0xFF8A5A44),
+    "food" to Color(0xFFA8761F),
+    "activities" to Color(0xFF55713F),
+    "transport" to Color(0xFF66628A),
+    "shopping" to Color(0xFF9D4F61),
     "other" to Color(0xFF7A736A),
 )
 
 private val WayfareColors = lightColorScheme(
-    primary = Rausch,
-    onPrimary = Color.White,
-    primaryContainer = RauschWash,
-    onPrimaryContainer = RauschDark,
+    primary = Clay,
+    onPrimary = OnClay,
+    primaryContainer = ClayWash,
+    onPrimaryContainer = ClayDeep,
     secondary = Ink,
-    onSecondary = Color.White,
+    onSecondary = Paper,
     background = Paper,
     onBackground = Ink,
     surface = Card,
@@ -61,12 +62,13 @@ private val WayfareColors = lightColorScheme(
     surfaceVariant = PaperDeep,
     onSurfaceVariant = InkSoft,
     surfaceContainer = PaperDeep,
-    surfaceContainerHigh = PaperDeep,
-    surfaceContainerHighest = PaperDeep,
+    // Dialogs and menus lift off the warm ground as card stock.
+    surfaceContainerHigh = Card,
+    surfaceContainerHighest = Card,
     outline = Line,
     outlineVariant = LineSoft,
-    error = RauschDark,
-    onError = Color.White,
+    error = ClayDeep,
+    onError = OnClay,
 )
 
 private val TravelFont = FontFamily(
