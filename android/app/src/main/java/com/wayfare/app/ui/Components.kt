@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,7 +26,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FlightTakeoff
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Hotel
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -245,17 +248,20 @@ fun TicketCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                listOfNotNull(trip.destination, dateRange(trip.startDate, trip.endDate)).joinToString(" · ")
-                    .ifBlank { "Dates open" },
-                Modifier.padding(top = 2.dp),
-                color = InkSoft,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Place and dates are two separate facts, so they get an icon each
+            // rather than one run-on line held together by a dot. A long
+            // destination takes the first line and the dates drop below it
+            // instead of being truncated away.
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                trip.destination?.takeIf { it.isNotBlank() }?.let { MetaLabel(Icons.Outlined.Place, it) }
+                MetaLabel(Icons.Outlined.CalendarMonth, dateRange(trip.startDate, trip.endDate))
+            }
             Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
+                Modifier.fillMaxWidth().padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(money(summary.spent, trip.currency), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
@@ -274,6 +280,22 @@ fun TicketCard(
                 BudgetMeter(summary.spent, trip.budget)
             }
         }
+    }
+}
+
+/** One small fact under a card title: a 14dp glyph and its label, kept on one line. */
+@Composable
+private fun MetaLabel(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, Modifier.size(14.dp), tint = InkFaint)
+        Text(
+            text,
+            Modifier.padding(start = 5.dp),
+            color = InkSoft,
+            fontSize = 13.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
