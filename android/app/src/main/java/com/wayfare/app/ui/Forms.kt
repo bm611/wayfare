@@ -379,6 +379,32 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerSheet(
+    value: LocalDate?,
+    onDismiss: () -> Unit,
+    allowClear: Boolean = true,
+    onChange: (LocalDate?) -> Unit,
+) {
+    val millis = value?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+    val picker = rememberDatePickerState(initialSelectedDateMillis = millis)
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onChange(picker.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() })
+            }) { Text("Use date", color = Ink, fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = {
+            Row {
+                if (allowClear && value != null) TextButton(onClick = { onChange(null) }) { Text("Clear") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    ) { DatePicker(picker) }
+}
+
 @Composable
 private fun CurrencyPicker(value: String, onChange: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }

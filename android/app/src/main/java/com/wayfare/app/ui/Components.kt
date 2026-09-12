@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,8 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Hotel
@@ -50,6 +53,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
@@ -216,6 +220,7 @@ fun CircleIconButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     onPhotograph: Boolean = false,
+    raised: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -228,12 +233,12 @@ fun CircleIconButton(
             .clip(CircleShape)
             // On photography a 4dp white ring separates the button from whatever
             // colour happens to sit behind it.
-            .background(if (onPhotograph) CanvasWhite else SoftCloud)
+            .background(if (raised) CardRaised else if (onPhotograph) CanvasWhite else SoftCloud)
             .then(if (onPhotograph) Modifier.border(1.dp, Hairline, CircleShape) else Modifier)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription, Modifier.size(18.dp), tint = Ink)
+        Icon(icon, contentDescription, Modifier.size(18.dp), tint = if (raised) Steel else Ink)
     }
 }
 
@@ -437,3 +442,121 @@ fun phaseLabel(trip: Trip): String = when (val phase = tripPhase(trip)) {
     TripPhase.Undated -> "Dates open"
 }
 
+@Composable
+fun MonoLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Paper,
+    tracking: androidx.compose.ui.unit.TextUnit = 1.2.sp,
+) {
+    Text(text, modifier, color = color, style = MonoLabelStyle.copy(letterSpacing = tracking))
+}
+
+@Composable
+fun FigureWithQualifier(value: String, qualifier: String?, size: androidx.compose.ui.unit.TextUnit) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(value, color = Amber, fontFamily = PlexMono, fontWeight = FontWeight.Medium, fontSize = size)
+        qualifier?.let { MonoLabel(it, Modifier.padding(start = 8.dp, bottom = 5.dp), color = Slate) }
+    }
+}
+
+@Composable
+fun DashedRule(modifier: Modifier = Modifier) {
+    Canvas(modifier.height(1.dp)) {
+        drawLine(
+            color = Outline,
+            start = Offset.Zero,
+            end = Offset(size.width, 0f),
+            strokeWidth = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+        )
+    }
+}
+
+@Composable
+fun DottedLeaderRow(
+    label: String,
+    amount: String,
+    leading: @Composable (() -> Unit)? = null,
+    amountColor: Color = Paper,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        leading?.invoke()
+        Text(
+            label,
+            Modifier.padding(start = if (leading == null) 0.dp else 8.dp),
+            color = Paper,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Canvas(Modifier.weight(1f).padding(horizontal = 8.dp).height(1.dp)) {
+            drawLine(
+                color = Outline,
+                start = Offset.Zero,
+                end = Offset(size.width, 0f),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx())),
+            )
+        }
+        Text(amount, color = amountColor, fontFamily = PlexMono, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun CategoryDot(color: Color, modifier: Modifier = Modifier) {
+    Box(modifier.size(7.dp).clip(CircleShape).background(color))
+}
+
+fun categoryTint(rank: Int): Color = listOf(
+    Amber,
+    Color(0xFF5EC4B6),
+    Color(0xFF8A9FF0),
+    Color(0xFFE984A8),
+    Steel,
+)[rank.coerceIn(0, 4)]
+
+@Composable
+fun FilterPill(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Box(
+        modifier.height(36.dp).clip(RoundedCornerShape(18.dp))
+            .background(if (selected || pressed) Amber.copy(alpha = .20f) else Color.Transparent)
+            .border(1.dp, if (selected) Amber else Outline, RoundedCornerShape(18.dp))
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (selected) Amber else Steel, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+fun FabScaffold(
+    modifier: Modifier = Modifier,
+    fab: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier) {
+        content()
+        Box(Modifier.align(Alignment.BottomEnd).padding(20.dp)) { fab() }
+    }
+}
+
+@Composable
+fun AddLineFab(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        Modifier.size(60.dp).clip(CircleShape).background(Amber)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Add, "Add a line", Modifier.size(24.dp), tint = Night)
+    }
+}

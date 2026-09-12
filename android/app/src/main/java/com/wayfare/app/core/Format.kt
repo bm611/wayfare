@@ -7,6 +7,7 @@ import java.text.DecimalFormatSymbols
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.text.Normalizer
 import java.util.Locale
 
 /**
@@ -61,3 +62,28 @@ fun dayLabel(date: LocalDate, today: LocalDate = LocalDate.now()): String =
         -1L -> "Yesterday"
         else -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US))
     }
+
+fun tapeDayLabel(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.US)).uppercase(Locale.US)
+
+fun stampDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)).uppercase(Locale.US)
+
+/** A compact, airport-style label derived from at most two destination names. */
+fun routeCode(trip: Trip): String {
+    val source = trip.destination?.takeIf { it.isNotBlank() } ?: trip.name
+    val parts = source
+        .replace(Regex("\\band\\b", RegexOption.IGNORE_CASE), ",")
+        .replace(" - ", ",")
+        .split(Regex("[&,/→+–—]"))
+        .mapNotNull { part ->
+            Normalizer.normalize(part, Normalizer.Form.NFD)
+                .replace(Regex("\\p{M}"), "")
+                .filter(Char::isLetterOrDigit)
+                .takeIf(String::isNotEmpty)
+                ?.take(3)
+                ?.uppercase(Locale.US)
+        }
+        .take(2)
+    return parts.takeIf(List<String>::isNotEmpty)?.joinToString(" → ") ?: "TRIP"
+}

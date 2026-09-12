@@ -50,6 +50,19 @@ val DeepError = Color(0xFFB32505)
 /** Legal and informational links — the one non-monochrome link colour. */
 val InfoBlue = Color(0xFF428BFF)
 
+// Departure palette. These tokens are kept separate from the established light
+// scheme while the new tape and account surfaces are introduced alongside it.
+val Night = Color(0xFF10151F)
+val NightDeep = Color(0xFF080C12)
+val CardNavy = Color(0xFF18202D)
+val CardRaised = Color(0xFF222C3B)
+val NavBar = Color(0xFF0C111A)
+val Outline = Color(0xFF334052)
+val Paper = Color(0xFFF4EFE4)
+val Slate = Color(0xFF8A96A8)
+val Steel = Color(0xFFBCC5D1)
+val Amber = Color(0xFFFFB547)
+
 private val WayfareColors = lightColorScheme(
     primary = Rausch,
     onPrimary = CanvasWhite,
@@ -84,6 +97,21 @@ private val Cereal = FontFamily(
     Font(R.font.manrope, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     Font(R.font.manrope, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
     Font(R.font.manrope, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+)
+
+val PlexMono = FontFamily(
+    Font(R.font.ibm_plex_mono_regular, weight = FontWeight.Normal),
+    Font(R.font.ibm_plex_mono_medium, weight = FontWeight.Medium),
+    Font(R.font.ibm_plex_mono_semibold, weight = FontWeight.SemiBold),
+)
+
+val MonoLabelStyle = TextStyle(
+    fontFamily = PlexMono,
+    fontWeight = FontWeight.Medium,
+    fontSize = 10.sp,
+    lineHeight = 14.sp,
+    letterSpacing = 1.2.sp,
+    color = Paper,
 )
 
 // One family carries 11sp badges through 32sp display. Display sizes compress

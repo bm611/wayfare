@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,7 +47,11 @@ class MainActivity : ComponentActivity() {
         authViewModel = ViewModelProvider(this, factory { AuthViewModel(container) })[AuthViewModel::class.java]
         handleIncoming(intent)
         setContent {
-            WayfareTheme { WayfareApp(authViewModel, container) }
+            WayfareTheme {
+                Box(Modifier.fillMaxSize().background(CanvasWhite).systemBarsPadding()) {
+                    WayfareApp(authViewModel, container)
+                }
+            }
         }
     }
 

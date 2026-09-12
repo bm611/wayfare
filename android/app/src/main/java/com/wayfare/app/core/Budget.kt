@@ -24,6 +24,18 @@ data class BudgetSummary(
     val availablePerDay: BigDecimal?,
 )
 
+data class DayTotal(val date: LocalDate, val amount: BigDecimal, val share: Float)
+
+fun dayTotals(expenses: List<Expense>): List<DayTotal> {
+    val totals = expenses.filter { it.syncState != SyncState.Failed }
+        .groupBy(Expense::spentOn)
+        .mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.amount } }
+    val peak = totals.values.maxOrNull()?.takeIf { it.signum() > 0 } ?: return emptyList()
+    return totals.entries.sortedByDescending(Map.Entry<LocalDate, BigDecimal>::key).map { (date, amount) ->
+        DayTotal(date, amount, amount.divide(peak, 6, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f))
+    }
+}
+
 fun budgetSummary(
     trip: Trip,
     expenses: List<Expense>,

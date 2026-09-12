@@ -90,33 +90,30 @@ fun TripsScreen(
                 // them is wide enough to be read as canvas.
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                // Top nav: wordmark, circular controls, one hairline underneath.
+                // Top nav: wordmark and circular controls.
                 item {
-                    Column {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Brand(Modifier.weight(1f))
-                            CircleIconButton(Icons.Outlined.ConfirmationNumber, "Join a trip") { showJoin = true }
-                            Spacer(Modifier.size(8.dp))
-                            Box {
-                                CircleIconButton(Icons.Outlined.Person, "Account") { showMenu = true }
-                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                    DropdownMenuItem(
-                                        text = { Text("Refresh") },
-                                        leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
-                                        onClick = { showMenu = false; viewModel.refresh() },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Sign out") },
-                                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
-                                        onClick = { showMenu = false; onSignOut() },
-                                    )
-                                }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Brand(Modifier.weight(1f))
+                        CircleIconButton(Icons.Outlined.ConfirmationNumber, "Join a trip") { showJoin = true }
+                        Spacer(Modifier.size(8.dp))
+                        Box {
+                            CircleIconButton(Icons.Outlined.Person, "Account") { showMenu = true }
+                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Refresh") },
+                                    leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
+                                    onClick = { showMenu = false; viewModel.refresh() },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Sign out") },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
+                                    onClick = { showMenu = false; onSignOut() },
+                                )
                             }
                         }
-                        HairlineDivider()
                     }
                 }
                 item {
@@ -230,7 +227,7 @@ fun TripsScreen(
 }
 
 @Composable
-private fun JoinTripDialog(
+internal fun JoinTripDialog(
     initialCode: String,
     onDismiss: () -> Unit,
     onJoin: suspend (String) -> Result<*>,

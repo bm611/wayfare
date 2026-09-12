@@ -90,28 +90,25 @@ struct TripsScreen: View {
     }
   }
 
-  /// Top nav: the Rausch wordmark, circular controls, one hairline underneath.
+  /// Top nav: the Rausch wordmark and circular controls.
   private var topNav: some View {
-    VStack(spacing: 12) {
+    HStack(spacing: 8) {
       HStack(spacing: 8) {
-        HStack(spacing: 8) {
-          Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
-          Text("wayfare").typeStyle(.headlineSmall)
-        }.foregroundStyle(Palette.rausch)
-        Spacer(minLength: 0)
-        CircleIconButton(symbol: "ticket", label: "Join a trip") { joining = true }
-        Menu {
-          Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
-          Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)
-          { signout = true }
-        } label: {
-          Image(systemName: "person.crop.circle").font(.system(size: 16, weight: .medium))
-            .foregroundStyle(Palette.ink).frame(width: 44, height: 44)
-            .background(Palette.softCloud, in: Circle())
-        }.accessibilityLabel("Account")
-      }.padding(.horizontal, 24).padding(.top, 8)
-      HairlineDivider()
-    }
+        Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
+        Text("wayfare").typeStyle(.headlineSmall)
+      }.foregroundStyle(Palette.rausch)
+      Spacer(minLength: 0)
+      CircleIconButton(symbol: "ticket", label: "Join a trip") { joining = true }
+      Menu {
+        Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
+        Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)
+        { signout = true }
+      } label: {
+        Image(systemName: "person.crop.circle").font(.system(size: 16, weight: .medium))
+          .foregroundStyle(Palette.ink).frame(width: 44, height: 44)
+          .background(Palette.softCloud, in: Circle())
+      }.accessibilityLabel("Account")
+    }.padding(.horizontal, 24).padding(.top, 8)
   }
 
   @ViewBuilder private var tripActions: some View {
