@@ -7,15 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		19123B2BF4AA2628B331A4FA /* Manrope-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = ABCBA720F7C02406340AA1C1 /* Manrope-Regular.ttf */; };
 		23EA501A4CD926D23DF0ED0B /* WayfareApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00AFCAC4EF220FAEE6736E8F /* WayfareApp.swift */; };
 		246ED4DE8E73568B0F4A0A68 /* AuthScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE07AB6FBC9BE1A2439E4BA /* AuthScreen.swift */; };
 		3C9714E8001F61CBAFE3E206 /* TripsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F34A472220DB80D20343FB /* TripsScreen.swift */; };
 		4D75824EB3438E54262BA8CE /* TripDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF59A3F45550AB89E6722F63 /* TripDetailScreen.swift */; };
+		6DAA412E02BA2D30EC717691 /* Manrope-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4FECC72F67B63A0F5F16D0E1 /* Manrope-Medium.ttf */; };
+		7C4004521DDEADACA023FA1E /* Manrope-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F83D46AE3E7B45369501E09F /* Manrope-SemiBold.ttf */; };
 		9CF4C89A01B27E859819CB53 /* Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 322FD859C166B4F6C921DA22 /* Forms.swift */; };
 		BF123AEF9DBABFAC81C260F6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C9775DFE87CB8CD20230334F /* PrivacyInfo.xcprivacy */; };
 		C8DE472DCE8969163571E8F4 /* WayfareCore in Frameworks */ = {isa = PBXBuildFile; productRef = CEE65ACEAF7888B702E17E70 /* WayfareCore */; };
 		E815EBDFE0C702899BC8000C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC90C2E9D1B06721650192A1 /* Theme.swift */; };
 		EF71A3B8312088738D75E1CC /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97672F2F5037BBDB984D308D /* AppStore.swift */; };
+		F4C9126CB69174D7836C32A3 /* Manrope-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,12 +27,16 @@
 		1F170A1AC5FABC6AC2EA1C63 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
 		322FD859C166B4F6C921DA22 /* Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Forms.swift; sourceTree = "<group>"; };
 		3E475665AB348C09D6C3B66C /* Wayfare.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wayfare.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Bold.ttf"; sourceTree = "<group>"; };
+		4FECC72F67B63A0F5F16D0E1 /* Manrope-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Medium.ttf"; sourceTree = "<group>"; };
 		79654FD9B1E5A3672F61C48A /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
 		97672F2F5037BBDB984D308D /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+		ABCBA720F7C02406340AA1C1 /* Manrope-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Regular.ttf"; sourceTree = "<group>"; };
 		AF59A3F45550AB89E6722F63 /* TripDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailScreen.swift; sourceTree = "<group>"; };
 		C9775DFE87CB8CD20230334F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E5F34A472220DB80D20343FB /* TripsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripsScreen.swift; sourceTree = "<group>"; };
 		EC90C2E9D1B06721650192A1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		F83D46AE3E7B45369501E09F /* Manrope-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-SemiBold.ttf"; sourceTree = "<group>"; };
 		FEE07AB6FBC9BE1A2439E4BA /* AuthScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -89,6 +97,7 @@
 				E5F34A472220DB80D20343FB /* TripsScreen.swift */,
 				00AFCAC4EF220FAEE6736E8F /* WayfareApp.swift */,
 				0CA9A7EB222A2F5C0BA59717 /* Data */,
+				E73EB150E80B5A9CA1A9F524 /* Resources */,
 			);
 			path = Wayfare;
 			sourceTree = "<group>";
@@ -99,6 +108,17 @@
 				79654FD9B1E5A3672F61C48A /* App.xcconfig */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		E73EB150E80B5A9CA1A9F524 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */,
+				4FECC72F67B63A0F5F16D0E1 /* Manrope-Medium.ttf */,
+				ABCBA720F7C02406340AA1C1 /* Manrope-Regular.ttf */,
+				F83D46AE3E7B45369501E09F /* Manrope-SemiBold.ttf */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -162,6 +182,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F4C9126CB69174D7836C32A3 /* Manrope-Bold.ttf in Resources */,
+				6DAA412E02BA2D30EC717691 /* Manrope-Medium.ttf in Resources */,
+				19123B2BF4AA2628B331A4FA /* Manrope-Regular.ttf in Resources */,
+				7C4004521DDEADACA023FA1E /* Manrope-SemiBold.ttf in Resources */,
 				BF123AEF9DBABFAC81C260F6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

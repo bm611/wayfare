@@ -171,8 +171,8 @@ struct ExpenseForm: View {
       Form {
         if readOnly || unsynced {
           Section {
-            Text(expense.title).font(.headline)
-            Text(money(expense.amount, trip.currency)).font(.largeTitle.bold())
+            Text(expense.title).typeStyle(.titleMedium)
+            Text(money(expense.amount, trip.currency)).typeStyle(.displaySmall)
             Text("\(expense.category.label) · \(expense.spentOn)")
             if let note = expense.note { Text(note) }
             if let original = expense.originalAmount, let code = expense.originalCurrency {
@@ -230,7 +230,7 @@ struct ExpenseForm: View {
                     ? "Offline estimate from cached reference rates. This rate will be saved with the expense."
                     : "ECB reference rate · \(store.fx.date)"
               )
-              .font(.caption).foregroundStyle(Palette.soft)
+              .typeStyle(.bodySmall).foregroundStyle(Palette.soft)
             }
           }
           PrimaryButton(title: isNew ? "Add expense" : "Save changes", busy: busy, action: save)

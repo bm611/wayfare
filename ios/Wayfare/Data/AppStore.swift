@@ -838,6 +838,9 @@ private struct HTTPFailure: LocalizedError {
 private enum StoreError: LocalizedError {
   case notConfigured, notSignedIn, emptyResponse, accountChanged, oauthStart, oauthUnavailable,
     pendingCannotBeDiscarded
+  /// Carries the OSStatus: a keychain refusal is not a configuration problem, and
+  /// reporting it as one sends you looking in the wrong place entirely.
+  case keychain(OSStatus)
   var errorDescription: String? {
     switch self {
     case .notConfigured: "Wayfare is not configured."
@@ -848,6 +851,8 @@ private enum StoreError: LocalizedError {
     case .oauthUnavailable: "Google sign-in is unavailable."
     case .pendingCannotBeDiscarded:
       "A pending expense may already have reached the server. Retry it before discarding."
+    case .keychain(let status):
+      "Could not save your session to the keychain (status \(status))."
     }
   }
 }
@@ -945,16 +950,15 @@ private enum Keychain {
     let status = SecItemUpdate(
       identity as CFDictionary, [kSecValueData as String: data] as CFDictionary)
     if status == errSecSuccess { return }
-    guard status == errSecItemNotFound else { throw StoreError.notConfigured }
+    guard status == errSecItemNotFound else { throw StoreError.keychain(status) }
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
       kSecAttrAccount as String: account,
       kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
       kSecValueData as String: data,
     ]
-    guard SecItemAdd(query as CFDictionary, nil) == errSecSuccess else {
-      throw StoreError.notConfigured
-    }
+    let addStatus = SecItemAdd(query as CFDictionary, nil)
+    guard addStatus == errSecSuccess else { throw StoreError.keychain(addStatus) }
   }
   static func load() -> Session? {
     let query: [String: Any] = [

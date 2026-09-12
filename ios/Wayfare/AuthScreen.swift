@@ -14,9 +14,9 @@ struct AuthScreen: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 22) {
-          Label("wayfare", systemImage: "airplane.departure").font(.title2.bold()).padding(.top, 30)
+          Label("wayfare", systemImage: "airplane.departure").typeStyle(.headlineSmall).padding(.top, 30)
           Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
-            .font(.largeTitle.bold()).padding(.top, 30)
+            .typeStyle(.displaySmall).padding(.top, 30)
           Text(
             store.recovery
               ? "Choose a new password for your account."
@@ -78,7 +78,7 @@ struct AuthScreen: View {
                 try validateEmail()
                 try await store.resendConfirmation(email: email)
               }
-            }.font(.subheadline)
+            }.typeStyle(.bodyMedium)
           } else {
             Button("Back to sign in") { run { try await store.signOut() } }
           }

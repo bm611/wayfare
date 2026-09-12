@@ -29,7 +29,7 @@ struct TripsScreen: View {
     NavigationStack(path: $path) {
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 22) {
-          Text("Your next chapter.").font(.largeTitle.bold())
+          Text("Your next chapter.").typeStyle(.displaySmall)
           Text(
             store.trips.isEmpty
               ? "Your first journey is waiting."
@@ -38,7 +38,7 @@ struct TripsScreen: View {
           .foregroundStyle(Palette.soft)
           HStack(spacing: 20) {
             PrimaryButton(title: "New trip") { newTrip = true }
-            Button("Join a friend") { joining = true }.fontWeight(.semibold)
+            Button("Join a friend") { joining = true }.typeStyle(.titleMedium)
           }
           if let notice = store.notice { Notice(text: notice) }
           if store.expenses.contains(where: { $0.syncState != .synced }) {
@@ -55,7 +55,7 @@ struct TripsScreen: View {
           }
           ForEach(sections, id: \.0) { title, trips in
             if !trips.isEmpty {
-              Text(title).font(.title2.bold()).padding(.top, 6)
+              Text(title).typeStyle(.headlineSmall).padding(.top, 6)
               ForEach(trips) { trip in
                 NavigationLink(value: trip.id) { ticket(trip) }.buttonStyle(.plain)
               }
@@ -100,29 +100,34 @@ struct TripsScreen: View {
   private func ticket(_ trip: Trip) -> some View {
     let expenses = store.expenses.filter { $0.tripId == trip.id }
     let summary = budgetSummary(trip, expenses: expenses)
+    // One card, clipped as a whole so the cover, the border and the tap target
+    // all stop at the same radius: the photograph is the card's own top edge
+    // rather than a tile floating above a separate block of text. The phase and
+    // the open affordance ride on the cover instead of each taking a line.
     return VStack(alignment: .leading, spacing: 0) {
       TripArtwork(trip: trip, url: store.coverURL(trip.coverPath))
-      VStack(alignment: .leading, spacing: 10) {
-        Text(phaseLabel(trip).uppercased()).font(.caption.weight(.bold)).foregroundStyle(
-          Palette.clay)
-        Text(trip.name).font(.title2.bold())
-        Text(trip.destination ?? "Destination open").foregroundStyle(Palette.soft)
-        Divider().overlay(Palette.line)
-        HStack {
-          VStack(alignment: .leading) {
-            Text("SPENT").font(.caption2).foregroundStyle(Palette.soft)
-            Text(money(summary.spent, trip.currency)).font(.headline).monospacedDigit()
-          }
-          Spacer()
-          Text(trip.budget > 0 ? "of \(money(trip.budget, trip.currency))" : "No budget limit")
-            .font(.subheadline).foregroundStyle(Palette.soft)
-          Image(systemName: "arrow.up.right")
+        .overlay(alignment: .topLeading) { PhasePill(trip: trip).padding(12) }
+        .overlay(alignment: .topTrailing) {
+          Image(systemName: "arrow.up.right").font(.system(size: 18))
+            .foregroundStyle(Palette.ink).padding(10)
+            .background(Palette.card.opacity(0.94), in: Circle()).padding(12)
         }
-      }.padding(20)
+      VStack(alignment: .leading, spacing: 0) {
+        Text(trip.name).typeStyle(.titleMedium).lineLimit(1)
+        TripMeta(trip: trip).padding(.top, 7)
+        HStack(spacing: 0) {
+          Text(money(summary.spent, trip.currency)).typeStyle(.labelLarge).monospacedDigit()
+          Text(trip.budget > 0 ? " of \(money(trip.budget, trip.currency))" : " logged")
+            .typeStyle(.bodyMedium).foregroundStyle(Palette.soft).monospacedDigit()
+        }.padding(.top, 12)
+        if trip.budget > 0 {
+          BudgetMeter(spent: summary.spent, budget: trip.budget).padding(.top, 8)
+        }
+      }.padding(16)
     }
-    .background(Palette.card, in: RoundedRectangle(cornerRadius: 22))
-    .clipShape(RoundedRectangle(cornerRadius: 22))
-    .overlay(RoundedRectangle(cornerRadius: 22).stroke(Palette.line, lineWidth: 1))
+    .background(Palette.card, in: RoundedRectangle(cornerRadius: 24))
+    .clipShape(RoundedRectangle(cornerRadius: 24))
+    .overlay(RoundedRectangle(cornerRadius: 24).stroke(Palette.line, lineWidth: 1))
   }
 }
 
@@ -186,13 +191,13 @@ struct UnsyncedScreen: View {
         if let error { Notice(text: error) }
         ForEach(store.expenses.filter { $0.syncState != .synced }) { expense in
           VStack(alignment: .leading, spacing: 10) {
-            Text(expense.title).font(.headline)
-            Text("Ledger amount: \(money(expense.amount)) · \(expense.spentOn)").font(.subheadline)
+            Text(expense.title).typeStyle(.titleMedium)
+            Text("Ledger amount: \(money(expense.amount)) · \(expense.spentOn)").typeStyle(.bodyMedium)
             Text(
               expense.syncState == .failed
                 ? "Not saved. Excluded from totals." : "Saved on this device. Waiting to sync.")
             if let reason = expense.syncError {
-              Text(reason).font(.caption).foregroundStyle(Palette.soft)
+              Text(reason).typeStyle(.bodySmall).foregroundStyle(Palette.soft)
             }
             Button("Try again") { run { try await store.retryExpense(expense) } }
             if expense.syncState == .failed {

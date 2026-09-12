@@ -33,15 +33,15 @@ struct TripDetailScreen: View {
             TripArtwork(trip: trip, url: store.coverURL(trip.coverPath)).clipShape(
               RoundedRectangle(cornerRadius: 22))
             Text(phaseLabel(trip).uppercased()).font(.caption.bold()).foregroundStyle(Palette.clay)
-            Text(trip.name).font(.largeTitle.bold())
+            Text(trip.name).typeStyle(.displaySmall)
             Text(
               [trip.destination, trip.startDate, trip.endDate].compactMap { $0 }.joined(
                 separator: " · ")
             )
-            .font(.subheadline).foregroundStyle(Palette.soft)
+            .typeStyle(.bodyMedium).foregroundStyle(Palette.soft)
             budget(trip)
             breakdown(trip)
-            Text("Ledger").font(.title2.bold())
+            Text("Ledger").typeStyle(.headlineSmall)
             TextField("Search titles and notes", text: $query).padding(14)
               .background(Palette.card, in: Capsule()).accessibilityLabel("Search expenses")
             filters
@@ -146,17 +146,17 @@ struct TripDetailScreen: View {
         showRemaining ? (summary.remaining < 0 ? "Over budget" : "Budget remaining") : "Total spent"
       ).foregroundStyle(Palette.soft)
       Text(money(showRemaining ? abs(summary.remaining) : summary.spent, trip.currency))
-        .font(.largeTitle.bold()).monospacedDigit()
+        .typeStyle(.displaySmall).monospacedDigit()
       if trip.budget > 0 {
         Text(
           "\(money(summary.remaining, trip.currency)) remaining of \(money(trip.budget, trip.currency))"
-        ).font(.subheadline)
+        ).typeStyle(.bodyMedium)
         ProgressView(
           value: min(1, max(0, NSDecimalNumber(decimal: summary.spent / trip.budget).doubleValue)))
       }
       if let available = summary.availablePerDay {
-        Text("\(money(available, trip.currency)) available/day remaining").font(.headline)
-        Text("Across \(summary.daysLeft ?? 0) days, including today.").font(.caption)
+        Text("\(money(available, trip.currency)) available/day remaining").typeStyle(.titleMedium)
+        Text("Across \(summary.daysLeft ?? 0) days, including today.").typeStyle(.bodySmall)
           .foregroundStyle(Palette.soft)
       }
       Divider()
@@ -164,17 +164,17 @@ struct TripDetailScreen: View {
         Text("Daily average").foregroundStyle(Palette.soft)
         Spacer()
         Text(summary.perDay.map { money($0, trip.currency) } ?? "—").monospacedDigit()
-      }.font(.subheadline)
+      }.typeStyle(.bodyMedium)
       if entries.contains(where: { $0.syncState == .pending }) {
-        Text("Includes entries waiting to sync.").font(.caption).foregroundStyle(Palette.clay)
+        Text("Includes entries waiting to sync.").typeStyle(.bodySmall).foregroundStyle(Palette.clay)
       }
-      Text("Group spending, not who owes whom.").font(.caption).foregroundStyle(Palette.soft)
+      Text("Group spending, not who owes whom.").typeStyle(.bodySmall).foregroundStyle(Palette.soft)
     }.padding(20).background(Palette.card, in: RoundedRectangle(cornerRadius: 22))
   }
 
   private func breakdown(_ trip: Trip) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Spending by category").font(.headline)
+      Text("Spending by category").typeStyle(.titleMedium)
       ForEach(WayfareCore.Category.allCases, id: \.self) { group in
         let amount = entries.filter { $0.category == group && $0.syncState != .failed }.reduce(
           Decimal.zero
@@ -200,15 +200,15 @@ struct TripDetailScreen: View {
         .foregroundStyle(Palette.clay).background(
           Palette.clay.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
       VStack(alignment: .leading, spacing: 4) {
-        Text(expense.title).fontWeight(.semibold)
-        Text(store.name(for: expense.userId)).font(.caption).foregroundStyle(Palette.soft)
+        Text(expense.title).typeStyle(.titleMedium)
+        Text(store.name(for: expense.userId)).typeStyle(.bodySmall).foregroundStyle(Palette.soft)
         if expense.syncState != .synced {
           Text(expense.syncState == .failed ? "Not saved · tap to resolve" : "Waiting to sync")
-            .font(.caption).foregroundStyle(Palette.clay)
+            .typeStyle(.bodySmall).foregroundStyle(Palette.clay)
         }
       }
       Spacer()
-      Text(money(expense.amount, currency)).fontWeight(.semibold).monospacedDigit()
+      Text(money(expense.amount, currency)).typeStyle(.titleMedium).monospacedDigit()
     }.padding(.vertical, 6)
   }
 
@@ -246,7 +246,7 @@ struct SharingScreen: View {
             HStack {
               VStack(alignment: .leading) {
                 Text(store.name(for: member.userId))
-                Text(member.role == "owner" ? "Organiser" : "Member").font(.caption)
+                Text(member.role == "owner" ? "Organiser" : "Member").typeStyle(.bodySmall)
                   .foregroundStyle(Palette.soft)
               }
               Spacer()
