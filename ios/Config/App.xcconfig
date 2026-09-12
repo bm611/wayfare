@@ -1,0 +1,6 @@
+// Public client configuration only. Never put service-role or provider secrets here.
+SUPABASE_URL =
+SUPABASE_PUBLISHABLE_KEY =
+COVER_ENDPOINT = https:/$()/getwayfare.netlify.app/.netlify/functions/trip-cover-background
+WEB_URL = https:/$()/getwayfare.netlify.app
+#include? "Local.xcconfig"
