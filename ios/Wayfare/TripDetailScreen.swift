@@ -58,9 +58,15 @@ struct TripDetailScreen: View {
             Spacer(minLength: 8)
           }.frame(maxWidth: 700).frame(maxWidth: .infinity)
         }.refreshable { await store.refresh() }
-          // Mobile collapses the sticky booking panel to a bottom-anchored bar:
-          // the figure on the left, the one Rausch action on the right.
-          .safeAreaInset(edge: .bottom) { reserveBar(trip) }
+          .overlay(alignment: .bottomTrailing) {
+            PrimaryButton(title: "Add expense", icon: "plus") {
+              editing = Expense(
+                tripId: tripId, userId: store.userId ?? "", category: .food)
+            }
+            .frame(width: 170)
+            .shadow(color: .black.opacity(0.14), radius: 8, y: 4)
+            .padding(.trailing, 24).padding(.bottom, 16)
+          }
           .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
               Menu {
@@ -307,25 +313,6 @@ struct TripDetailScreen: View {
       Spacer(minLength: 8)
       Text(money(expense.amount, currency)).typeStyle(.titleMedium).monospacedDigit()
     }.padding(.vertical, 6)
-  }
-
-  private func reserveBar(_ trip: Trip) -> some View {
-    let summary = budgetSummary(trip, expenses: entries)
-    return VStack(spacing: 0) {
-      HairlineDivider()
-      HStack(spacing: 16) {
-        VStack(alignment: .leading, spacing: 1) {
-          Text(money(summary.spent, trip.currency)).typeStyle(.titleMedium).monospacedDigit()
-            .lineLimit(1)
-          Text(trip.budget > 0 ? "of \(money(trip.budget, trip.currency))" : "logged so far")
-            .typeStyle(.bodySmall).foregroundStyle(Palette.ash).lineLimit(1)
-        }
-        Spacer(minLength: 0)
-        PrimaryButton(title: "Add expense", icon: "plus") {
-          editing = Expense(tripId: tripId, userId: store.userId ?? "", category: .food)
-        }.fixedSize(horizontal: true, vertical: false)
-      }.padding(.horizontal, 24).padding(.vertical, 12)
-    }.background(Palette.canvas)
   }
 
   private func perform(_ action: @escaping () async throws -> Void) {

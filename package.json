@@ -16,6 +16,7 @@
     "android:serve": "bash scripts/android-serve.sh",
     "android:devices": "bash scripts/android-devices.sh",
     "ios:run": "bash scripts/ios-run.sh",
+    "ios:device": "bash scripts/ios-device.sh",
     "ios:simulator": "bash scripts/ios-simulator.sh",
     "ios:build": "bash scripts/ios-build.sh",
     "ios:devices": "bash scripts/ios-devices.sh"

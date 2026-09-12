@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,7 +40,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -104,74 +102,47 @@ fun TripDetailScreen(
 
     Scaffold(
         containerColor = CanvasWhite,
-        // The listing-detail chrome: circular controls on white, one hairline
-        // underneath, and the trip name carried by the hero rather than the bar.
+        // The listing-detail chrome: circular controls on white, with the trip
+        // name carried by the hero rather than the bar.
         topBar = {
-            Column {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CircleIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onClick = onBack)
-                    Spacer(Modifier.weight(1f))
-                    CircleIconButton(Icons.Outlined.Refresh, "Refresh", onClick = viewModel::refresh)
-                    if (trip != null) {
-                        CircleIconButton(Icons.Outlined.Group, "Share") { showShare = true }
-                        if (trip.ownerId == accountId) {
-                            Box {
-                                CircleIconButton(Icons.Outlined.MoreHoriz, "Trip options") { showActions = true }
-                                DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
-                                    DropdownMenuItem(
-                                        text = { Text("Edit trip") },
-                                        leadingIcon = { Icon(Icons.Outlined.Edit, null) },
-                                        onClick = { showActions = false; showEditTrip = true },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Delete trip", color = ErrorRed) },
-                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ErrorRed) },
-                                        onClick = { showActions = false; showDeleteTrip = true },
-                                    )
-                                }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CircleIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onClick = onBack)
+                Spacer(Modifier.weight(1f))
+                CircleIconButton(Icons.Outlined.Refresh, "Refresh", onClick = viewModel::refresh)
+                if (trip != null) {
+                    CircleIconButton(Icons.Outlined.Group, "Share") { showShare = true }
+                    if (trip.ownerId == accountId) {
+                        Box {
+                            CircleIconButton(Icons.Outlined.MoreHoriz, "Trip options") { showActions = true }
+                            DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit trip") },
+                                    leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                                    onClick = { showActions = false; showEditTrip = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete trip", color = ErrorRed) },
+                                    leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ErrorRed) },
+                                    onClick = { showActions = false; showDeleteTrip = true },
+                                )
                             }
                         }
                     }
                 }
-                HairlineDivider()
             }
         },
-        // Mobile collapses the sticky booking panel to a bottom-anchored bar:
-        // the figure on the left, the one Rausch action on the right.
-        bottomBar = {
+        floatingActionButton = {
             if (trip != null) {
-                val summary = budgetSummary(trip, state.expenses)
-                Column {
-                    HairlineDivider()
-                    Surface(color = CanvasWhite) {
-                        Row(
-                            Modifier.fillMaxWidth().navigationBarsPadding()
-                                .padding(horizontal = 24.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                                Text(
-                                    money(summary.spent, trip.currency),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    if (trip.budget.signum() > 0) "of ${money(trip.budget, trip.currency)}" else "logged so far",
-                                    color = Ash,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                )
-                            }
-                            PrimaryButton("Add expense", icon = Icons.Outlined.Add) {
-                                editingExpense = null
-                                showExpense = true
-                            }
-                        }
-                    }
+                PrimaryButton(
+                    "Add expense",
+                    icon = Icons.Outlined.Add,
+                ) {
+                    editingExpense = null
+                    showExpense = true
                 }
             }
         },

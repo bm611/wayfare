@@ -1,4 +1,5 @@
 // Copy to Local.xcconfig. The $() prevents xcconfig treating // as a comment.
 SUPABASE_URL = https:/$()/YOUR_PROJECT.supabase.co
 SUPABASE_PUBLISHABLE_KEY = YOUR_PUBLIC_PUBLISHABLE_KEY
-// Set your Apple developer team in Xcode's Signing & Capabilities tab.
+// Optional alternative to selecting a team in Xcode's Signing & Capabilities.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

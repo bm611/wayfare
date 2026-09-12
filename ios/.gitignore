@@ -1,5 +1,5 @@
 .build/
 Config/Local.xcconfig
-DerivedData/
+DerivedData*/
 *.xcuserstate
 xcuserdata/

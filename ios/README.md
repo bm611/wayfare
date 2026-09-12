@@ -9,6 +9,21 @@ Native SwiftUI implementation of the Kotlin Android app, targeting iOS 17+ on iP
 3. Open `ios/Wayfare.xcodeproj`, choose the **Wayfare** scheme and an iPhone simulator, and Run. For a physical device, select your team under Signing & Capabilities. The provisional bundle ID is `com.wayfare.app.ios`.
 4. In Supabase's redirect allowlist, allow `wayfare-ios://auth` before testing confirmation, recovery, and Google sign-in. Google uses the existing Supabase provider through Apple's `ASWebAuthenticationSession` with PKCE. No Google client secret belongs in the app.
 
+To build, install, and launch on a trusted physical iPhone or iPad over USB,
+sign into Xcode, select your Personal Team for the Wayfare target under Signing
+& Capabilities, enable Developer Mode on the device, then run:
+
+```sh
+npm run ios:devices
+npm run ios:device
+```
+
+Pass a device name or identifier when more than one is paired:
+
+```sh
+npm run ios:device -- "My iPhone"
+```
+
 The generated Xcode project is checked in. If adding source files, regenerate it from the repository root with:
 
 ```sh
