@@ -1,6 +1,7 @@
 package com.wayfare.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -29,10 +32,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +62,7 @@ import com.wayfare.app.core.money
 import com.wayfare.app.core.routeCode
 import com.wayfare.app.core.stampDate
 import com.wayfare.app.core.tapeDayLabel
+import com.wayfare.app.feature.EXPENSE_FILTER_THRESHOLD
 import com.wayfare.app.feature.TripDetailViewModel
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -173,7 +181,7 @@ fun TapeScreen(
                     onRefresh = viewModel::refresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    Tape(state, viewModel, trip.currency, ranks) { expense ->
+                    Tape(state, viewModel, accountId, trip.currency, ranks) { expense ->
                         when {
                             expense.syncState != SyncState.Synced -> unsyncedExpense = expense
                             expense.userId == accountId -> editingExpense = expense
@@ -228,10 +236,12 @@ fun TapeScreen(
 private fun Tape(
     state: com.wayfare.app.feature.TripDetailUiState,
     viewModel: TripDetailViewModel,
+    accountId: String,
     currency: String,
     ranks: Map<Category, Int>,
     onOpen: (Expense) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     val lines = state.filteredExpenses.sortedWith(
         compareByDescending<Expense> { it.spentOn }.thenByDescending { it.createdAt },
     )
@@ -247,7 +257,7 @@ private fun Tape(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        item { Filters(state, viewModel) }
+        if (state.expenses.size >= EXPENSE_FILTER_THRESHOLD) item { Filters(state, viewModel) }
         if (lines.isEmpty()) {
             item {
                 Column(
@@ -281,12 +291,53 @@ private fun Tape(
                 }
             }
             items(entries, key = Expense::id) { expense ->
-                TapeLine(
-                    expense = expense,
-                    currency = currency,
-                    tint = categoryTint(ranks[expense.category] ?: 4),
-                    modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
-                ) { onOpen(expense) }
+                // Only the traveller who logged a synced line can swipe it away;
+                // a pending or failed line opens the unsynced dialog on tap instead.
+                val canDelete = expense.userId == accountId && expense.syncState == SyncState.Synced
+                if (canDelete) {
+                    var deleteFailed by remember(expense.id) { mutableStateOf(false) }
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                scope.launch {
+                                    // The row settles back if the delete fails; the
+                                    // repository only drops it locally once the
+                                    // network call actually succeeds.
+                                    viewModel.deleteExpense(expense.id).onFailure { deleteFailed = true }
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    )
+                    LaunchedEffect(deleteFailed) {
+                        if (deleteFailed) {
+                            dismissState.reset()
+                            deleteFailed = false
+                        }
+                    }
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        modifier = Modifier.animateItem(),
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = { DeleteSwipeBackground() },
+                    ) {
+                        TapeLine(
+                            expense = expense,
+                            currency = currency,
+                            tint = categoryTint(ranks[expense.category] ?: 4),
+                            modifier = Modifier.padding(horizontal = 24.dp).background(Night),
+                        ) { onOpen(expense) }
+                    }
+                } else {
+                    TapeLine(
+                        expense = expense,
+                        currency = currency,
+                        tint = categoryTint(ranks[expense.category] ?: 4),
+                        modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
+                    ) { onOpen(expense) }
+                }
             }
         }
         if (lines.isNotEmpty()) {
@@ -297,6 +348,22 @@ private fun Tape(
             }
         }
         item { Spacer(Modifier.height(96.dp)) }
+    }
+}
+
+/** Revealed behind a line as it swipes away; matches the horizontal rhythm of the tape itself. */
+@Composable
+private fun DeleteSwipeBackground() {
+    Box(
+        Modifier.fillMaxWidth().fillMaxHeight().background(Night).padding(horizontal = 24.dp),
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        Box(
+            Modifier.fillMaxHeight().background(ErrorRed, RoundedCornerShape(10.dp)).padding(horizontal = 18.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.Delete, "Delete", tint = Paper, modifier = Modifier.size(20.dp))
+        }
     }
 }
 

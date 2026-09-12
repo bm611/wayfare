@@ -1,6 +1,9 @@
 import SwiftUI
 import WayfareCore
 
+/// Below this many entries, filter pills are more clutter than help.
+private let filterThreshold = 6
+
 /// The tape: every line in the order it happened, day by day, amounts running
 /// out to the right margin. The overview answers how the trip is going; this
 /// answers what actually happened.
@@ -21,13 +24,20 @@ struct TapeScreen: View {
 
   private var trip: Trip? { store.trips.first { $0.id == tripId } }
   private var entries: [Expense] { store.expenses.filter { $0.tripId == tripId } }
+  private var filtersEnabled: Bool { entries.count >= filterThreshold }
+  // Guarded here too, not just in the UI: a trip that shrinks under the
+  // threshold (an expense deleted) can't end up silently filtered with no
+  // visible pill left to clear it.
   private var lines: [Expense] {
-    entries.filter {
-      (store.tapeCategory.isEmpty || $0.category.rawValue == store.tapeCategory)
-        && (payer.isEmpty || $0.userId == payer)
-        && (query.isEmpty
-          || ($0.title + " " + ($0.note ?? "")).localizedCaseInsensitiveContains(query))
-    }.sorted { $0.spentOn == $1.spentOn ? $0.createdAt > $1.createdAt : $0.spentOn > $1.spentOn }
+    let filtered = filtersEnabled
+      ? entries.filter {
+        (store.tapeCategory.isEmpty || $0.category.rawValue == store.tapeCategory)
+          && (payer.isEmpty || $0.userId == payer)
+          && (query.isEmpty
+            || ($0.title + " " + ($0.note ?? "")).localizedCaseInsensitiveContains(query))
+      }
+      : entries
+    return filtered.sorted { $0.spentOn == $1.spentOn ? $0.createdAt > $1.createdAt : $0.spentOn > $1.spentOn }
   }
 
   /// Category ranking is a property of the whole trip, so a filtered view keeps
@@ -67,7 +77,9 @@ struct TapeScreen: View {
             .typeStyle(.bodyMedium).foregroundStyle(Palette.slate)
             .padding(.horizontal, 24).padding(.bottom, 10)
 
-            filters.padding(.bottom, 4)
+            if filtersEnabled {
+              filters.padding(.bottom, 4)
+            }
 
             if lines.isEmpty {
               VStack(spacing: 10) {
@@ -82,9 +94,17 @@ struct TapeScreen: View {
             ForEach(days, id: \.self) { day in
               dayRule(day, currency: trip.currency).padding(.horizontal, 24)
               ForEach(lines.filter { $0.spentOn == day }) { expense in
-                Button { open(expense) } label: {
-                  tapeLine(expense, currency: trip.currency)
-                }.buttonStyle(.plain).padding(.horizontal, 24)
+                // Only the traveller who logged a synced line can swipe it away;
+                // a pending or failed line opens the unsynced sheet on tap instead.
+                SwipeToDeleteRow(
+                  canDelete: expense.userId == store.userId && expense.syncState == .synced,
+                  onDelete: { await delete(expense) }
+                ) {
+                  Button { open(expense) } label: {
+                    tapeLine(expense, currency: trip.currency)
+                  }.buttonStyle(.plain)
+                }
+                .padding(.horizontal, 24)
               }
             }
 
@@ -100,13 +120,15 @@ struct TapeScreen: View {
           AddLineButton { adding = true }.padding(16)
         }
         .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            Button {
-              searching.toggle()
-              if !searching { query = "" }
-            } label: {
-              Image(systemName: searching ? "xmark" : "magnifyingglass")
-                .accessibilityLabel(searching ? "Close search" : "Search the tape")
+          if filtersEnabled {
+            ToolbarItem(placement: .topBarTrailing) {
+              Button {
+                searching.toggle()
+                if !searching { query = "" }
+              } label: {
+                Image(systemName: searching ? "xmark" : "magnifyingglass")
+                  .accessibilityLabel(searching ? "Close search" : "Search the tape")
+              }
             }
           }
           ToolbarItem(placement: .topBarTrailing) {
@@ -225,6 +247,75 @@ struct TapeScreen: View {
       editing = expense
     } else {
       readOnly = expense
+    }
+  }
+
+  /// Returns whether the delete actually went through, so the swipe row knows
+  /// whether to settle back open on failure.
+  private func delete(_ expense: Expense) async -> Bool {
+    do {
+      try await store.deleteExpense(expense)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
+/// A row that reveals a trailing delete action when dragged left. Only
+/// wraps its content in the swipe gesture when `canDelete` is true — a
+/// read-only or still-syncing line is passed through untouched.
+private struct SwipeToDeleteRow<Content: View>: View {
+  var canDelete: Bool
+  var onDelete: () async -> Bool
+  @ViewBuilder var content: () -> Content
+
+  @State private var offset: CGFloat = 0
+  @GestureState private var dragTranslation: CGFloat = 0
+  private let revealWidth: CGFloat = 72
+
+  private var currentOffset: CGFloat {
+    max(min(offset + dragTranslation, 0), -revealWidth * 1.15)
+  }
+
+  var body: some View {
+    if canDelete {
+      ZStack(alignment: .trailing) {
+        Button {
+          Task {
+            let succeeded = await onDelete()
+            if !succeeded {
+              withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) { offset = 0 }
+            }
+          }
+        } label: {
+          Image(systemName: "trash")
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(Palette.paper)
+            .frame(width: revealWidth)
+            .frame(maxHeight: .infinity)
+        }
+        .background(Palette.errorRed)
+        .accessibilityLabel("Delete")
+
+        content()
+          .background(Palette.night)
+          .offset(x: currentOffset)
+          .simultaneousGesture(
+            DragGesture(minimumDistance: 12)
+              .updating($dragTranslation) { value, state, _ in
+                state = value.translation.width
+              }
+              .onEnded { value in
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                  offset = (offset + value.translation.width) < -revealWidth / 2 ? -revealWidth : 0
+                }
+              }
+          )
+      }
+      .clipped()
+    } else {
+      content()
     }
   }
 }

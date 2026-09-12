@@ -40,6 +40,9 @@ import type { Expense } from "../lib/types";
 
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
+/** Below this many entries, search/filter controls are more clutter than help. */
+const FILTER_THRESHOLD = 6;
+
 export function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -83,13 +86,17 @@ export function TripDetail() {
   }
 
   const spent = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
-  const filteredExpenses = useMemo(() => expenses.filter((expense) =>
+  // Below the threshold the controls are hidden, so their state is inert —
+  // guarding here too means a trip that shrinks under it (an expense deleted)
+  // can't end up silently filtering with no visible way to clear it.
+  const filtersEnabled = expenses.length >= FILTER_THRESHOLD;
+  const filteredExpenses = useMemo(() => !filtersEnabled ? expenses : expenses.filter((expense) =>
     (!categoryFilter || expense.category === categoryFilter) &&
     (!payerFilter || expense.user_id === payerFilter) &&
     `${expense.title} ${expense.note ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()),
-  ), [expenses, categoryFilter, payerFilter, search]);
+  ), [expenses, filtersEnabled, categoryFilter, payerFilter, search]);
   const days = useMemo(() => groupByDay(filteredExpenses), [filteredExpenses]);
-  const hasFilters = !!(search || categoryFilter || payerFilter);
+  const hasFilters = filtersEnabled && !!(search || categoryFilter || payerFilter);
 
   if (tripError) {
     return (
@@ -260,7 +267,7 @@ export function TripDetail() {
         <h2 className="text-base font-semibold text-ink">
           The ledger
         </h2>
-        {expenses.length > 0 && (
+        {filtersEnabled && (
           <div className="mt-4 space-y-3">
             <Field label="Search expenses" type="search" placeholder="Search titles and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
             <div className="grid grid-cols-2 gap-3">
@@ -325,6 +332,8 @@ export function TripDetail() {
                         expense={expense}
                         currency={trip.currency}
                         payer={isShared ? payerNames.get(expense.user_id) ?? "Someone" : null}
+                        canDelete={expense.user_id === user?.id}
+                        onDelete={deleteExpense}
                         onSelect={openEdit}
                       />
                     ))}
