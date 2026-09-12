@@ -40,8 +40,10 @@ fun amountText(value: BigDecimal, cents: Boolean = value.abs() < BigDecimal(100_
 fun money(value: BigDecimal, currency: String = "EUR"): String =
     symbolFor(currency) + amountText(value)
 
+// Sentence case, not capitals: the native design system reserves uppercase for
+// the single 8sp superscript role, and these dates sit on every trip card.
 private val MONTHS = listOf(
-    "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 )
 
 fun shortDate(date: LocalDate): String = "${MONTHS[date.monthValue - 1]} ${date.dayOfMonth}"

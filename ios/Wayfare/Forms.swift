@@ -40,9 +40,9 @@ struct TripForm: View {
         } footer: {
           Text("Leave blank to track spending without a limit.")
         }
-        if let error { Notice(text: error) }
+        if let error { Notice(text: error, isError: true) }
         PrimaryButton(title: isNew ? "Start the ledger" : "Save changes", busy: busy, action: save)
-      }.paperScreen().disabled(busy)
+      }.canvasScreen().disabled(busy)
         .navigationTitle(isNew ? "Where are you headed?" : "Update your trip")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -188,7 +188,7 @@ struct ExpenseForm: View {
               text: liveExpense.syncState == .failed
                 ? "This entry did not reach the server. It is not counted in totals."
                 : "Saved on this device. Waiting to sync; you can edit it once it lands.")
-            if let message = liveExpense.syncError { Notice(text: message) }
+            if let message = liveExpense.syncError { Notice(text: message, isError: true) }
             Button("Try again") { perform { try await store.retryExpense(liveExpense) } }
             if liveExpense.syncState == .failed {
               Button("Discard entry", role: .destructive) { deleting = true }
@@ -230,14 +230,14 @@ struct ExpenseForm: View {
                     ? "Offline estimate from cached reference rates. This rate will be saved with the expense."
                     : "ECB reference rate · \(store.fx.date)"
               )
-              .typeStyle(.bodySmall).foregroundStyle(Palette.soft)
+              .typeStyle(.bodySmall).foregroundStyle(Palette.ash)
             }
           }
           PrimaryButton(title: isNew ? "Add expense" : "Save changes", busy: busy, action: save)
           if !isNew { Button("Delete expense", role: .destructive) { deleting = true } }
         }
-        if let error { Notice(text: error) }
-      }.paperScreen().disabled(busy)
+        if let error { Notice(text: error, isError: true) }
+      }.canvasScreen().disabled(busy)
         .navigationTitle(readOnly ? "Expense details" : isNew ? "Add expense" : "Update expense")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

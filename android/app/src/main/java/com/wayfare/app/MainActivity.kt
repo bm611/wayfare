@@ -27,8 +27,8 @@ import com.wayfare.app.feature.AuthViewModel
 import com.wayfare.app.feature.TripDetailViewModel
 import com.wayfare.app.feature.TripsViewModel
 import com.wayfare.app.ui.AuthScreen
-import com.wayfare.app.ui.Paper
-import com.wayfare.app.ui.Clay
+import com.wayfare.app.ui.CanvasWhite
+import com.wayfare.app.ui.Rausch
 import com.wayfare.app.ui.RecoveryScreen
 import com.wayfare.app.ui.TripDetailScreen
 import com.wayfare.app.ui.TripsScreen
@@ -75,8 +75,8 @@ class MainActivity : ComponentActivity() {
 private fun WayfareApp(authViewModel: AuthViewModel, container: AppContainer) {
     val auth by authViewModel.state.collectAsStateWithLifecycle()
     when {
-        auth.initializing -> Box(Modifier.fillMaxSize().background(Paper), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Clay)
+        auth.initializing -> Box(Modifier.fillMaxSize().background(CanvasWhite), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Rausch)
         }
         auth.recovery -> RecoveryScreen(auth, authViewModel)
         auth.userId == null -> AuthScreen(auth, authViewModel, container)

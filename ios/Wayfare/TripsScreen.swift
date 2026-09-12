@@ -28,56 +28,49 @@ struct TripsScreen: View {
   var body: some View {
     NavigationStack(path: $path) {
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: 22) {
-          Text("Your next chapter.").typeStyle(.displaySmall)
-          Text(
-            store.trips.isEmpty
-              ? "Your first journey is waiting."
-              : "\(store.trips.count) trips. All your plans, in one place."
-          )
-          .foregroundStyle(Palette.soft)
-          HStack(spacing: 20) {
-            PrimaryButton(title: "New trip") { newTrip = true }
-            Button("Join a friend") { joining = true }.typeStyle(.titleMedium)
-          }
-          if let notice = store.notice { Notice(text: notice) }
+        // Photographs read as distinct objects only if the canvas between them
+        // is wide enough to be read as canvas.
+        LazyVStack(alignment: .leading, spacing: 24) {
+          topNav
+          VStack(alignment: .leading, spacing: 6) {
+            Text("Your trips").typeStyle(.displaySmall)
+            Text(
+              store.trips.isEmpty
+                ? "Your first journey is waiting."
+                : "\(store.trips.count) \(store.trips.count == 1 ? "trip" : "trips"). All your plans, in one place."
+            ).typeStyle(.bodyLarge).foregroundStyle(Palette.ash)
+          }.padding(.horizontal, 24)
+          ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { tripActions }
+            VStack(spacing: 12) { tripActions }
+          }.padding(.horizontal, 24)
+          if let notice = store.notice { Notice(text: notice).padding(.horizontal, 24) }
           if store.expenses.contains(where: { $0.syncState != .synced }) {
-            Button("Review unsynced expenses", systemImage: "arrow.triangle.2.circlepath") {
-              recovery = true
-            }
+            SecondaryButton(title: "Review unsynced expenses", pill: true) { recovery = true }
+              .padding(.horizontal, 24)
           }
           if store.loading && store.trips.isEmpty {
-            ProgressView("Opening your ledger…").frame(maxWidth: .infinity).padding(40)
+            ProgressView().tint(Palette.rausch).frame(maxWidth: .infinity).padding(40)
           } else if store.trips.isEmpty {
-            ContentUnavailableView(
-              "Good trips start here", systemImage: "globe.europe.africa",
-              description: Text("Add a trip, set a budget, and log each cost as it lands."))
+            emptyState.padding(.horizontal, 24)
           }
           ForEach(sections, id: \.0) { title, trips in
             if !trips.isEmpty {
-              Text(title).typeStyle(.headlineSmall).padding(.top, 6)
+              HStack(spacing: 8) {
+                Text(title).typeStyle(.headlineSmall)
+                Text("\(trips.count)").typeStyle(.bodyLarge).foregroundStyle(Palette.ash)
+              }.padding(.horizontal, 24).padding(.top, 8)
               ForEach(trips) { trip in
-                NavigationLink(value: trip.id) { ticket(trip) }.buttonStyle(.plain)
+                NavigationLink(value: trip.id) { listingCard(trip) }
+                  .buttonStyle(.plain).padding(.horizontal, 24)
               }
             }
           }
-        }.padding(20).frame(maxWidth: 700).frame(maxWidth: .infinity)
+          Spacer(minLength: 12)
+        }.frame(maxWidth: 700).frame(maxWidth: .infinity)
       }
-      .paperScreen().refreshable { await store.refresh() }
-      .navigationTitle("wayfare").navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Menu {
-            Button("Join a trip", systemImage: "ticket") { joining = true }
-            Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
-            Button(
-              "Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive
-            ) { signout = true }
-          } label: {
-            Image(systemName: "person.crop.circle").accessibilityLabel("Account")
-          }
-        }
-      }
+      .canvasScreen().refreshable { await store.refresh() }
+      .toolbar(.hidden, for: .navigationBar)
       .navigationDestination(for: String.self) { TripDetailScreen(tripId: $0) }
       .sheet(isPresented: $newTrip) { TripForm(trip: Trip(), isNew: true) { path.append($0) } }
       .sheet(isPresented: $joining) { JoinForm { path.append($0) } }
@@ -97,37 +90,80 @@ struct TripsScreen: View {
     }
   }
 
-  private func ticket(_ trip: Trip) -> some View {
+  /// Top nav: the Rausch wordmark, circular controls, one hairline underneath.
+  private var topNav: some View {
+    VStack(spacing: 12) {
+      HStack(spacing: 8) {
+        HStack(spacing: 8) {
+          Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
+          Text("wayfare").typeStyle(.headlineSmall)
+        }.foregroundStyle(Palette.rausch)
+        Spacer(minLength: 0)
+        CircleIconButton(symbol: "ticket", label: "Join a trip") { joining = true }
+        Menu {
+          Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
+          Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)
+          { signout = true }
+        } label: {
+          Image(systemName: "person.crop.circle").font(.system(size: 16, weight: .medium))
+            .foregroundStyle(Palette.ink).frame(width: 44, height: 44)
+            .background(Palette.softCloud, in: Circle())
+        }.accessibilityLabel("Account")
+      }.padding(.horizontal, 24).padding(.top, 8)
+      HairlineDivider()
+    }
+  }
+
+  @ViewBuilder private var tripActions: some View {
+    PrimaryButton(title: "New trip", icon: "plus") { newTrip = true }
+    SecondaryButton(title: "Join friend") { joining = true }
+  }
+
+  private var emptyState: some View {
+    VStack(spacing: 0) {
+      Image(systemName: "safari").font(.system(size: 28, weight: .light))
+        .foregroundStyle(Palette.rausch).frame(width: 64, height: 64)
+        .background(Palette.canvas, in: Circle())
+      Text("Good trips start here").typeStyle(.titleLarge).padding(.top, 18)
+      Text("Add a trip, set a budget, and log each cost as it lands.")
+        .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).multilineTextAlignment(.center)
+        .padding(.top, 6)
+      Button("I have an invite code") { joining = true }
+        .typeStyle(.labelMedium).foregroundStyle(Palette.ink).padding(.top, 12)
+    }
+    .frame(maxWidth: .infinity).padding(32)
+    .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
+  }
+
+  /// The listing card: a 4:3 photograph at 14pt radius with its facts stacked
+  /// directly underneath on the bare canvas. No border, no shadow — the
+  /// whitespace between cards and the radius of the photograph do the separating.
+  private func listingCard(_ trip: Trip) -> some View {
     let expenses = store.expenses.filter { $0.tripId == trip.id }
     let summary = budgetSummary(trip, expenses: expenses)
-    // One card, clipped as a whole so the cover, the border and the tap target
-    // all stop at the same radius: the photograph is the card's own top edge
-    // rather than a tile floating above a separate block of text. The phase and
-    // the open affordance ride on the cover instead of each taking a line.
     return VStack(alignment: .leading, spacing: 0) {
-      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath))
-        .overlay(alignment: .topLeading) { PhasePill(trip: trip).padding(12) }
-        .overlay(alignment: .topTrailing) {
-          Image(systemName: "arrow.up.right").font(.system(size: 18))
-            .foregroundStyle(Palette.ink).padding(10)
-            .background(Palette.card.opacity(0.94), in: Circle()).padding(12)
-        }
-      VStack(alignment: .leading, spacing: 0) {
+      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 4 / 3)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+        .overlay(alignment: .topLeading) { PhaseBadge(trip: trip).padding(12) }
+      // 4–8pt between stacked facts: the metadata reads as one unit.
+      VStack(alignment: .leading, spacing: 4) {
         Text(trip.name).typeStyle(.titleMedium).lineLimit(1)
-        TripMeta(trip: trip).padding(.top, 7)
-        HStack(spacing: 0) {
-          Text(money(summary.spent, trip.currency)).typeStyle(.labelLarge).monospacedDigit()
-          Text(trip.budget > 0 ? " of \(money(trip.budget, trip.currency))" : " logged")
-            .typeStyle(.bodyMedium).foregroundStyle(Palette.soft).monospacedDigit()
-        }.padding(.top, 12)
-        if trip.budget > 0 {
-          BudgetMeter(spent: summary.spent, budget: trip.budget).padding(.top, 8)
+        if let place = trip.destination, !place.isEmpty {
+          Text(place).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).lineLimit(1)
         }
-      }.padding(16)
+        Text(dateRange(trip.startDate, trip.endDate)).typeStyle(.bodyMedium)
+          .foregroundStyle(Palette.ash)
+        // The price row: the figure in ink, its qualifier trailing in 500 weight.
+        HStack(alignment: .lastTextBaseline, spacing: 0) {
+          Text(money(summary.spent, trip.currency)).typeStyle(.titleMedium).monospacedDigit()
+          Text(trip.budget > 0 ? " of \(money(trip.budget, trip.currency))" : " logged")
+            .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).monospacedDigit()
+        }.padding(.top, 2)
+        if trip.budget > 0 {
+          BudgetMeter(spent: summary.spent, budget: trip.budget).padding(.top, 4)
+        }
+      }.padding(.top, 12)
     }
-    .background(Palette.card, in: RoundedRectangle(cornerRadius: 24))
-    .clipShape(RoundedRectangle(cornerRadius: 24))
-    .overlay(RoundedRectangle(cornerRadius: 24).stroke(Palette.line, lineWidth: 1))
   }
 }
 
@@ -143,10 +179,11 @@ struct JoinForm: View {
       Form {
         Section("Your invitation") {
           Text("Enter the eight-character code your travel companion sent you.")
+            .typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
           TextField("Invite code", text: $code).textInputAutocapitalization(.characters)
             .autocorrectionDisabled()
         }
-        if let error { Notice(text: error) }
+        if let error { Notice(text: error, isError: true) }
         PrimaryButton(title: "Join trip", busy: busy) {
           let clean = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
           guard clean.count == 8, clean.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
@@ -165,7 +202,7 @@ struct JoinForm: View {
             } catch { self.error = error.localizedDescription }
           }
         }
-      }.paperScreen().navigationTitle("Join a trip").navigationBarTitleDisplayMode(.inline)
+      }.canvasScreen().navigationTitle("Join a trip").navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
@@ -188,24 +225,28 @@ struct UnsyncedScreen: View {
   var body: some View {
     NavigationStack {
       List {
-        if let error { Notice(text: error) }
+        if let error { Notice(text: error, isError: true) }
         ForEach(store.expenses.filter { $0.syncState != .synced }) { expense in
           VStack(alignment: .leading, spacing: 10) {
             Text(expense.title).typeStyle(.titleMedium)
-            Text("Ledger amount: \(money(expense.amount)) · \(expense.spentOn)").typeStyle(.bodyMedium)
+            Text("Ledger amount: \(money(expense.amount)) · \(expense.spentOn)")
+              .typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
             Text(
               expense.syncState == .failed
-                ? "Not saved. Excluded from totals." : "Saved on this device. Waiting to sync.")
+                ? "Not saved. Excluded from totals." : "Saved on this device. Waiting to sync."
+            ).typeStyle(.bodyMedium)
             if let reason = expense.syncError {
-              Text(reason).typeStyle(.bodySmall).foregroundStyle(Palette.soft)
+              Text(reason).typeStyle(.bodySmall).foregroundStyle(Palette.ash)
             }
             Button("Try again") { run { try await store.retryExpense(expense) } }
+              .typeStyle(.labelMedium).foregroundStyle(Palette.ink)
             if expense.syncState == .failed {
               Button("Discard", role: .destructive) { deleting = expense }
+                .typeStyle(.labelMedium).foregroundStyle(Palette.errorRed)
             }
           }.padding(.vertical, 8)
         }
-      }.paperScreen().disabled(busy).navigationTitle("Unsynced expenses")
+      }.canvasScreen().disabled(busy).navigationTitle("Unsynced expenses")
         .toolbar {
           ToolbarItem(placement: .confirmationAction) {
             Button("Done") { dismiss() }.disabled(busy)

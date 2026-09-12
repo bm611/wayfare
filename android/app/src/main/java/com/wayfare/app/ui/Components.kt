@@ -11,12 +11,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,16 +25,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FlightTakeoff
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Hotel
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.DirectionsTransit
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,7 +39,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,9 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -78,27 +75,36 @@ import com.wayfare.app.core.tripPhase
 import java.math.BigDecimal
 import java.math.RoundingMode
 
+/**
+ * The system's signature three-layer lift: one tight shadow that reads as a
+ * hairline and one wider, softer one under it. Reserved for panels and sheets
+ * that float above the canvas — never for listing cards.
+ */
+fun Modifier.panelElevation(shape: Shape): Modifier = this
+    .shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .10f), spotColor = Color.Black.copy(alpha = .10f))
+    .shadow(2.dp, shape, ambientColor = Color.Black.copy(alpha = .04f), spotColor = Color.Black.copy(alpha = .04f))
+
 @Composable
 fun Brand(modifier: Modifier = Modifier, showWordmark: Boolean = true) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Ink),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.FlightTakeoff, null, Modifier.size(22.dp), tint = Paper)
-        }
+        Icon(Icons.Outlined.FlightTakeoff, null, Modifier.size(28.dp), tint = Rausch)
         if (showWordmark) {
             Text(
                 "wayfare",
-                modifier = Modifier.padding(start = 9.dp),
-                fontSize = 21.sp,
+                modifier = Modifier.padding(start = 8.dp),
+                color = Rausch,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp,
+                letterSpacing = (-0.6).sp,
             )
         }
     }
 }
 
+/**
+ * The Rausch CTA. One per surface: the moment the whole grayscale palette exists
+ * to set up. Pressing scales to 0.92 rather than tinting or lifting.
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -110,63 +116,124 @@ fun PrimaryButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .97f else 1f, spring(stiffness = 600f), label = "Button press")
+    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Button press")
     Button(
         onClick = onClick,
-        modifier = modifier.height(54.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         enabled = enabled && !busy,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Clay,
-            contentColor = OnClay,
-            disabledContainerColor = Clay.copy(alpha = 0.45f),
-            disabledContentColor = OnClay,
+            containerColor = Rausch,
+            contentColor = CanvasWhite,
+            disabledContainerColor = SoftCloud,
+            disabledContentColor = Stone,
         ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = OnClay)
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = CanvasWhite)
         } else {
             icon?.let {
-                Icon(it, null, Modifier.size(20.dp))
+                Icon(it, null, Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
             }
-            Text(text, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
+/** White, hairline-bordered, ink label. Every action that is not the one CTA. */
+@Composable
+fun SecondaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    pill: Boolean = false,
+    icon: ImageVector? = null,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Secondary press")
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        interactionSource = interactionSource,
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = CanvasWhite, contentColor = Ink),
+        border = BorderStroke(1.dp, Hairline),
+        shape = RoundedCornerShape(if (pill) 20.dp else 8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+    ) {
+        icon?.let {
+            Icon(it, null, Modifier.size(18.dp))
+            Spacer(Modifier.size(8.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
 /**
- * Deliberately not a [PrimaryButton] in a different colour: Google requires its mark on a
- * neutral surface, and the quieter treatment keeps the email form the primary path.
+ * Google requires its mark on a neutral surface, which is also exactly what a
+ * secondary action looks like here — so it reuses the outlined treatment.
  */
 @Composable
 fun GoogleButton(modifier: Modifier = Modifier, busy: Boolean = false, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .97f else 1f, spring(stiffness = 600f), label = "Google press")
+    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Google press")
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(54.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         enabled = !busy,
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = Card,
+            containerColor = CanvasWhite,
             contentColor = Ink,
-            disabledContainerColor = Card,
-            disabledContentColor = InkSoft,
+            disabledContainerColor = CanvasWhite,
+            disabledContentColor = Mute,
         ),
-        border = BorderStroke(1.dp, Line),
-        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Hairline),
+        shape = RoundedCornerShape(8.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = InkSoft)
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Ash)
         } else {
-            Image(painterResource(R.drawable.ic_google), null, Modifier.size(20.dp))
+            Image(painterResource(R.drawable.ic_google), null, Modifier.size(18.dp))
             Spacer(Modifier.size(10.dp))
-            Text("Continue with Google", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text("Continue with Google", style = MaterialTheme.typography.labelLarge)
         }
+    }
+}
+
+/**
+ * The circular icon button that recurs throughout the system — back, share,
+ * options, carousel controls. Always 50%, never any other geometry.
+ */
+@Composable
+fun CircleIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    onPhotograph: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Icon press")
+    Box(
+        modifier
+            .size(44.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(CircleShape)
+            // On photography a 4dp white ring separates the button from whatever
+            // colour happens to sit behind it.
+            .background(if (onPhotograph) CanvasWhite else SoftCloud)
+            .then(if (onPhotograph) Modifier.border(1.dp, Hairline, CircleShape) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription, Modifier.size(18.dp), tint = Ink)
     }
 }
 
@@ -175,105 +242,78 @@ fun Notice(message: String, error: Boolean = false, modifier: Modifier = Modifie
     Text(
         message,
         modifier = modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (error) ClayWash else PaperDeep)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (error) CanvasWhite else SoftCloud)
+            .then(if (error) Modifier.border(1.dp, ErrorRed, RoundedCornerShape(8.dp)) else Modifier)
             .padding(14.dp),
-        color = if (error) ClayDeep else InkSoft,
-        fontSize = 13.sp,
-        lineHeight = 19.sp,
+        color = if (error) ErrorRed else Ash,
+        style = MaterialTheme.typography.bodyMedium,
     )
 }
 
+/**
+ * The listing card: a 4:3 photograph at 14dp radius with its facts stacked
+ * directly underneath on the bare canvas. No border, no shadow — the whitespace
+ * between cards and the radius of the photograph do all the separating.
+ */
 @Composable
-fun TicketCard(
+fun ListingCard(
     summary: TripSummary,
     coverUrl: String?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val trip = summary.trip
-    val shape = RoundedCornerShape(24.dp)
-    // One card, clipped first so the cover, the border and the press ripple all
-    // stop at the same radius: the photograph is the card's own top edge rather
-    // than a tile floating above a separate block of text.
-    Column(
-        modifier.fillMaxWidth()
-            .clip(shape)
-            .background(Card)
-            .border(1.dp, Line, shape)
-            .clickable(onClick = onClick),
-    ) {
-        Box(Modifier.fillMaxWidth().height(190.dp)) {
+    Column(modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(14.dp))) {
             DestinationArtwork(Modifier.fillMaxSize(), trip)
-            if (coverUrl != null) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = trip.destination?.let { "Destination cover for $it" },
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-            Surface(
-                color = Card.copy(alpha = 0.94f),
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.padding(12.dp),
+            if (coverUrl != null) AsyncImage(
+                model = coverUrl,
+                contentDescription = trip.destination?.let { "Destination cover for $it" },
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+            )
+            // The award-badge position: a white pill riding the top-left corner.
+            Box(
+                Modifier.padding(12.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CanvasWhite)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.size(6.dp).background(phaseColor(trip), CircleShape))
-                    Text(
-                        phaseLabel(trip),
-                        Modifier.padding(start = 6.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Ink,
-                    )
-                }
-            }
-            Surface(
-                color = Card.copy(alpha = 0.94f),
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-            ) {
-                Icon(Icons.Outlined.NorthEast, null, Modifier.padding(10.dp).size(18.dp), tint = Ink)
+                Text(phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall)
             }
         }
-        Column(Modifier.padding(16.dp)) {
+        // 4–8dp between stacked facts: the metadata reads as one unit.
+        Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Text(
                 trip.name,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Place and dates are two separate facts, so they get an icon each
-            // rather than one run-on line held together by a dot. A long
-            // destination takes the first line and the dates drop below it
-            // instead of being truncated away.
-            FlowRow(
-                Modifier.fillMaxWidth().padding(top = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                trip.destination?.takeIf { it.isNotBlank() }?.let { MetaLabel(Icons.Outlined.Place, it) }
-                MetaLabel(Icons.Outlined.CalendarMonth, dateRange(trip.startDate, trip.endDate))
+            trip.destination?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    it,
+                    Modifier.padding(top = 4.dp),
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            Row(
-                Modifier.fillMaxWidth().padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(money(summary.spent, trip.currency), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                if (trip.budget.signum() > 0) {
-                    Text(
-                        " of ${money(trip.budget, trip.currency)}",
-                        color = InkSoft,
-                        fontSize = 14.sp,
-                    )
-                } else {
-                    Text(" logged", color = InkSoft, fontSize = 14.sp)
-                }
+            Text(
+                dateRange(trip.startDate, trip.endDate),
+                Modifier.padding(top = 4.dp),
+                color = Ash,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            // The price row: the figure in ink, its qualifier trailing in 500 weight.
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+                Text(money(summary.spent, trip.currency), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (trip.budget.signum() > 0) " of ${money(trip.budget, trip.currency)}" else " logged",
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
             if (trip.budget.signum() > 0) {
                 Spacer(Modifier.height(8.dp))
@@ -283,30 +323,35 @@ fun TicketCard(
     }
 }
 
-/** One small fact under a card title: a 14dp glyph and its label, kept on one line. */
+/** One small fact beside a glyph, kept on one line. */
 @Composable
-private fun MetaLabel(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, Modifier.size(14.dp), tint = InkFaint)
+fun MetaLabel(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, Modifier.size(14.dp), tint = Ash)
         Text(
             text,
-            Modifier.padding(start = 5.dp),
-            color = InkSoft,
-            fontSize = 13.sp,
+            Modifier.padding(start = 6.dp),
+            color = Ash,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
+/**
+ * Stands in for the cover photograph until one is generated. Deliberately
+ * grayscale: a placeholder should read as an unloaded image, not as a second
+ * accent colour competing with Rausch.
+ */
 @Composable
 fun DestinationArtwork(modifier: Modifier = Modifier, trip: Trip? = null) {
     val coastal = ((trip?.id?.hashCode() ?: 0) and 1) == 0
-    val sky = if (coastal) Color(0xFFE8EEE9) else Color(0xFFF3E6DB)
-    val far = if (coastal) Color(0xFF93B2A5) else Color(0xFFCDA58B)
-    val near = if (coastal) Color(0xFF527F77) else Color(0xFF976F60)
+    val sky = SoftCloud
+    val far = if (coastal) Color(0xFFE4E4E4) else Color(0xFFEBEBEB)
+    val near = if (coastal) Color(0xFFD2D2D2) else Color(0xFFDCDCDC)
     Canvas(modifier.background(sky)) {
-        drawCircle(Color(0xFFFFF8E8), size.height * .17f, Offset(size.width * .76f, size.height * .28f))
+        drawCircle(Color(0xFFF0F0F0), size.height * .17f, Offset(size.width * .76f, size.height * .28f))
         val hills = Path().apply {
             moveTo(0f, size.height * .72f)
             cubicTo(size.width * .22f, size.height * .05f, size.width * .4f, size.height * .85f, size.width * .65f, size.height * .52f)
@@ -333,27 +378,30 @@ fun categoryIcon(category: Category): ImageVector = when (category) {
     Category.Other -> Icons.AutoMirrored.Outlined.ReceiptLong
 }
 
+/**
+ * The boarding strip. Rausch is the one place a figure earns colour, so the
+ * fill uses it and the track stays hairline.
+ */
 @Composable
-private fun phaseColor(trip: Trip): Color = when (tripPhase(trip)) {
-    is TripPhase.Active -> Success
-    is TripPhase.Upcoming -> Clay
-    else -> InkFaint
-}
-
-@Composable
-fun BudgetMeter(spent: BigDecimal, budget: BigDecimal, modifier: Modifier = Modifier) {
+fun BudgetMeter(
+    spent: BigDecimal,
+    budget: BigDecimal,
+    modifier: Modifier = Modifier,
+    trackColor: Color = Hairline,
+    progressColor: Color = Rausch,
+) {
     val ratio = if (budget.signum() <= 0) 0f
     else spent.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
     val animatedRatio by animateFloatAsState(ratio, tween(450), label = "Budget progress")
     Box(
-        modifier.fillMaxWidth().height(6.dp)
+        modifier.fillMaxWidth().height(4.dp)
             .semantics { progressBarRangeInfo = ProgressBarRangeInfo(ratio, 0f..1f) }
-            .clip(RoundedCornerShape(50)).background(LineSoft),
+            .clip(CircleShape).background(trackColor),
     ) {
         if (animatedRatio > 0f) {
             Box(
                 Modifier.fillMaxHeight().fillMaxWidth(animatedRatio)
-                    .clip(RoundedCornerShape(50)).background(Clay),
+                    .clip(CircleShape).background(progressColor),
             )
         }
     }
@@ -363,24 +411,23 @@ fun BudgetMeter(spent: BigDecimal, budget: BigDecimal, modifier: Modifier = Modi
 fun SyncBadge(state: SyncState) {
     if (state == SyncState.Synced) return
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(ClayWash)
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+        Modifier.clip(RoundedCornerShape(14.dp)).background(SoftCloud)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Sync, null, Modifier.size(12.dp), tint = Clay)
+        Icon(Icons.Outlined.Sync, null, Modifier.size(11.dp), tint = if (state == SyncState.Failed) ErrorRed else Ash)
         Text(
             if (state == SyncState.Pending) "Pending" else "Failed",
             Modifier.padding(start = 4.dp),
-            color = ClayDeep,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            color = if (state == SyncState.Failed) ErrorRed else Ash,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
 
 @Composable
-fun DashedDivider() {
-    Spacer(Modifier.fillMaxWidth().height(1.dp).background(LineSoft))
+fun HairlineDivider(modifier: Modifier = Modifier) {
+    Spacer(modifier.fillMaxWidth().height(1.dp).background(Hairline))
 }
 
 fun phaseLabel(trip: Trip): String = when (val phase = tripPhase(trip)) {
@@ -390,11 +437,3 @@ fun phaseLabel(trip: Trip): String = when (val phase = tripPhase(trip)) {
     TripPhase.Undated -> "Dates open"
 }
 
-fun tripCode(trip: Trip): String {
-    val words = (trip.destination ?: trip.name).replace(Regex("[^A-Za-z ]"), " ").trim().split(Regex("\\s+")).filter(String::isNotBlank)
-    return when {
-        words.size >= 3 -> words.take(3).joinToString("") { it.take(1) }
-        words.size == 2 -> words[0].take(2) + words[1].take(1)
-        else -> words.firstOrNull()?.take(3)?.padEnd(3, 'X') ?: "WYF"
-    }.uppercase()
-}

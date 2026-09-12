@@ -28,52 +28,39 @@ struct TripDetailScreen: View {
     Group {
       if let trip {
         ScrollView {
-          LazyVStack(alignment: .leading, spacing: 20) {
-            if let notice = store.notice { Notice(text: notice) }
-            TripArtwork(trip: trip, url: store.coverURL(trip.coverPath)).clipShape(
-              RoundedRectangle(cornerRadius: 22))
-            Text(phaseLabel(trip).uppercased()).font(.caption.bold()).foregroundStyle(Palette.clay)
-            Text(trip.name).typeStyle(.displaySmall)
-            Text(
-              [trip.destination, trip.startDate, trip.endDate].compactMap { $0 }.joined(
-                separator: " · ")
-            )
-            .typeStyle(.bodyMedium).foregroundStyle(Palette.soft)
-            budget(trip)
-            breakdown(trip)
-            Text("Ledger").typeStyle(.headlineSmall)
-            TextField("Search titles and notes", text: $query).padding(14)
-              .background(Palette.card, in: Capsule()).accessibilityLabel("Search expenses")
-            filters
+          LazyVStack(alignment: .leading, spacing: 24) {
+            if let notice = store.notice { Notice(text: notice).padding(.horizontal, 24) }
+            hero(trip)
+            bookingPanel(trip).padding(.horizontal, 24)
+            breakdown(trip).padding(.horizontal, 24)
+            VStack(alignment: .leading, spacing: 12) {
+              Text("Ledger").typeStyle(.headlineSmall)
+              searchField
+              filters
+            }.padding(.horizontal, 24)
             if filtered.isEmpty {
-              ContentUnavailableView(
-                "No expenses", systemImage: "wallet.pass",
-                description: Text(
-                  entries.isEmpty
-                    ? "Add the first cost when it lands." : "No entries match these filters."))
+              ledgerEmptyState
             }
             ForEach(
               Array(Dictionary(grouping: filtered, by: \.spentOn).keys.sorted().reversed()),
               id: \.self
             ) { day in
-              Text(day).font(.caption.bold()).foregroundStyle(Palette.soft).padding(.top, 10)
+              Text(shortDate(day) ?? day).typeStyle(.labelMedium).foregroundStyle(Palette.ash)
+                .padding(.horizontal, 24).padding(.top, 4)
               ForEach(filtered.filter { $0.spentOn == day }) { entry in
                 Button {
                   editing = entry
                 } label: {
                   expenseRow(entry, currency: trip.currency)
-                }.buttonStyle(.plain)
-                Divider()
+                }.buttonStyle(.plain).padding(.horizontal, 24)
               }
             }
-          }.padding(20).frame(maxWidth: 700).frame(maxWidth: .infinity)
+            Spacer(minLength: 8)
+          }.frame(maxWidth: 700).frame(maxWidth: .infinity)
         }.refreshable { await store.refresh() }
-          .safeAreaInset(edge: .bottom) {
-            PrimaryButton(title: "Add expense") {
-              editing = Expense(tripId: tripId, userId: store.userId ?? "", category: .food)
-            }
-            .padding(.horizontal, 20).padding(.vertical, 10).background(Palette.paper)
-          }
+          // Mobile collapses the sticky booking panel to a bottom-anchored bar:
+          // the figure on the left, the one Rausch action on the right.
+          .safeAreaInset(edge: .bottom) { reserveBar(trip) }
           .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
               Menu {
@@ -115,25 +102,79 @@ struct TripDetailScreen: View {
           "Trip unavailable", systemImage: "ticket",
           description: Text("It may have been deleted, or you may no longer be a member."))
       }
-    }.paperScreen().navigationTitle(trip?.name ?? "Trip").navigationBarTitleDisplayMode(.inline)
+    }.canvasScreen().navigationTitle(trip?.name ?? "Trip").navigationBarTitleDisplayMode(.inline)
+      .toolbarBackground(Palette.canvas, for: .navigationBar)
+      .toolbarBackground(.visible, for: .navigationBar)
   }
 
+  /// The hero: one 16:9 photograph at 20pt radius, then the listing title and
+  /// its facts stacked underneath. Text never sits on the photograph.
+  private func hero(_ trip: Trip) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 16 / 9)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.panel))
+      VStack(alignment: .leading, spacing: 4) {
+        Text(trip.name).typeStyle(.titleLarge).fixedSize(horizontal: false, vertical: true)
+        TripMeta(trip: trip).padding(.top, 4)
+        Text(phaseLabel(trip)).typeStyle(.labelMedium).foregroundStyle(Palette.ink)
+      }.padding(.top, 16)
+    }.padding(.horizontal, 24)
+  }
+
+  /// The search pill: full 32pt radius, hairline border, one soft shadow.
+  private var searchField: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .medium))
+        .foregroundStyle(Palette.ink)
+      TextField("Search titles and notes", text: $query).typeStyle(.bodyMedium)
+        .accessibilityLabel("Search expenses")
+    }
+    .padding(.horizontal, 16).frame(height: 48)
+    .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.pill))
+    .overlay(RoundedRectangle(cornerRadius: Radius.pill).stroke(Palette.hairline, lineWidth: 1))
+    .shadow(color: .black.opacity(0.04), radius: 3, x: 0, y: 2)
+  }
+
+  /// Outlined pills: the system's secondary control, never a filled one.
   private var filters: some View {
-    HStack {
-      Picker("Category", selection: $category) {
-        Text("All categories").tag("")
-        ForEach(WayfareCore.Category.allCases, id: \.self) { Text($0.label).tag($0.rawValue) }
+    HStack(spacing: 8) {
+      filterMenu(
+        label: WayfareCore.Category(rawValue: category)?.label ?? "All categories",
+        selection: $category,
+        options: [("All categories", "")]
+          + WayfareCore.Category.allCases.map { ($0.label, $0.rawValue) })
+      let members = store.members.filter { $0.tripId == tripId }
+      if members.count > 1 {
+        filterMenu(
+          label: payer.isEmpty ? "All travellers" : store.name(for: payer),
+          selection: $payer,
+          options: [("All travellers", "")] + members.map { (store.name(for: $0.userId), $0.userId) }
+        )
       }
-      Picker("Traveller", selection: $payer) {
-        Text("All travellers").tag("")
-        ForEach(store.members.filter { $0.tripId == tripId }) {
-          Text(store.name(for: $0.userId)).tag($0.userId)
-        }
-      }
-    }.pickerStyle(.menu)
+    }
   }
 
-  private func budget(_ trip: Trip) -> some View {
+  private func filterMenu(label: String, selection: Binding<String>, options: [(String, String)])
+    -> some View
+  {
+    Menu {
+      Picker("", selection: selection) {
+        ForEach(options, id: \.1) { Text($0.0).tag($0.1) }
+      }
+    } label: {
+      HStack(spacing: 6) {
+        Text(label).typeStyle(.labelLarge).lineLimit(1)
+        Image(systemName: "chevron.down").font(.system(size: 12, weight: .medium))
+      }
+      .foregroundStyle(Palette.ink).frame(maxWidth: .infinity).frame(height: 48)
+      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.panel))
+      .overlay(RoundedRectangle(cornerRadius: Radius.panel).stroke(Palette.hairline, lineWidth: 1))
+    }
+  }
+
+  /// The booking panel, inline on a phone: white card, hairline border, the
+  /// layered lift, and the figure set large at the top the way a price is.
+  private func bookingPanel(_ trip: Trip) -> some View {
     let summary = budgetSummary(trip, expenses: entries)
     let showRemaining: Bool
     if case .active = tripPhase(trip) {
@@ -141,75 +182,150 @@ struct TripDetailScreen: View {
     } else {
       showRemaining = false
     }
-    return VStack(alignment: .leading, spacing: 14) {
+    let over = showRemaining && summary.remaining < 0
+    return VStack(alignment: .leading, spacing: 0) {
+      HStack(alignment: .lastTextBaseline, spacing: 0) {
+        Text(money(showRemaining ? abs(summary.remaining) : summary.spent, trip.currency))
+          .typeStyle(.displaySmall).monospacedDigit()
+          .foregroundStyle(over ? Palette.errorRed : Palette.ink)
+        Text(showRemaining ? (over ? " over" : " left") : " spent")
+          .typeStyle(.bodyLarge).foregroundStyle(Palette.ash)
+      }
       Text(
-        showRemaining ? (summary.remaining < 0 ? "Over budget" : "Budget remaining") : "Total spent"
-      ).foregroundStyle(Palette.soft)
-      Text(money(showRemaining ? abs(summary.remaining) : summary.spent, trip.currency))
-        .typeStyle(.displaySmall).monospacedDigit()
+        trip.budget > 0
+          ? "\(money(summary.spent, trip.currency)) spent of \(money(trip.budget, trip.currency))"
+          : "No budget set — just keeping count."
+      ).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).padding(.top, 4)
       if trip.budget > 0 {
-        Text(
-          "\(money(summary.remaining, trip.currency)) remaining of \(money(trip.budget, trip.currency))"
-        ).typeStyle(.bodyMedium)
-        ProgressView(
-          value: min(1, max(0, NSDecimalNumber(decimal: summary.spent / trip.budget).doubleValue)))
+        BudgetMeter(spent: summary.spent, budget: trip.budget).padding(.top, 16)
       }
       if let available = summary.availablePerDay {
-        Text("\(money(available, trip.currency)) available/day remaining").typeStyle(.titleMedium)
-        Text("Across \(summary.daysLeft ?? 0) days, including today.").typeStyle(.bodySmall)
-          .foregroundStyle(Palette.soft)
+        Text("\(money(available, trip.currency)) available per day").typeStyle(.titleMedium)
+          .padding(.top, 16)
+        Text("Across \(summary.daysLeft ?? 0) days, including today.")
+          .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).padding(.top, 2)
       }
-      Divider()
-      HStack {
-        Text("Daily average").foregroundStyle(Palette.soft)
-        Spacer()
-        Text(summary.perDay.map { money($0, trip.currency) } ?? "—").monospacedDigit()
-      }.typeStyle(.bodyMedium)
+      // The rules strip: hairline above, facts in a row, nothing shouting.
+      HairlineDivider().padding(.top, 20)
+      HStack(alignment: .top, spacing: 12) {
+        panelFact(
+          summary.remaining < 0 ? "Over budget" : "Remaining",
+          trip.budget > 0 ? money(abs(summary.remaining), trip.currency) : "—")
+        panelFact("Daily average", summary.perDay.map { money($0, trip.currency) } ?? "—")
+        panelFact("Entries", "\(entries.filter { $0.syncState != .failed }.count)")
+      }.padding(.top, 16)
       if entries.contains(where: { $0.syncState == .pending }) {
-        Text("Includes entries waiting to sync.").typeStyle(.bodySmall).foregroundStyle(Palette.clay)
+        Text("Includes entries waiting to sync.").typeStyle(.bodySmall)
+          .foregroundStyle(Palette.ash).padding(.top, 16)
       }
-      Text("Group spending, not who owes whom.").typeStyle(.bodySmall).foregroundStyle(Palette.soft)
-    }.padding(20).background(Palette.card, in: RoundedRectangle(cornerRadius: 22))
+      Text("Group spending, not who owes whom.").typeStyle(.bodySmall)
+        .foregroundStyle(Palette.ash).padding(.top, 4)
+    }
+    .padding(24)
+    .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.card))
+    .overlay(RoundedRectangle(cornerRadius: Radius.card).stroke(Palette.hairline, lineWidth: 1))
+    .panelElevation()
   }
 
+  private func panelFact(_ label: String, _ value: String) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(label).typeStyle(.bodySmall).foregroundStyle(Palette.ash)
+      Text(value).typeStyle(.labelMedium).monospacedDigit()
+    }.frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  /// The amenity grid: a 24pt outline glyph, a 16pt label, and a hairline
+  /// between every row. Category glyphs stay monochrome — one accent only.
   private func breakdown(_ trip: Trip) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Spending by category").typeStyle(.titleMedium)
-      ForEach(WayfareCore.Category.allCases, id: \.self) { group in
-        let amount = entries.filter { $0.category == group && $0.syncState != .failed }.reduce(
-          Decimal.zero
-        ) { $0 + $1.amount }
-        if amount > 0 {
+    let groups = WayfareCore.Category.allCases.map { group in
+      (
+        group,
+        entries.filter { $0.category == group && $0.syncState != .failed }
+          .reduce(Decimal.zero) { $0 + $1.amount }
+      )
+    }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }
+    let total = groups.reduce(Decimal.zero) { $0 + $1.1 }
+    return VStack(alignment: .leading, spacing: 8) {
+      if !groups.isEmpty {
+        Text("Spending by category").typeStyle(.headlineSmall)
+        ForEach(Array(groups.enumerated()), id: \.element.0) { index, entry in
+          if index > 0 { HairlineDivider() }
           Button {
-            category = group.rawValue
+            category = entry.0.rawValue
           } label: {
-            HStack {
-              Label(group.label, systemImage: group.symbol)
-              Spacer()
-              Text(money(amount, trip.currency)).monospacedDigit()
-            }
-          }.foregroundStyle(Palette.ink)
+            HStack(spacing: 16) {
+              Image(systemName: entry.0.symbol).font(.system(size: 18))
+                .foregroundStyle(Palette.ink).frame(width: 24)
+              Text(entry.0.label).typeStyle(.bodyLarge)
+              Spacer(minLength: 8)
+              Text(percentText(entry.1, of: total)).typeStyle(.bodyMedium)
+                .foregroundStyle(Palette.ash)
+              Text(money(entry.1, trip.currency)).typeStyle(.labelMedium).monospacedDigit()
+            }.frame(minHeight: 44).padding(.vertical, 8)
+          }.buttonStyle(.plain).foregroundStyle(Palette.ink)
         }
       }
-    }.padding(.vertical, 8)
+    }
   }
 
+  private func percentText(_ amount: Decimal, of total: Decimal) -> String {
+    guard total > 0 else { return "0%" }
+    let ratio = (amount as NSDecimalNumber).doubleValue / (total as NSDecimalNumber).doubleValue
+    return "\(Int((ratio * 100).rounded()))%"
+  }
+
+  private var ledgerEmptyState: some View {
+    VStack(spacing: 14) {
+      Image(systemName: "wallet.pass").font(.system(size: 24))
+        .foregroundStyle(Palette.ash).frame(width: 56, height: 56)
+        .background(Palette.softCloud, in: Circle())
+      Text(
+        entries.isEmpty
+          ? "No expenses yet. Add the first one when it lands."
+          : "No entries match these filters."
+      ).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).multilineTextAlignment(.center)
+    }.frame(maxWidth: .infinity).padding(.vertical, 36).padding(.horizontal, 24)
+  }
+
+  /// The review-card row: a circular glyph where an avatar would sit, the title
+  /// in 16/600, its payer in 14/500 ash, and no border of its own.
   private func expenseRow(_ expense: Expense, currency: String) -> some View {
     HStack(spacing: 12) {
-      Image(systemName: expense.category.symbol).frame(width: 44, height: 44)
-        .foregroundStyle(Palette.clay).background(
-          Palette.clay.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-      VStack(alignment: .leading, spacing: 4) {
-        Text(expense.title).typeStyle(.titleMedium)
-        Text(store.name(for: expense.userId)).typeStyle(.bodySmall).foregroundStyle(Palette.soft)
+      Image(systemName: expense.category.symbol).font(.system(size: 16))
+        .foregroundStyle(Palette.ink).frame(width: 40, height: 40)
+        .background(Palette.softCloud, in: Circle())
+      VStack(alignment: .leading, spacing: 2) {
+        Text(expense.title).typeStyle(.titleMedium).lineLimit(1)
+        Text(store.name(for: expense.userId)).typeStyle(.bodyMedium)
+          .foregroundStyle(Palette.ash)
         if expense.syncState != .synced {
           Text(expense.syncState == .failed ? "Not saved · tap to resolve" : "Waiting to sync")
-            .typeStyle(.bodySmall).foregroundStyle(Palette.clay)
+            .typeStyle(.bodySmall)
+            .foregroundStyle(expense.syncState == .failed ? Palette.errorRed : Palette.ash)
         }
       }
-      Spacer()
+      Spacer(minLength: 8)
       Text(money(expense.amount, currency)).typeStyle(.titleMedium).monospacedDigit()
     }.padding(.vertical, 6)
+  }
+
+  private func reserveBar(_ trip: Trip) -> some View {
+    let summary = budgetSummary(trip, expenses: entries)
+    return VStack(spacing: 0) {
+      HairlineDivider()
+      HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 1) {
+          Text(money(summary.spent, trip.currency)).typeStyle(.titleMedium).monospacedDigit()
+            .lineLimit(1)
+          Text(trip.budget > 0 ? "of \(money(trip.budget, trip.currency))" : "logged so far")
+            .typeStyle(.bodySmall).foregroundStyle(Palette.ash).lineLimit(1)
+        }
+        Spacer(minLength: 0)
+        PrimaryButton(title: "Add expense", icon: "plus") {
+          editing = Expense(tripId: tripId, userId: store.userId ?? "", category: .food)
+        }.fixedSize(horizontal: true, vertical: false)
+      }.padding(.horizontal, 24).padding(.vertical, 12)
+    }.background(Palette.canvas)
   }
 
   private func perform(_ action: @escaping () async throws -> Void) {
@@ -233,21 +349,24 @@ struct SharingScreen: View {
       List {
         if let code = trip.shareCode {
           Section("Invite code") {
-            Text(code).font(.largeTitle.monospaced().bold()).textSelection(.enabled)
+            Text(code).typeStyle(.displaySmall).tracking(4).textSelection(.enabled)
             ShareLink(
               item: "Join \(trip.name) on Wayfare: \(webURL)/join/\(code)\nInvite code: \(code)"
             ) {
-              Label("Share invite", systemImage: "square.and.arrow.up")
+              Label("Share invite", systemImage: "square.and.arrow.up").typeStyle(.labelMedium)
             }
           }
         }
         Section("On this trip") {
           ForEach(store.members.filter { $0.tripId == trip.id }) { member in
-            HStack {
-              VStack(alignment: .leading) {
-                Text(store.name(for: member.userId))
-                Text(member.role == "owner" ? "Organiser" : "Member").typeStyle(.bodySmall)
-                  .foregroundStyle(Palette.soft)
+            HStack(spacing: 12) {
+              Text(store.name(for: member.userId).prefix(1).uppercased())
+                .typeStyle(.titleMedium).frame(width: 40, height: 40)
+                .background(Palette.softCloud, in: Circle())
+              VStack(alignment: .leading, spacing: 2) {
+                Text(store.name(for: member.userId)).typeStyle(.titleMedium)
+                Text(member.role == "owner" ? "Organiser" : "Member").typeStyle(.bodyMedium)
+                  .foregroundStyle(Palette.ash)
               }
               Spacer()
               if member.role != "owner",
@@ -255,13 +374,13 @@ struct SharingScreen: View {
               {
                 Button(member.userId == store.userId ? "Leave" : "Remove", role: .destructive) {
                   removing = member
-                }
+                }.typeStyle(.labelMedium).foregroundStyle(Palette.errorRed)
               }
             }
           }
         }
-        if let error { Notice(text: error) }
-      }.paperScreen().disabled(busy).navigationTitle("Travel companions")
+        if let error { Notice(text: error, isError: true) }
+      }.canvasScreen().disabled(busy).navigationTitle("Travel companions")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         .confirmationDialog(

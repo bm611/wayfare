@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,8 +88,8 @@ fun TripFormDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
-                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-                OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
+                OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     DateField("Depart", start, { start = it }, Modifier.weight(1f))
                     DateField("Return", end, { end = it }, Modifier.weight(1f))
@@ -100,7 +99,7 @@ fun TripFormDialog(
                     placeholder = { Text("2500") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     supportingText = { Text("Leave blank to track spend without a limit.") },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
                 )
             }
         },
@@ -129,6 +128,7 @@ fun TripFormDialog(
     )
     if (discard) AlertDialog(
         onDismissRequest = { discard = false },
+        shape = RoundedCornerShape(14.dp),
         title = { Text("Discard your changes?") },
         text = { Text("The details you entered have not been saved.") },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
@@ -157,13 +157,13 @@ fun ExpenseFormDialog(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(money(expense.amount, currency), style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
-                    Text("Paid by ${payer ?: "another traveller"}. Only the person who added this expense can edit it.", color = InkSoft)
+                    Text("Paid by ${payer ?: "another traveller"}. Only the person who added this expense can edit it.", color = Ash)
                     Text("${expense.category.label} · ${expense.spentOn}")
                     expense.originalCurrency?.let { Text("Originally ${expense.originalAmount} $it") }
                     expense.note?.let { Text(it) }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Close", color = Clay, fontWeight = FontWeight.SemiBold) } },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Close", color = Ink, fontWeight = FontWeight.SemiBold) } },
         )
         return
     }
@@ -202,15 +202,15 @@ fun ExpenseFormDialog(
                     OutlinedTextField(
                         amount, { amount = it }, Modifier.weight(1f), label = { Text("Amount") }, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
                     )
                     CurrencyPicker(paidIn, { paidIn = it })
                 }
                 if (paidIn != currency && converted != null) {
                     Notice("≈ ${money(converted, currency)} · 1 $paidIn = ${fx.rateBetween(paidIn, currency, snapshot)?.setScale(4, java.math.RoundingMode.HALF_UP)} $currency${if (snapshot.stale) " · offline rate" else ""}")
                 }
-                OutlinedTextField(title, { title = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("For") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-                Text("Category", color = InkSoft)
+                OutlinedTextField(title, { title = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("For") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
+                Text("Category", color = Ash)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Category.entries.forEach { item ->
                         FilterChip(
@@ -221,8 +221,8 @@ fun ExpenseFormDialog(
                             shape = RoundedCornerShape(50),
                             colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Ink,
-                                selectedLabelColor = Paper,
-                                selectedLeadingIconColor = Paper,
+                                selectedLabelColor = CanvasWhite,
+                                selectedLeadingIconColor = CanvasWhite,
                             ),
                         )
                     }
@@ -231,10 +231,10 @@ fun ExpenseFormDialog(
                 OutlinedTextField(
                     note, { note = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Note (optional)") },
                     minLines = 2, maxLines = 4,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
                 )
                 if (expense != null && onDelete != null) {
-                    OutlinedButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(50)) { Text("Delete entry", color = ClayDeep) }
+                    SecondaryButton("Delete entry", Modifier.fillMaxWidth(), pill = true) { confirmDelete = true }
                 }
             }
         },
@@ -269,13 +269,15 @@ fun ExpenseFormDialog(
     )
     if (confirmDelete && onDelete != null) AlertDialog(
         onDismissRequest = { confirmDelete = false },
+        shape = RoundedCornerShape(14.dp),
         title = { Text("Delete this entry?") },
         text = { Text("This cannot be undone.") },
-        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete", color = ClayDeep, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = { scope.launch { onDelete().onSuccess { onDismiss() }.onFailure { error = it.message }; confirmDelete = false } }) { Text("Delete", color = ErrorRed, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Keep") } },
     )
     if (discard) AlertDialog(
         onDismissRequest = { discard = false },
+        shape = RoundedCornerShape(14.dp),
         title = { Text("Discard your changes?") },
         text = { Text("The expense has not been saved.") },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
@@ -312,7 +314,7 @@ internal fun FormSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         sheetMaxWidth = Dp.Unspecified,
-        containerColor = Card,
+        containerColor = CanvasWhite,
         contentColor = Ink,
     ) {
         Column(Modifier.fillMaxWidth()) {
@@ -345,12 +347,15 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
         enabled = false,
         label = { Text(label) },
         trailingIcon = { Icon(Icons.Outlined.CalendarMonth, null) },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
+        // Disabled only so the picker owns the tap: it still has to read as a
+        // live field, so it keeps the hairline border and ink text.
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             disabledTextColor = Ink,
-            disabledBorderColor = Line,
-            disabledLabelColor = InkSoft,
-            disabledTrailingIconColor = InkSoft,
+            disabledBorderColor = Hairline,
+            disabledLabelColor = Ash,
+            disabledTrailingIconColor = Ash,
+            disabledContainerColor = CanvasWhite,
         ),
     )
     if (open) {
@@ -362,7 +367,7 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
                 TextButton(onClick = {
                     onChange(picker.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() })
                     open = false
-                }) { Text("Use date", color = Clay, fontWeight = FontWeight.SemiBold) }
+                }) { Text("Use date", color = Ink, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 Row {
@@ -378,8 +383,8 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
 private fun CurrencyPicker(value: String, onChange: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Column {
-        Text("Paid in", color = InkSoft, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
-        OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(50)) { Text(value) }
+        Text("Paid in", color = Ash, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+        SecondaryButton(value, pill = true) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             FxRepository.CURRENCIES.forEach { currency ->
                 DropdownMenuItem(text = { Text(currency) }, onClick = { onChange(currency); open = false })

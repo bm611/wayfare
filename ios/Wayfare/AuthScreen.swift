@@ -13,32 +13,38 @@ struct AuthScreen: View {
   var body: some View {
     NavigationStack {
       ScrollView {
-        VStack(alignment: .leading, spacing: 22) {
-          Label("wayfare", systemImage: "airplane.departure").typeStyle(.headlineSmall).padding(.top, 30)
-          Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
-            .typeStyle(.displaySmall).padding(.top, 30)
-          Text(
-            store.recovery
-              ? "Choose a new password for your account."
-              : "A little ledger for your next big chapter."
-          )
-          .foregroundStyle(Palette.soft)
+        VStack(alignment: .leading, spacing: 24) {
+          HStack(spacing: 8) {
+            Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
+            Text("wayfare").typeStyle(.headlineSmall)
+          }.foregroundStyle(Palette.rausch).padding(.top, 12)
+          VStack(alignment: .leading, spacing: 14) {
+            Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
+              .typeStyle(.displaySmall)
+            Text(
+              store.recovery
+                ? "Choose a new password for your account."
+                : "A little ledger for your next big chapter."
+            ).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading).padding(24)
+          .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
           if !store.configured {
             Notice(
               text:
                 "Add your public Supabase configuration to ios/Config/Local.xcconfig, then rebuild the app."
             )
           }
-          if let error { Notice(text: error) }
+          if let error { Notice(text: error, isError: true) }
           if let notice = store.notice { Notice(text: notice) }
           VStack(alignment: .leading, spacing: 16) {
             if signup && !store.recovery { field("Your name", text: $name, content: .name) }
             if !store.recovery { field("Email address", text: $email, content: .emailAddress) }
             VStack(alignment: .leading, spacing: 6) {
-              Text("Password").font(.subheadline.weight(.medium))
+              Text("Password").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
               SecureField("At least 6 characters", text: $password)
                 .textContentType(signup || store.recovery ? .newPassword : .password)
-                .padding(14).background(Palette.card, in: RoundedRectangle(cornerRadius: 12))
+                .typeStyle(.bodyLarge).authFieldChrome()
             }
           }
           PrimaryButton(
@@ -59,33 +65,37 @@ struct AuthScreen: View {
             }
           }.disabled(!store.configured)
           if !store.recovery {
-            Button("Continue with Google", systemImage: "person.badge.key") {
+            SecondaryButton(title: "Continue with Google", icon: "person.badge.key") {
               run { try await store.signInWithGoogle() }
-            }.buttonStyle(.bordered).frame(maxWidth: .infinity)
-            Button(signup ? "Already have an account? Sign in" : "New here? Create an account") {
-              signup.toggle()
-              error = nil
-              store.notice = nil
             }
-            Button("Forgot your password?") {
-              run {
-                try validateEmail()
-                try await store.resetPassword(email: email)
-              }
-            }
-            Button("Resend confirmation email") {
-              run {
-                try validateEmail()
-                try await store.resendConfirmation(email: email)
-              }
-            }.typeStyle(.bodyMedium)
+            VStack(spacing: 4) {
+              Button(signup ? "Already have an account? Sign in" : "New here? Create an account") {
+                signup.toggle()
+                error = nil
+                store.notice = nil
+              }.typeStyle(.labelMedium).foregroundStyle(Palette.ink)
+              Button("Forgot your password?") {
+                run {
+                  try validateEmail()
+                  try await store.resetPassword(email: email)
+                }
+              }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+              Button("Resend confirmation email") {
+                run {
+                  try validateEmail()
+                  try await store.resendConfirmation(email: email)
+                }
+              }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+            }.frame(maxWidth: .infinity)
           } else {
             Button("Back to sign in") { run { try await store.signOut() } }
+              .typeStyle(.labelMedium).foregroundStyle(Palette.ink)
+              .frame(maxWidth: .infinity)
           }
         }
         .disabled(busy || !store.configured).padding(24).frame(maxWidth: 480)
         .frame(maxWidth: .infinity)
-      }.paperScreen()
+      }.canvasScreen()
     }
   }
 
@@ -93,11 +103,11 @@ struct AuthScreen: View {
     -> some View
   {
     VStack(alignment: .leading, spacing: 6) {
-      Text(label).font(.subheadline.weight(.medium))
+      Text(label).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
       TextField(label, text: text).textContentType(content)
         .textInputAutocapitalization(content == .name ? .words : .never)
         .keyboardType(content == .emailAddress ? .emailAddress : .default).autocorrectionDisabled()
-        .padding(14).background(Palette.card, in: RoundedRectangle(cornerRadius: 12))
+        .typeStyle(.bodyLarge).authFieldChrome()
     }
   }
 
@@ -114,6 +124,17 @@ struct AuthScreen: View {
       defer { busy = false }
       do { try await action() } catch { self.error = error.localizedDescription }
     }
+  }
+}
+
+extension View {
+  /// A text input: white behind a hairline border at the control radius. The
+  /// system never tints a field with the accent.
+  fileprivate func authFieldChrome() -> some View {
+    padding(.horizontal, 16).frame(height: 48)
+      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.control))
+      .overlay(
+        RoundedRectangle(cornerRadius: Radius.control).stroke(Palette.hairline, lineWidth: 1))
   }
 }
 

@@ -29,13 +29,15 @@ private final class StubProtocol: URLProtocol, @unchecked Sendable {
 
 @Suite(.serialized) @MainActor
 struct DataTests {
-  private func makeStore(directory: URL) -> AppStore {
+  private func makeStore(
+    directory: URL, writeSession: @escaping (Session) throws -> Void = { _ in }
+  ) -> AppStore {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [StubProtocol.self]
     return AppStore(
       configuration: .init(url: URL(string: "https://test.invalid")!, key: "public-test-key"),
       http: URLSession(configuration: config), defaults: UserDefaults(suiteName: "wayfare-tests")!,
-      directory: directory, readSession: { nil }, writeSession: { _ in }, clearSession: {})
+      directory: directory, readSession: { nil }, writeSession: writeSession, clearSession: {})
   }
   private func account(_ id: String = "alice") -> Session {
     Session(
@@ -44,6 +46,119 @@ struct DataTests {
   }
   private func temporary() -> URL {
     FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  }
+
+  @Test func successfulRefreshClearsOnlyItsOwnError() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = makeStore(directory: directory)
+    try store.adopt(account())
+    StubProtocol.handler = { _ in
+      (401, Data(#"{"code":"PGRST303","message":"JWT issued at future"}"#.utf8))
+    }
+    await store.refresh()
+    #expect(store.notice == "JWT issued at future")
+    await store.refresh()
+    #expect(store.notice == "JWT issued at future")
+
+    StubProtocol.handler = { _ in (200, Data("[]".utf8)) }
+    await store.refresh()
+    #expect(store.notice == nil)
+    #expect(store.userId == "alice")
+
+    StubProtocol.handler = { _ in
+      (401, Data(#"{"message":"JWT issued at future"}"#.utf8))
+    }
+    await store.refresh()
+    store.notice = "An expense could not be saved."
+    StubProtocol.handler = { _ in (200, Data("[]".utf8)) }
+    await store.refresh()
+    #expect(store.notice == "An expense could not be saved.")
+  }
+
+  @Test func oauthCodeExchangeStoresSessionAndPreservesPersistenceFailure() async throws {
+    let directory = temporary()
+    let defaults = UserDefaults(suiteName: "wayfare-tests")!
+    defaults.set("test-verifier", forKey: AppStore.verifierKey)
+    defer {
+      defaults.removeObject(forKey: AppStore.verifierKey)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    StubProtocol.handler = { request in
+      if request.url?.path == "/auth/v1/token" {
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.query == "grant_type=pkce")
+        return (
+          200,
+          Data(
+            #"{"access_token":"access","refresh_token":"refresh","expires_in":3600,"user":{"id":"google-user"}}"#
+              .utf8)
+        )
+      }
+      return (200, Data("[]".utf8))
+    }
+    let callback = URL(string: "wayfare-ios://auth?code=test-code")!
+    struct PersistenceFailure: LocalizedError {
+      var errorDescription: String? { "Keychain refused the session" }
+    }
+    let failingStore = makeStore(
+      directory: directory, writeSession: { _ in throw PersistenceFailure() })
+    do {
+      try await failingStore.completeAuthCallback(callback)
+      Issue.record("The session persistence error must reach the sign-in caller")
+    } catch {
+      #expect(error is PersistenceFailure)
+      #expect(failingStore.message(error) == "Keychain refused the session")
+    }
+    #expect(failingStore.userId == nil)
+
+    var saved: Session?
+    let store = makeStore(directory: directory, writeSession: { saved = $0 })
+    try await store.completeAuthCallback(callback)
+    #expect(store.userId == "google-user")
+    #expect(saved?.accessToken == "access")
+    #expect(saved?.refreshToken == "refresh")
+  }
+
+  @Test func oauthExchangeRejectionReachesCallerAndDeepLinkNotice() async throws {
+    let directory = temporary()
+    let defaults = UserDefaults(suiteName: "wayfare-tests")!
+    defaults.set("test-verifier", forKey: AppStore.verifierKey)
+    defer { defaults.removeObject(forKey: AppStore.verifierKey) }
+    let store = makeStore(directory: directory)
+    StubProtocol.handler = { _ in
+      (400, Data(#"{"error_description":"Code verifier does not match"}"#.utf8))
+    }
+    let callback = URL(string: "wayfare-ios://auth?code=rejected-code")!
+    do {
+      try await store.completeAuthCallback(callback)
+      Issue.record("The exchange failure must not be swallowed")
+    } catch { #expect(store.message(error) == "Code verifier does not match") }
+    await store.handleURL(callback)
+    #expect(store.notice == "Code verifier does not match")
+    #expect(store.userId == nil)
+  }
+
+  @Test(arguments: [
+    ("wayfare-ios://auth?error=access_denied&error_description=Access%20denied", "Access denied"),
+    (
+      "wayfare-ios://auth",
+      "Sign-in returned without a valid authentication code or session. Try signing in again."
+    ),
+    (
+      "wayfare-ios://auth?code=orphan",
+      "This sign-in attempt has expired on this device. Start sign-in again."
+    ),
+  ])
+  func oauthInvalidCallbacksFailWithoutNetwork(callback: String, expected: String) async throws {
+    UserDefaults(suiteName: "wayfare-tests")!.removeObject(forKey: AppStore.verifierKey)
+    StubProtocol.requests = []
+    let store = makeStore(directory: temporary())
+    do {
+      try await store.completeAuthCallback(URL(string: callback)!)
+      Issue.record("Invalid callbacks must fail explicitly")
+    } catch { #expect(store.message(error) == expected) }
+    #expect(StubProtocol.requests.isEmpty)
   }
 
   @Test func offlineExpenseSurvivesRestartAndReconcilesWithoutSecondInsert() async throws {

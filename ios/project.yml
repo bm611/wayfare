@@ -27,6 +27,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.wayfare.app.ios
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Config/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/Wayfare.entitlements
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: NO
 schemes:
   Wayfare:
     build:

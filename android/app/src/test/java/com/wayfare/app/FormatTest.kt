@@ -47,17 +47,17 @@ class FormatTest {
     }
 
     @Test fun `short dates read as uppercase month and day`() {
-        assertEquals("SEP 10", shortDate(LocalDate.of(2026, 9, 10)))
-        assertEquals("JAN 1", shortDate(LocalDate.of(2026, 1, 1)))
+        assertEquals("Sep 10", shortDate(LocalDate.of(2026, 9, 10)))
+        assertEquals("Jan 1", shortDate(LocalDate.of(2026, 1, 1)))
     }
 
     @Test fun `date ranges cover every combination of open ends`() {
         val start = LocalDate.of(2026, 9, 10)
         val end = LocalDate.of(2026, 9, 20)
         assertEquals("Dates open", dateRange(null, null))
-        assertEquals("From SEP 10", dateRange(start, null))
-        assertEquals("Until SEP 20", dateRange(null, end))
-        assertEquals("SEP 10 — SEP 20", dateRange(start, end))
+        assertEquals("From Sep 10", dateRange(start, null))
+        assertEquals("Until Sep 20", dateRange(null, end))
+        assertEquals("Sep 10 — Sep 20", dateRange(start, end))
     }
 
     @Test fun `day labels name today and yesterday`() {

@@ -22,14 +22,14 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,18 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wayfare.app.AppContainer
 import com.wayfare.app.core.TripPhase
-import com.wayfare.app.core.TripSummary
-import com.wayfare.app.core.money
 import com.wayfare.app.core.tripPhase
 import com.wayfare.app.feature.TripsViewModel
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 
 @Composable
 fun TripsScreen(
@@ -82,97 +78,97 @@ fun TripsScreen(
 
     OnResume(viewModel::onResume)
 
-    Scaffold(containerColor = Paper) { insets ->
+    Scaffold(containerColor = CanvasWhite) { insets ->
         PullToRefreshBox(
             isRefreshing = state.refreshing,
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize().padding(insets),
         ) {
             LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
+                Modifier.fillMaxSize(),
+                // Photographs read as distinct objects only if the canvas between
+                // them is wide enough to be read as canvas.
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
+                // Top nav: wordmark, circular controls, one hairline underneath.
                 item {
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Brand(Modifier.weight(1f))
-                        IconButton(
-                            onClick = { showJoin = true },
-                            modifier = Modifier.clip(CircleShape).background(PaperDeep).size(48.dp),
-                        ) { Icon(Icons.Outlined.ConfirmationNumber, "Join a trip", Modifier.size(20.dp)) }
-                        Spacer(Modifier.size(8.dp))
-                        Box {
-                            IconButton(
-                                onClick = { showMenu = true },
-                                modifier = Modifier.clip(CircleShape).background(PaperDeep).size(48.dp),
-                            ) { Icon(Icons.Outlined.Person, "Account", Modifier.size(20.dp)) }
-                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("Refresh") },
-                                    leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
-                                    onClick = { showMenu = false; viewModel.refresh() },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Sign out") },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
-                                    onClick = { showMenu = false; onSignOut() },
-                                )
+                    Column {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Brand(Modifier.weight(1f))
+                            CircleIconButton(Icons.Outlined.ConfirmationNumber, "Join a trip") { showJoin = true }
+                            Spacer(Modifier.size(8.dp))
+                            Box {
+                                CircleIconButton(Icons.Outlined.Person, "Account") { showMenu = true }
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Refresh") },
+                                        leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
+                                        onClick = { showMenu = false; viewModel.refresh() },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Sign out") },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
+                                        onClick = { showMenu = false; onSignOut() },
+                                    )
+                                }
                             }
                         }
+                        HairlineDivider()
                     }
                 }
                 item {
-                    Column {
-                        Text("Your next chapter.", style = androidx.compose.material3.MaterialTheme.typography.displaySmall)
+                    Column(Modifier.padding(horizontal = 24.dp)) {
+                        Text("Your trips", style = MaterialTheme.typography.displaySmall)
                         Text(
                             if (state.trips.isEmpty()) "Your first journey is waiting."
                             else "${state.trips.size} ${if (state.trips.size == 1) "trip" else "trips"}. All your plans, in one place.",
-                            Modifier.padding(top = 6.dp, bottom = 18.dp),
-                            color = InkSoft,
-                            fontSize = 15.sp,
+                            Modifier.padding(top = 6.dp, bottom = 20.dp),
+                            color = Ash,
+                            style = MaterialTheme.typography.bodyLarge,
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            PrimaryButton("New trip", icon = Icons.Outlined.Add) { showTripForm = true }
-                            TextButton(onClick = { showJoin = true }, modifier = Modifier.padding(start = 12.dp)) {
-                                Text("Join a friend", color = Ink, fontWeight = FontWeight.SemiBold)
-                            }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PrimaryButton("New trip", Modifier.weight(1f), icon = Icons.Outlined.Add) { showTripForm = true }
+                            SecondaryButton("Join friend", Modifier.weight(1f)) { showJoin = true }
                         }
                     }
                 }
-                state.error?.let { message -> item { Notice(message, true) } }
+                state.error?.let { message ->
+                    item { Notice(message, true, Modifier.padding(horizontal = 24.dp)) }
+                }
                 if (state.loading) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Clay)
+                            CircularProgressIndicator(color = Rausch)
                         }
                     }
                 } else if (state.trips.isEmpty()) {
                     item {
                         Column(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(PaperDeep).padding(24.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                                .clip(RoundedCornerShape(14.dp)).background(SoftCloud).padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(
-                                Modifier.size(72.dp).clip(CircleShape).background(ClayWash),
+                                Modifier.size(64.dp).clip(CircleShape).background(CanvasWhite),
                                 contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.Explore, null, tint = Clay, modifier = Modifier.size(32.dp)) }
+                            ) { Icon(Icons.Outlined.Explore, null, tint = Rausch, modifier = Modifier.size(28.dp)) }
                             Text(
                                 "Good trips start here",
                                 Modifier.padding(top = 18.dp),
-                                fontSize = 19.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.titleLarge,
                             )
                             Text(
                                 "Add a trip, set a budget, and log each cost as it lands.",
                                 Modifier.padding(top = 6.dp),
-                                color = InkSoft,
-                                fontSize = 14.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = Ash,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
                             )
-                            TextButton(onClick = { showJoin = true }, Modifier.padding(top = 6.dp)) {
-                                Text("I have an invite code", color = Clay, fontWeight = FontWeight.SemiBold)
+                            TextButton(onClick = { showJoin = true }, Modifier.padding(top = 8.dp)) {
+                                Text("I have an invite code", color = Ink, style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -186,22 +182,24 @@ fun TripsScreen(
                     sections.forEach { (title, trips) ->
                         if (trips.isNotEmpty()) {
                             item(key = title) {
-                                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(title, style = MaterialTheme.typography.headlineSmall)
                                     Text(
                                         trips.size.toString(),
                                         Modifier.padding(start = 8.dp),
-                                        color = InkFaint,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        color = Ash,
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }
                             }
                             items(trips, key = { it.trip.id }) { summary ->
-                                TicketCard(
+                                ListingCard(
                                     summary = summary,
                                     coverUrl = container.repository.coverUrl(summary.trip.coverPath),
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
                                     onClick = { onOpenTrip(summary.trip.id) },
                                 )
                             }
@@ -243,13 +241,20 @@ private fun JoinTripDialog(
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Join a trip", fontWeight = FontWeight.Bold) },
+        shape = RoundedCornerShape(14.dp),
+        title = { Text("Join a trip", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column {
-                Text("Enter the eight-character code your travel companion sent you.", color = InkSoft)
+                Text(
+                    "Enter the eight-character code your travel companion sent you.",
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 OutlinedTextField(
                     code, { code = it.uppercase().filter(Char::isLetterOrDigit).take(8) },
                     Modifier.fillMaxWidth().padding(top = 16.dp), label = { Text("Invite code") }, singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = wayfareFieldColors(),
                 )
                 error?.let { Notice(it, true, Modifier.padding(top = 12.dp)) }
             }
@@ -262,8 +267,27 @@ private fun JoinTripDialog(
                     onJoin(code).onFailure { error = it.message ?: "That code did not work." }
                     busy = false
                 }
-            }) { Text(if (busy) "Joining…" else "Join", color = Clay, fontWeight = FontWeight.SemiBold) }
+            }) { Text(if (busy) "Joining…" else "Join", color = Rausch, style = MaterialTheme.typography.labelMedium) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Ink) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Ink, style = MaterialTheme.typography.labelMedium) } },
     )
 }
+
+/**
+ * Inputs sit on white behind a hairline border and switch to Ink on focus —
+ * the system never tints a field with the accent.
+ */
+@Composable
+fun wayfareFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Ink,
+    unfocusedBorderColor = Hairline,
+    errorBorderColor = ErrorRed,
+    focusedTextColor = Charcoal,
+    unfocusedTextColor = Ink,
+    focusedLabelColor = Ash,
+    unfocusedLabelColor = Ash,
+    errorLabelColor = ErrorRed,
+    cursorColor = Ink,
+    focusedContainerColor = CanvasWhite,
+    unfocusedContainerColor = CanvasWhite,
+)

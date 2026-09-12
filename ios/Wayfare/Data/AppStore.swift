@@ -45,6 +45,7 @@ import WayfareCore
   private var sessionRefreshTask: Task<Session, Error>?
   private var dataRefreshTask: Task<Void, Never>?
   private var dataRefreshID: UUID?
+  private var refreshNotice: String?
   private var outboxSyncTask: Task<Void, Never>?
   private var outboxSyncID: UUID?
   private var outbox: [String: Expense] = [:]
@@ -367,8 +368,15 @@ import WayfareCore
         replace(item, in: &expenses)
       }
       guard marker == epoch, account == userId else { return }
+      if notice == refreshNotice { notice = nil }
+      refreshNotice = nil
       do { try persist() } catch { notice = "Could not save refreshed data: \(message(error))" }
-    } catch { if marker == epoch { notice = message(error) } }
+    } catch {
+      if marker == epoch {
+        refreshNotice = message(error)
+        notice = refreshNotice
+      }
+    }
   }
 
   public func refreshFX() async {
@@ -390,34 +398,45 @@ import WayfareCore
     guard let expected = try? callbackURL(), url.scheme == expected.scheme,
       url.host == expected.host
     else { return }
+    do { try await completeAuthCallback(url) } catch { notice = message(error) }
+  }
+
+  // Browser sign-in must receive the original exchange/persistence error, not a
+  // generic "no data" error inferred from the absence of a session afterwards.
+  func completeAuthCallback(_ url: URL) async throws {
+    let expected = try callbackURL()
+    guard url.scheme == expected.scheme, url.host == expected.host else {
+      throw StoreError.invalidAuthCallback
+    }
     let marker = epoch
     let values = Self.parameters(url)
     if let error = values["error_description"] ?? values["error"] {
-      notice = error
-      return
+      throw StoreError.oauthFailure(error)
     }
     recovery = values["type"] == "recovery"
-    do {
-      if let code = values["code"] {
-        let verifier = defaults.string(forKey: Self.verifierKey) ?? ""
-        try await acceptAuth(
-          request: try authRequest(
-            "token?grant_type=pkce", body: ["auth_code": code, "code_verifier": verifier]))
-      } else if let access = values["access_token"], let refresh = values["refresh_token"] {
-        var userRequest = try authRequest("user", body: nil)
-        userRequest.httpMethod = "GET"
-        let user: User = try await send(
-          userRequest, authenticated: false,
-          bearerOverride: access)
-        guard marker == epoch else { throw StoreError.accountChanged }
-        try adopt(
-          Session(
-            accessToken: access, refreshToken: refresh,
-            expiresAt: Date().addingTimeInterval(
-              TimeInterval(Int(values["expires_in"] ?? "3600") ?? 3600)), user: user))
-        await self.refresh()
+    if let code = values["code"], !code.isEmpty {
+      guard let verifier = defaults.string(forKey: Self.verifierKey), !verifier.isEmpty else {
+        throw StoreError.missingAuthVerifier
       }
-    } catch { notice = message(error) }
+      try await acceptAuth(
+        request: try authRequest(
+          "token?grant_type=pkce", body: ["auth_code": code, "code_verifier": verifier]))
+    } else if let access = values["access_token"], let refresh = values["refresh_token"] {
+      var userRequest = try authRequest("user", body: nil)
+      userRequest.httpMethod = "GET"
+      let user: User = try await send(
+        userRequest, authenticated: false,
+        bearerOverride: access)
+      guard marker == epoch else { throw StoreError.accountChanged }
+      try adopt(
+        Session(
+          accessToken: access, refreshToken: refresh,
+          expiresAt: Date().addingTimeInterval(
+            TimeInterval(Int(values["expires_in"] ?? "3600") ?? 3600)), user: user))
+      await self.refresh()
+    } else {
+      throw StoreError.invalidAuthCallback
+    }
   }
 
   public func coverURL(_ path: String?) -> URL? {
@@ -472,8 +491,7 @@ import WayfareCore
           return
         }
       }
-      await handleURL(callback)
-      if userId == nil { throw StoreError.emptyResponse }
+      try await completeAuthCallback(callback)
     #else
       throw StoreError.oauthUnavailable
     #endif
@@ -837,7 +855,8 @@ private struct HTTPFailure: LocalizedError {
 }
 private enum StoreError: LocalizedError {
   case notConfigured, notSignedIn, emptyResponse, accountChanged, oauthStart, oauthUnavailable,
-    pendingCannotBeDiscarded
+    pendingCannotBeDiscarded, invalidAuthCallback, missingAuthVerifier
+  case oauthFailure(String)
   /// Carries the OSStatus: a keychain refusal is not a configuration problem, and
   /// reporting it as one sends you looking in the wrong place entirely.
   case keychain(OSStatus)
@@ -849,6 +868,11 @@ private enum StoreError: LocalizedError {
     case .accountChanged: "The account changed during the request."
     case .oauthStart: "Could not open Google sign-in."
     case .oauthUnavailable: "Google sign-in is unavailable."
+    case .invalidAuthCallback:
+      "Sign-in returned without a valid authentication code or session. Try signing in again."
+    case .missingAuthVerifier:
+      "This sign-in attempt has expired on this device. Start sign-in again."
+    case .oauthFailure(let detail): detail
     case .pendingCannotBeDiscarded:
       "A pending expense may already have reached the server. Retry it before discarding."
     case .keychain(let status):
@@ -941,6 +965,8 @@ private struct ExpensePayload: Encodable {
 
 private enum Keychain {
   static let service = "app.wayfare.session", account = "current"
+  static let fallbackKey = "app.wayfare.session.fallback"
+
   static func save(_ session: Session) throws {
     let data = try JSONEncoder().encode(session)
     let identity: [String: Any] = [
@@ -949,17 +975,35 @@ private enum Keychain {
     ]
     let status = SecItemUpdate(
       identity as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-    if status == errSecSuccess { return }
-    guard status == errSecItemNotFound else { throw StoreError.keychain(status) }
-    let query: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-      kSecAttrAccount as String: account,
-      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-      kSecValueData as String: data,
-    ]
-    let addStatus = SecItemAdd(query as CFDictionary, nil)
-    guard addStatus == errSecSuccess else { throw StoreError.keychain(addStatus) }
+    if status == errSecSuccess {
+      UserDefaults.standard.removeObject(forKey: fallbackKey)
+      return
+    }
+    if status == errSecItemNotFound {
+      let query: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+        kSecAttrAccount as String: account,
+        kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        kSecValueData as String: data,
+      ]
+      let addStatus = SecItemAdd(query as CFDictionary, nil)
+      if addStatus == errSecSuccess {
+        UserDefaults.standard.removeObject(forKey: fallbackKey)
+        return
+      }
+      if addStatus == errSecMissingEntitlement {
+        UserDefaults.standard.set(data, forKey: fallbackKey)
+        return
+      }
+      throw StoreError.keychain(addStatus)
+    }
+    if status == errSecMissingEntitlement {
+      UserDefaults.standard.set(data, forKey: fallbackKey)
+      return
+    }
+    throw StoreError.keychain(status)
   }
+
   static func load() -> Session? {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
@@ -967,17 +1011,27 @@ private enum Keychain {
       kSecMatchLimit as String: kSecMatchLimitOne,
     ]
     var result: CFTypeRef?
-    guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-      let data = result as? Data
-    else { return nil }
-    return try? JSONDecoder().decode(Session.self, from: data)
+    if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+      let data = result as? Data,
+      let session = try? JSONDecoder().decode(Session.self, from: data)
+    {
+      return session
+    }
+    if let data = UserDefaults.standard.data(forKey: fallbackKey),
+      let session = try? JSONDecoder().decode(Session.self, from: data)
+    {
+      return session
+    }
+    return nil
   }
+
   static func clear() {
     SecItemDelete(
       [
         kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
         kSecAttrAccount as String: account,
       ] as CFDictionary)
+    UserDefaults.standard.removeObject(forKey: fallbackKey)
   }
 }
 

@@ -16,121 +16,151 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wayfare.app.R
 
-// Mirrors the web app's "boarding pass" palette (src/index.css): warm paper,
-// ink, and a single clay accent. Values are the CSS custom properties verbatim
-// so the two clients stay in step.
-val Clay = Color(0xFFB5543C)
-val ClayDeep = Color(0xFF8D3D29)
-val ClayWash = Color(0xFFF4E3DC)
-/** Accent buttons ink their label in warmed-off-white, never pure white. */
-val OnClay = Color(0xFFFFF8F4)
+// Airbnb design language. One accent, one type family, disciplined grayscale for
+// everything else — the photography is meant to carry the colour. Token names
+// match `design.md` and the iOS `Palette` so the two clients stay in step.
 
-val Paper = Color(0xFFF7F2E9)
-val PaperDeep = Color(0xFFEFE7D9)
-val Card = Color(0xFFFFFCF6)
-val Ink = Color(0xFF1A1714)
-val InkSoft = Color(0xFF6F6459)
-val InkFaint = Color(0xFF786D61)
-val Line = Color(0xFFE3D9CA)
-val LineSoft = Color(0xFFEFE7DB)
+/** The signature coral-pink. Primary CTAs and the active-tab indicator only. */
+val Rausch = Color(0xFFFF385C)
+/** Pressed and active states of anything filled with [Rausch]. */
+val RauschDeep = Color(0xFFE00B41)
+/** Product-tier accents. The only colours allowed beside [Rausch]. */
+val PlusMagenta = Color(0xFF92174D)
+val LuxePurple = Color(0xFF460479)
 
-// The one status colour the web palette has no token for, borrowed from the
-// activities category so it sits on paper rather than glowing off it.
-val Success = Color(0xFF55713F)
+val CanvasWhite = Color(0xFFFFFFFF)
+/** Subsurface tint for sections that should step back from the white canvas. */
+val SoftCloud = Color(0xFFF7F7F7)
+/** The 1dp workhorse: every card-to-card and row-to-row divider. */
+val Hairline = Color(0xFFDDDDDD)
 
-val CategoryColors = mapOf(
-    "flights" to Color(0xFF40697D),
-    "stays" to Color(0xFF8A5A44),
-    "food" to Color(0xFFA8761F),
-    "activities" to Color(0xFF55713F),
-    "transport" to Color(0xFF66628A),
-    "shopping" to Color(0xFF9D4F61),
-    "other" to Color(0xFF7A736A),
-)
+/** The system's near-black. Roughly 90% of all text, and never pure #000000. */
+val Ink = Color(0xFF222222)
+/** Focused input text and one-step-down emphasis. */
+val Charcoal = Color(0xFF3F3F3F)
+/** Secondary labels and subtitle copy. */
+val Ash = Color(0xFF6A6A6A)
+/** Disabled controls and low-priority metadata. */
+val Mute = Color(0xFF929292)
+/** Tertiary dividers, icon strokes, placeholder avatars. */
+val Stone = Color(0xFFC1C1C1)
+
+val ErrorRed = Color(0xFFC13515)
+val DeepError = Color(0xFFB32505)
+/** Legal and informational links — the one non-monochrome link colour. */
+val InfoBlue = Color(0xFF428BFF)
 
 private val WayfareColors = lightColorScheme(
-    primary = Clay,
-    onPrimary = OnClay,
-    primaryContainer = ClayWash,
-    onPrimaryContainer = ClayDeep,
+    primary = Rausch,
+    onPrimary = CanvasWhite,
+    primaryContainer = Rausch,
+    onPrimaryContainer = CanvasWhite,
     secondary = Ink,
-    onSecondary = Paper,
-    background = Paper,
+    onSecondary = CanvasWhite,
+    background = CanvasWhite,
     onBackground = Ink,
-    surface = Card,
+    surface = CanvasWhite,
     onSurface = Ink,
-    surfaceVariant = PaperDeep,
-    onSurfaceVariant = InkSoft,
-    surfaceContainer = PaperDeep,
-    // Dialogs and menus lift off the warm ground as card stock.
-    surfaceContainerHigh = Card,
-    surfaceContainerHighest = Card,
-    outline = Line,
-    outlineVariant = LineSoft,
-    error = ClayDeep,
-    onError = OnClay,
+    surfaceVariant = SoftCloud,
+    onSurfaceVariant = Ash,
+    surfaceContainer = SoftCloud,
+    // Dialogs, sheets and menus are white cards on a white canvas; the hairline
+    // border and the layered shadow do the separating, never a tinted surface.
+    surfaceContainerHigh = CanvasWhite,
+    surfaceContainerHighest = CanvasWhite,
+    outline = Hairline,
+    outlineVariant = Hairline,
+    error = ErrorRed,
+    onError = CanvasWhite,
 )
 
-private val TravelFont = FontFamily(
-    Font(R.font.manrope, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+/**
+ * Airbnb Cereal VF is proprietary; Manrope is the closest face already bundled
+ * with both clients. Weight 400 is deliberately mapped to 500 so text that never
+ * names a weight still lands on the system's body weight rather than a lighter one.
+ */
+private val Cereal = FontFamily(
+    Font(R.font.manrope, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     Font(R.font.manrope, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     Font(R.font.manrope, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
     Font(R.font.manrope, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
+// One family carries 11sp badges through 32sp display. Display sizes compress
+// tracking to feel chiselled; body sizes stay at zero tracking for readability.
 private val WayfareTypography = Typography(
+    // Page display, e.g. "Your trips."
     displaySmall = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
-        fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-0.6).sp,
+        fontFamily = Cereal, fontWeight = FontWeight.Bold,
+        fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.6).sp,
     ),
+    // Section heading.
     headlineMedium = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
-        fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.4).sp,
+        fontFamily = Cereal, fontWeight = FontWeight.Bold,
+        fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp,
     ),
+    // Subsection heading / content divider.
     headlineSmall = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
-        fontSize = 22.sp, lineHeight = 27.sp, letterSpacing = (-0.2).sp,
+        fontFamily = Cereal, fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp, lineHeight = 26.sp, letterSpacing = (-0.44).sp,
     ),
+    // Listing title.
     titleLarge = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
-        fontSize = 19.sp, lineHeight = 24.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.18).sp,
     ),
+    // Subtitle bold: host name, city name.
     titleMedium = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp, lineHeight = 21.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp, lineHeight = 20.sp,
     ),
+    // Body medium — the system's "regular".
     bodyLarge = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
-        fontSize = 16.sp, lineHeight = 23.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.Medium,
+        fontSize = 16.sp, lineHeight = 22.sp,
     ),
+    // Caption medium: metadata and subtitle lines.
     bodyMedium = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
+        fontFamily = Cereal, fontWeight = FontWeight.Medium,
         fontSize = 14.sp, lineHeight = 20.sp,
     ),
+    // Caption small: dates, micro-metadata.
     bodySmall = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Normal,
+        fontFamily = Cereal, fontWeight = FontWeight.Medium,
         fontSize = 13.sp, lineHeight = 18.sp,
     ),
+    // Button large.
     labelLarge = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp, lineHeight = 20.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.Medium,
+        fontSize = 16.sp, lineHeight = 20.sp,
     ),
+    // Caption bold: numeric stats, small-text emphasis.
     labelMedium = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.2.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp, lineHeight = 20.sp,
     ),
+    // Compact badge. Sentence case: the system allows no uppercase above 8sp.
     labelSmall = TextStyle(
-        fontFamily = TravelFont, fontWeight = FontWeight.Bold,
-        fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.4.sp,
+        fontFamily = Cereal, fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp, lineHeight = 14.sp,
     ),
 )
 
+/**
+ * The one uppercase role in the system, reserved for price footnotes and
+ * decimal tails. Nothing larger than this may be set in capitals.
+ */
+val SuperscriptStyle = TextStyle(
+    fontFamily = Cereal, fontWeight = FontWeight.Bold,
+    fontSize = 8.sp, lineHeight = 10.sp, letterSpacing = 0.32.sp,
+)
+
 val WayfareShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    extraSmall = RoundedCornerShape(4.dp),   // inline tags and chips
+    small = RoundedCornerShape(8.dp),        // buttons, inputs, dropdowns
+    medium = RoundedCornerShape(14.dp),      // listing photography, containers, badges
+    large = RoundedCornerShape(20.dp),       // pill buttons, hero images, booking panel
+    extraLarge = RoundedCornerShape(32.dp),  // search pill, extra-large containers
 )
 
 @Composable

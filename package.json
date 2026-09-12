@@ -11,9 +11,14 @@
     "test:ui": "playwright test",
     "preview": "vite preview",
     "android:run": "bash scripts/android-run.sh",
+    "android:emulator": "bash scripts/android-emulator.sh",
     "android:build": "bash scripts/android-build.sh",
     "android:serve": "bash scripts/android-serve.sh",
-    "android:devices": "bash scripts/android-devices.sh"
+    "android:devices": "bash scripts/android-devices.sh",
+    "ios:run": "bash scripts/ios-run.sh",
+    "ios:simulator": "bash scripts/ios-simulator.sh",
+    "ios:build": "bash scripts/ios-build.sh",
+    "ios:devices": "bash scripts/ios-devices.sh"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

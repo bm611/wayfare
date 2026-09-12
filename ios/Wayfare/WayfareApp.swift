@@ -19,7 +19,7 @@ struct WayfareApp: App {
       // Compose sets bodyLarge as the default text style; anything that does not
       // name its own style should inherit Manrope rather than fall back to SF.
       .typeStyle(.bodyLarge)
-      .tint(Palette.clay)
+      .tint(Palette.rausch)
       .preferredColorScheme(.light)
       .task { await store.start() }
       .task(id: scenePhase) {

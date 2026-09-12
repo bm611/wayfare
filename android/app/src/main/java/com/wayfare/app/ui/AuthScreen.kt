@@ -2,7 +2,6 @@ package com.wayfare.app.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.draw.clip
@@ -20,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,9 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wayfare.app.AppContainer
 import com.wayfare.app.feature.AuthUiState
 import com.wayfare.app.feature.AuthViewModel
@@ -47,8 +43,7 @@ import io.github.jan.supabase.compose.auth.composeAuth
 
 private enum class AuthMode { SignIn, SignUp, Reset }
 
-private val FieldShape = RoundedCornerShape(14.dp)
-private val FocusedField = RoundedCornerShape(14.dp)
+private val FieldShape = RoundedCornerShape(8.dp)
 
 @Composable
 fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppContainer) {
@@ -67,37 +62,32 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
     )
 
     Column(
-        Modifier.fillMaxSize().background(Paper).safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
+        Modifier.fillMaxSize().background(CanvasWhite).safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start,
     ) {
         Brand()
-        Spacer(Modifier.height(24.dp))
-        Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(24.dp))) {
-            DestinationArtwork(modifier = Modifier.fillMaxSize())
+        Spacer(Modifier.height(20.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SoftCloud).padding(24.dp)) {
+            Text(
+                when (mode) {
+                    AuthMode.SignIn -> "Go places.\nKeep count."
+                    AuthMode.SignUp -> "Your next chapter."
+                    AuthMode.Reset -> "A fresh start."
+                },
+                style = androidx.compose.material3.MaterialTheme.typography.displaySmall,
+            )
+            Text(
+                when (mode) {
+                    AuthMode.SignIn -> "A little ledger for your next big chapter."
+                    AuthMode.SignUp -> "Create an account to keep every trip in one place."
+                    AuthMode.Reset -> "We’ll email you a secure password reset link."
+                },
+                Modifier.padding(top = 14.dp), color = Ash,
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+            )
         }
-        Spacer(Modifier.height(28.dp))
-        Text(
-            when (mode) {
-                AuthMode.SignIn -> "Go places.\nKeep the memories."
-                AuthMode.SignUp -> "Make room for the next stamp."
-                AuthMode.Reset -> "Find your way back in."
-            },
-            fontSize = 34.sp,
-            lineHeight = 39.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.6).sp,
-        )
-        Text(
-            when (mode) {
-                AuthMode.SignIn -> "A little planning. More room for the good stuff. Sign in to your trips and travel budget."
-                AuthMode.SignUp -> "Create an account to keep every trip in one place."
-                AuthMode.Reset -> "We’ll email you a secure password reset link."
-            },
-            Modifier.padding(top = 10.dp, bottom = 28.dp),
-            color = InkSoft,
-            lineHeight = 21.sp,
-        )
+        Spacer(Modifier.height(24.dp))
 
         if (mode != AuthMode.Reset) {
             GoogleButton(Modifier.fillMaxWidth(), busy = state.googleBusy) {
@@ -109,9 +99,9 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
                 Modifier.fillMaxWidth().padding(vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                HorizontalDivider(Modifier.weight(1f), color = LineSoft)
-                Text("or", Modifier.padding(horizontal = 12.dp), color = InkFaint, fontSize = 13.sp)
-                HorizontalDivider(Modifier.weight(1f), color = LineSoft)
+                HorizontalDivider(Modifier.weight(1f), color = Hairline)
+                Text("or", Modifier.padding(horizontal = 12.dp), color = Ash, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                HorizontalDivider(Modifier.weight(1f), color = Hairline)
             }
         }
 
@@ -130,7 +120,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 shape = FieldShape,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
+                colors = wayfareFieldColors(),
             )
         }
 
@@ -169,22 +159,22 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
         ) {
             Text(
                 if (mode == AuthMode.SignIn) "New here? Create an account" else "Back to sign in",
-                color = Clay,
-                fontWeight = FontWeight.SemiBold,
+                color = Ink,
+                style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
             )
         }
         if (mode == AuthMode.SignIn) {
             TextButton(
                 onClick = { mode = AuthMode.Reset; localError = null; viewModel.clearNotice() },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Forgot your password?", color = InkSoft) }
+            ) { Text("Forgot your password?", color = Ash) }
         }
         if (state.message?.contains("confirm", ignoreCase = true) == true && email.isNotBlank()) {
             TextButton(
                 enabled = !state.busy,
                 onClick = { viewModel.resendConfirmation(email) },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Resend confirmation", color = Clay, fontWeight = FontWeight.SemiBold) }
+            ) { Text("Resend confirmation", color = Ink, style = androidx.compose.material3.MaterialTheme.typography.labelMedium) }
         }
     }
 }
@@ -202,7 +192,7 @@ private fun AuthField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         shape = FieldShape,
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
+        colors = wayfareFieldColors(),
     )
 }
 
@@ -212,27 +202,27 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
     var confirmation by rememberSaveable { mutableStateOf("") }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
     Column(
-        Modifier.fillMaxSize().background(Paper).imePadding().padding(24.dp),
+        Modifier.fillMaxSize().background(CanvasWhite).imePadding().padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Brand()
-        Text("Choose a new password", Modifier.padding(top = 40.dp), fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+        Text("Choose a new password", Modifier.padding(top = 40.dp), style = androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text(
             "Once saved, this password works on both Android and the web app.",
             Modifier.padding(top = 10.dp, bottom = 26.dp),
-            color = InkSoft,
+            color = Ash,
         )
         OutlinedTextField(
             password, { password = it }, Modifier.fillMaxWidth(), label = { Text("New password") },
             visualTransformation = PasswordVisualTransformation(), singleLine = true,
             shape = FieldShape,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
+            colors = wayfareFieldColors(),
         )
         OutlinedTextField(
             confirmation, { confirmation = it }, Modifier.fillMaxWidth().padding(top = 12.dp),
             label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true,
             shape = FieldShape,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Clay, cursorColor = Clay),
+            colors = wayfareFieldColors(),
         )
         (localError ?: state.error)?.let { Notice(it, true, Modifier.padding(top = 14.dp)) }
         PrimaryButton("Save password", Modifier.fillMaxWidth().padding(top = 22.dp), state.busy) {

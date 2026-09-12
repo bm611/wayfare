@@ -22,7 +22,7 @@ attached_devices() {
 # address can't be remembered. Rediscover the already-paired phone over mDNS.
 CONNECTED_ADDR=""
 wireless_connect() {
-  local want="$1" services addr
+  local want="$1" services service addr resolved
 
   local i
   for i in 1 2 3; do
@@ -38,6 +38,17 @@ wireless_connect() {
     addr=$(printf '%s\n' "$services" | awk -v w="$want" 'index($1, w) > 0 {print $3; exit}')
   fi
   [ -z "$addr" ] && addr=$(printf '%s\n' "$services" | awk '{print $3; exit}')
+  [ -z "$addr" ] && return 1
+
+  # Some Android/adb versions advertise 0.0.0.0 even though the mDNS service
+  # resolves correctly. Resolve the service name with macOS Bonjour in that case.
+  if [[ "$addr" == 0.0.0.0:* ]] && command -v dns-sd >/dev/null 2>&1; then
+    service=$(printf '%s\n' "$services" | awk -v a="$addr" '$3 == a {print $1; exit}')
+    if [ -n "$service" ]; then
+      resolved=$(dns-sd -L "$service" _adb-tls-connect._tcp local. 2>&1 & pid=$!; sleep 2; kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true)
+      addr=$(printf '%s\n' "$resolved" | sed -n 's/.*can be reached at \([^:]*\):\([0-9][0-9]*\).*/\1:\2/p' | head -1)
+    fi
+  fi
   [ -z "$addr" ] && return 1
 
   echo "==> No device attached; found paired phone on Wi-Fi at $addr"
@@ -72,6 +83,21 @@ if [ -n "$TARGET" ]; then
   DEVICES="$TARGET"
 else
   DEVICES=$(attached_devices)
+fi
+
+if [ -z "$DEVICES" ]; then
+  # Auto-boot emulator if available
+  if command -v emulator >/dev/null 2>&1; then
+    echo "==> No active device found. Booting Android emulator (Pixel_9_Pro_XL_API_35)..."
+    nohup emulator -avd Pixel_9_Pro_XL_API_35 >/dev/null 2>&1 &
+    disown
+    echo "==> Waiting for emulator to boot..."
+    $ADB wait-for-device
+    while [ "$($ADB shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]; do
+      sleep 2
+    done
+    DEVICES=$(attached_devices)
+  fi
 fi
 
 if [ -z "$DEVICES" ]; then

@@ -22,5 +22,5 @@ if [ -n "$JAVA_HOME" ]; then
 fi
 
 if [ -n "$ANDROID_HOME" ]; then
-  export PATH="$ANDROID_HOME/platform-tools:$PATH"
+  export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
 fi

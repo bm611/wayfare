@@ -1,14 +1,15 @@
 package com.wayfare.app.ui
 
 import android.content.Intent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,31 +24,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -59,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,28 +103,24 @@ fun TripDetailScreen(
     OnResume(viewModel::onResume)
 
     Scaffold(
-        containerColor = Paper,
+        containerColor = CanvasWhite,
+        // The listing-detail chrome: circular controls on white, one hairline
+        // underneath, and the trip name carried by the hero rather than the bar.
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        trip?.name.orEmpty(),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
-                },
-                actions = {
-                    IconButton(onClick = viewModel::refresh) { Icon(Icons.Outlined.Refresh, "Refresh") }
+            Column {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CircleIconButton(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onClick = onBack)
+                    Spacer(Modifier.weight(1f))
+                    CircleIconButton(Icons.Outlined.Refresh, "Refresh", onClick = viewModel::refresh)
                     if (trip != null) {
-                        IconButton(onClick = { showShare = true }) { Icon(Icons.Outlined.Group, "Share") }
+                        CircleIconButton(Icons.Outlined.Group, "Share") { showShare = true }
                         if (trip.ownerId == accountId) {
                             Box {
-                                IconButton(onClick = { showActions = true }) { Icon(Icons.Outlined.MoreHoriz, "Trip options") }
+                                CircleIconButton(Icons.Outlined.MoreHoriz, "Trip options") { showActions = true }
                                 DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
                                     DropdownMenuItem(
                                         text = { Text("Edit trip") },
@@ -137,25 +128,48 @@ fun TripDetailScreen(
                                         onClick = { showActions = false; showEditTrip = true },
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Delete trip", color = ClayDeep) },
-                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ClayDeep) },
+                                        text = { Text("Delete trip", color = ErrorRed) },
+                                        leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ErrorRed) },
                                         onClick = { showActions = false; showDeleteTrip = true },
                                     )
                                 }
                             }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Paper),
-            )
+                }
+                HairlineDivider()
+            }
         },
+        // Mobile collapses the sticky booking panel to a bottom-anchored bar:
+        // the figure on the left, the one Rausch action on the right.
         bottomBar = {
             if (trip != null) {
-                Surface(color = Paper) {
-                    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
-                        PrimaryButton("Add expense", Modifier.fillMaxWidth(), icon = Icons.Outlined.Add) {
-                            editingExpense = null
-                            showExpense = true
+                val summary = budgetSummary(trip, state.expenses)
+                Column {
+                    HairlineDivider()
+                    Surface(color = CanvasWhite) {
+                        Row(
+                            Modifier.fillMaxWidth().navigationBarsPadding()
+                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    money(summary.spent, trip.currency),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    if (trip.budget.signum() > 0) "of ${money(trip.budget, trip.currency)}" else "logged so far",
+                                    color = Ash,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                )
+                            }
+                            PrimaryButton("Add expense", icon = Icons.Outlined.Add) {
+                                editingExpense = null
+                                showExpense = true
+                            }
                         }
                     }
                 }
@@ -164,11 +178,11 @@ fun TripDetailScreen(
     ) { insets ->
         when {
             state.loading && trip == null -> Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Clay)
+                CircularProgressIndicator(color = Rausch)
             }
-            trip == null -> Column(Modifier.padding(insets).padding(20.dp)) {
+            trip == null -> Column(Modifier.padding(insets).padding(24.dp)) {
                 Notice(state.error ?: "That trip is no longer available.", true)
-                TextButton(onClick = onBack) { Text("Back to all trips", color = Clay) }
+                TextButton(onClick = onBack) { Text("Back to all trips", color = Ink) }
             }
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing,
@@ -177,7 +191,6 @@ fun TripDetailScreen(
             ) {
                 TripDetailContent(
                     trip = trip,
-                    accountId = accountId,
                     state = state,
                     viewModel = viewModel,
                     coverUrl = container.repository.coverUrl(trip.coverPath),
@@ -239,17 +252,17 @@ fun TripDetailScreen(
     )
     if (trip != null && showDeleteTrip) AlertDialog(
         onDismissRequest = { showDeleteTrip = false },
-        title = { Text("Delete ${trip.name}?", fontWeight = FontWeight.Bold) },
-        text = { Text("The trip and its entire expense ledger will be removed for every traveller.") },
-        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete", color = Clay, fontWeight = FontWeight.SemiBold) } },
-        dismissButton = { TextButton(onClick = { showDeleteTrip = false }) { Text("Keep trip", color = Ink) } },
+        shape = RoundedCornerShape(14.dp),
+        title = { Text("Delete ${trip.name}?", style = MaterialTheme.typography.headlineSmall) },
+        text = { Text("The trip and its entire expense ledger will be removed for every traveller.", color = Ash) },
+        confirmButton = { TextButton(onClick = { scope.launch { viewModel.deleteTrip().onSuccess { onBack() }; showDeleteTrip = false } }) { Text("Delete", color = ErrorRed, style = MaterialTheme.typography.labelMedium) } },
+        dismissButton = { TextButton(onClick = { showDeleteTrip = false }) { Text("Keep trip", color = Ink, style = MaterialTheme.typography.labelMedium) } },
     )
 }
 
 @Composable
 private fun TripDetailContent(
     trip: Trip,
-    accountId: String,
     state: com.wayfare.app.feature.TripDetailUiState,
     viewModel: TripDetailViewModel,
     coverUrl: String?,
@@ -260,59 +273,58 @@ private fun TripDetailContent(
     // the web app would also show.
     val counted = state.expenses.filter { it.syncState != SyncState.Failed }
     val budget = budgetSummary(trip, state.expenses)
-    val spent = budget.spent
-    val remaining = budget.remaining
     val phase = tripPhase(trip)
-    val perDay = budget.perDay
-    val daysLeft = budget.daysLeft
-    val availablePerDay = budget.availablePerDay
 
     LazyColumn(
-        modifier.fillMaxSize().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        state.error?.let { item { Notice(it, true, Modifier.padding(top = 12.dp)) } }
+        state.error?.let { item { Notice(it, true, Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) } }
+        item { Hero(trip, coverUrl) }
         item {
-            HeroCard(trip, coverUrl, phase)
-        }
-        item {
-            BudgetCard(
+            BookingPanel(
                 trip = trip,
-                spent = spent,
-                remaining = remaining,
-                perDay = perDay,
-                availablePerDay = availablePerDay,
-                daysLeft = daysLeft,
+                spent = budget.spent,
+                remaining = budget.remaining,
+                perDay = budget.perDay,
+                availablePerDay = budget.availablePerDay,
+                daysLeft = budget.daysLeft,
                 entries = counted.size,
                 showRemaining = phase is TripPhase.Active && trip.budget.signum() > 0,
                 memberCount = state.members.size,
+                modifier = Modifier.padding(horizontal = 24.dp),
             )
         }
         if (counted.isNotEmpty()) item {
-            CategoryBreakdown(counted, trip.currency, viewModel::setCategory)
+            CategoryBreakdown(counted, trip.currency, viewModel::setCategory, Modifier.padding(horizontal = 24.dp))
         }
         item {
-            Text("Ledger", Modifier.padding(top = 4.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            OutlinedTextField(
-                state.query, viewModel::setQuery, Modifier.fillMaxWidth().padding(top = 12.dp),
-                placeholder = { Text("Search titles and notes", color = InkFaint) },
-                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = InkFaint) },
-                singleLine = true,
-                shape = RoundedCornerShape(50),
-            )
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterMenu(
-                    label = state.category?.label ?: "All categories",
-                    options = listOf("All categories" to null) + Category.entries.map { it.label to it },
-                    onSelect = viewModel::setCategory,
-                    modifier = Modifier.weight(1f),
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                Text("Ledger", style = MaterialTheme.typography.headlineSmall)
+                // The search pill: full 32dp radius, hairline border, one soft shadow.
+                OutlinedTextField(
+                    state.query, viewModel::setQuery,
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    placeholder = { Text("Search titles and notes", color = Ash) },
+                    leadingIcon = { Icon(Icons.Outlined.Search, null, tint = Ink, modifier = Modifier.size(18.dp)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(32.dp),
+                    colors = wayfareFieldColors(),
                 )
-                if (state.members.size > 1) FilterMenu(
-                    label = state.payerId?.let(viewModel::memberName) ?: "All travellers",
-                    options = listOf("All travellers" to null) + state.members.map { (it.displayName ?: "Traveller") to it.userId },
-                    onSelect = viewModel::setPayer,
-                    modifier = Modifier.weight(1f),
-                )
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterMenu(
+                        label = state.category?.label ?: "All categories",
+                        options = listOf("All categories" to null) + Category.entries.map { it.label to it },
+                        onSelect = viewModel::setCategory,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (state.members.size > 1) FilterMenu(
+                        label = state.payerId?.let(viewModel::memberName) ?: "All travellers",
+                        options = listOf("All travellers" to null) + state.members.map { (it.displayName ?: "Traveller") to it.userId },
+                        onSelect = viewModel::setPayer,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
         if (state.filteredExpenses.isEmpty()) item {
@@ -321,31 +333,35 @@ private fun TripDetailContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
-                    Modifier.size(60.dp).clip(CircleShape).background(PaperDeep),
+                    Modifier.size(56.dp).clip(CircleShape).background(SoftCloud),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Payments, null, tint = InkFaint, modifier = Modifier.size(26.dp)) }
+                ) { Icon(Icons.Outlined.Payments, null, tint = Ash, modifier = Modifier.size(24.dp)) }
                 Text(
                     if (state.expenses.isEmpty()) "No expenses yet. Add the first one when it lands."
                     else "No entries match these filters.",
                     Modifier.padding(top = 14.dp),
-                    color = InkSoft,
-                    fontSize = 14.sp,
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
         items(state.filteredExpenses, key = Expense::id) { expense ->
-            Box(Modifier.animateItem()) {
+            Box(Modifier.animateItem().padding(horizontal = 24.dp)) {
                 ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
             }
         }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(12.dp)) }
     }
 }
 
+/**
+ * The hero: one 16:9 photograph at 20dp radius, then the listing title and its
+ * facts stacked underneath. Text never sits on the photograph.
+ */
 @Composable
-private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
-    Column {
-        Box(Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(24.dp))) {
+private fun Hero(trip: Trip, coverUrl: String?) {
+    Column(Modifier.padding(horizontal = 24.dp)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(20.dp))) {
             DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) {
                 AsyncImage(
@@ -356,32 +372,21 @@ private fun HeroCard(trip: Trip, coverUrl: String?, phase: TripPhase) {
                 )
             }
         }
-        Text(
-            phaseLabel(trip),
-            Modifier.padding(top = 16.dp),
-            color = Clay,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.3.sp,
-        )
-        Text(
-            trip.name,
-            Modifier.padding(top = 4.dp),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.4).sp,
-        )
-        Text(
-            listOfNotNull(trip.destination, dateRange(trip.startDate, trip.endDate)).joinToString(" · ").ifBlank { "Dates open" },
-            Modifier.padding(top = 4.dp),
-            color = InkSoft,
-            fontSize = 14.sp,
-        )
+        Text(trip.name, Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
+        trip.destination?.takeIf { it.isNotBlank() }?.let {
+            MetaLabel(Icons.Outlined.Place, it, Modifier.padding(top = 8.dp))
+        }
+        MetaLabel(Icons.Outlined.CalendarMonth, dateRange(trip.startDate, trip.endDate), Modifier.padding(top = 4.dp))
+        Text(phaseLabel(trip), Modifier.padding(top = 4.dp), color = Ink, style = MaterialTheme.typography.labelMedium)
     }
 }
 
+/**
+ * The booking panel, inline on a phone: white card, hairline border, the
+ * layered lift, and the figure set large at the top the way a nightly price is.
+ */
 @Composable
-private fun BudgetCard(
+private fun BookingPanel(
     trip: Trip,
     spent: BigDecimal,
     remaining: BigDecimal,
@@ -391,148 +396,148 @@ private fun BudgetCard(
     entries: Int,
     showRemaining: Boolean,
     memberCount: Int,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = Card,
-        contentColor = Ink,
-        border = BorderStroke(1.dp, Line),
+    val shape = RoundedCornerShape(14.dp)
+    val over = showRemaining && remaining.signum() < 0
+    Column(
+        modifier.fillMaxWidth()
+            .panelElevation(shape)
+            .clip(shape)
+            .background(CanvasWhite)
+            .border(1.dp, Hairline, shape)
+            .padding(24.dp),
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(34.dp).clip(CircleShape).background(ClayWash),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Wallet, null, tint = Clay, modifier = Modifier.size(18.dp)) }
-                Text(
-                    if (showRemaining) if (remaining.signum() < 0) "Over budget" else "Budget remaining" else "Total spent",
-                    Modifier.padding(start = 10.dp),
-                    color = InkSoft,
-                    fontSize = 14.sp,
-                )
-            }
+        Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 money(if (showRemaining) remaining.abs() else spent, trip.currency),
-                Modifier.padding(top = 12.dp),
-                color = if (showRemaining && remaining.signum() < 0) ClayDeep else Ink,
-                fontSize = 38.sp,
+                color = if (over) ErrorRed else Ink,
+                fontSize = 32.sp,
+                lineHeight = 38.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp,
+                letterSpacing = (-0.6).sp,
             )
             Text(
-                if (trip.budget.signum() > 0) "${money(spent, trip.currency)} spent of ${money(trip.budget, trip.currency)}"
-                else "No budget set — just keeping count.",
-                Modifier.padding(top = 2.dp),
-                color = InkSoft,
-                fontSize = 13.sp,
-            )
-            availablePerDay?.let {
-                Text(
-                    "${money(it, trip.currency)} available/day remaining",
-                    Modifier.padding(top = 14.dp),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                )
-                Text(
-                    "Across $daysLeft ${if (daysLeft == 1L) "day" else "days"}, including today.",
-                    Modifier.padding(top = 2.dp),
-                    color = InkSoft,
-                    fontSize = 12.sp,
-                )
-            }
-            if (trip.budget.signum() > 0) {
-                Spacer(Modifier.height(16.dp))
-                BudgetMeter(spent, trip.budget, Modifier.clip(RoundedCornerShape(50)))
-            }
-            HorizontalDivider(Modifier.padding(vertical = 18.dp), color = LineSoft)
-            Row(Modifier.fillMaxWidth()) {
-                DetailMetric(if (remaining.signum() < 0) "Over budget" else "Remaining", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—", Modifier.weight(1f))
-                DetailMetric("Daily average", perDay?.let { money(it, trip.currency) } ?: "—", Modifier.weight(1f))
-                DetailMetric("Entries", entries.toString(), Modifier.weight(1f))
-            }
-            if (memberCount > 1) Text(
-                "Group budget · includes everyone’s expenses. This tracks spending, not who owes whom.",
-                Modifier.padding(top = 16.dp), color = InkSoft, fontSize = 12.sp,
+                if (showRemaining) if (over) " over" else " left" else " spent",
+                Modifier.padding(bottom = 3.dp),
+                color = Ash,
+                style = MaterialTheme.typography.bodyLarge,
             )
         }
+        Text(
+            if (trip.budget.signum() > 0) "${money(spent, trip.currency)} spent of ${money(trip.budget, trip.currency)}"
+            else "No budget set — just keeping count.",
+            Modifier.padding(top = 4.dp),
+            color = Ash,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (trip.budget.signum() > 0) {
+            Spacer(Modifier.height(16.dp))
+            BudgetMeter(spent, trip.budget)
+        }
+        availablePerDay?.let {
+            Spacer(Modifier.height(16.dp))
+            Text("${money(it, trip.currency)} available per day", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Across $daysLeft ${if (daysLeft == 1L) "day" else "days"}, including today.",
+                Modifier.padding(top = 2.dp),
+                color = Ash,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        // The rules strip: hairline above, facts in a row, nothing shouting.
+        Spacer(Modifier.height(20.dp))
+        HairlineDivider()
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            PanelFact(if (remaining.signum() < 0) "Over budget" else "Remaining", if (trip.budget.signum() > 0) money(remaining.abs(), trip.currency) else "—", Modifier.weight(1f))
+            PanelFact("Daily average", perDay?.let { money(it, trip.currency) } ?: "—", Modifier.weight(1f))
+            PanelFact("Entries", entries.toString(), Modifier.weight(1f))
+        }
+        if (memberCount > 1) Text(
+            "Group budget · includes everyone's expenses. This tracks spending, not who owes whom.",
+            Modifier.padding(top = 16.dp),
+            color = Ash,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
 @Composable
-private fun DetailMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun PanelFact(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
-        Text(label, color = InkSoft, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-        Text(value, Modifier.padding(top = 4.dp), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(label, color = Ash, style = MaterialTheme.typography.bodySmall)
+        Text(value, Modifier.padding(top = 4.dp), style = MaterialTheme.typography.labelMedium)
     }
 }
 
+/**
+ * The amenity grid: a 24dp outline glyph, a 16sp label, and a hairline between
+ * every row. Category glyphs stay monochrome — the palette allows one accent.
+ */
 @Composable
-private fun CategoryBreakdown(expenses: List<Expense>, currency: String, onSelect: (Category) -> Unit) {
+private fun CategoryBreakdown(
+    expenses: List<Expense>,
+    currency: String,
+    onSelect: (Category) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val total = expenses.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount }
     val groups = expenses.groupBy(Expense::category).mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount } }
         .toList().sortedByDescending { it.second }
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = Color.Transparent, border = BorderStroke(1.dp, LineSoft)) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Outlined.TrendingUp, null, tint = Ink, modifier = Modifier.size(18.dp))
-                Text("Spending by category", Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            }
-            groups.forEach { (category, amount) ->
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onSelect(category) }.padding(vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(categoryIcon(category), null, Modifier.size(22.dp), tint = CategoryColors.getValue(category.wireName))
-                    Text(category.label, Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
-                    val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
-                    Text("$percent%", color = InkFaint, fontSize = 12.sp)
-                    Text(money(amount, currency), Modifier.padding(start = 12.dp), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                }
+    Column(modifier.fillMaxWidth()) {
+        Text("Spending by category", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(8.dp))
+        groups.forEachIndexed { index, (category, amount) ->
+            if (index > 0) HairlineDivider()
+            Row(
+                Modifier.fillMaxWidth().clickable { onSelect(category) }.padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(categoryIcon(category), null, Modifier.size(24.dp), tint = Ink)
+                Text(category.label, Modifier.weight(1f).padding(start = 16.dp), style = MaterialTheme.typography.bodyLarge)
+                val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
+                Text("$percent%", color = Ash, style = MaterialTheme.typography.bodyMedium)
+                Text(money(amount, currency), Modifier.padding(start = 14.dp), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
 }
 
+/**
+ * The review-card row: a circular glyph where an avatar would sit, the title in
+ * 16/600, its date and payer in 14/500 ash, and no border of its own.
+ */
 @Composable
 private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared: Boolean, onClick: () -> Unit) {
-    Column {
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(48.dp).background(CategoryColors.getValue(expense.category.wireName).copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(categoryIcon(expense.category), expense.category.label, Modifier.size(23.dp), tint = CategoryColors.getValue(expense.category.wireName)) }
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(expense.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    listOfNotNull(dayLabel(expense.spentOn), payer.takeIf { shared }).joinToString(" · "),
-                    color = InkSoft, fontSize = 13.sp,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(money(expense.amount, currency), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                SyncBadge(expense.syncState)
-            }
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(SoftCloud),
+            contentAlignment = Alignment.Center,
+        ) { Icon(categoryIcon(expense.category), expense.category.label, Modifier.size(18.dp), tint = Ink) }
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text(expense.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOfNotNull(dayLabel(expense.spentOn), payer.takeIf { shared }).joinToString(" · "),
+                color = Ash,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
-        HorizontalDivider(color = LineSoft)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(money(expense.amount, currency), style = MaterialTheme.typography.titleMedium)
+            SyncBadge(expense.syncState)
+        }
     }
 }
 
+/** An outlined pill: the system's secondary control, never a filled one. */
 @Composable
 private fun <T> FilterMenu(label: String, options: List<Pair<String, T>>, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
-        OutlinedButton(
-            onClick = { open = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(50),
-        ) {
-            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.size(18.dp), tint = Ink)
-        }
+        SecondaryButton(label, Modifier.fillMaxWidth(), pill = true, icon = null) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { (text, value) -> DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); open = false }) }
         }
@@ -554,12 +559,13 @@ private fun ShareTripDialog(
     val link = "https://getwayfare.netlify.app/join/${trip.shareCode}"
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Share ${trip.name}", fontWeight = FontWeight.Bold) },
+        shape = RoundedCornerShape(14.dp),
+        title = { Text("Share ${trip.name}", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column {
                 trip.shareCode?.let {
-                    Text("INVITE CODE", color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text(it, Modifier.padding(vertical = 10.dp), fontSize = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+                    Text("Invite code", color = Ash, style = MaterialTheme.typography.bodyMedium)
+                    Text(it, Modifier.padding(vertical = 10.dp), fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
                     PrimaryButton("Share invite link", Modifier.fillMaxWidth()) {
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -567,29 +573,33 @@ private fun ShareTripDialog(
                         }, "Share trip"))
                     }
                 }
-                Text("ON THIS TRIP", Modifier.padding(top = 22.dp, bottom = 6.dp), color = InkFaint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                members.forEach { member ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("On this trip", Modifier.padding(top = 22.dp, bottom = 6.dp), color = Ash, style = MaterialTheme.typography.bodyMedium)
+                members.forEachIndexed { index, member ->
+                    if (index > 0) HairlineDivider()
+                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(38.dp).clip(CircleShape).background(PaperDeep),
+                            Modifier.size(40.dp).clip(CircleShape).background(SoftCloud),
                             contentAlignment = Alignment.Center,
-                        ) { Text((member.displayName ?: "T").take(1).uppercase(), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
-                        Text(member.displayName ?: "Traveller", Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
-                        Text(if (member.role == "owner") "Organiser" else "Member", color = InkSoft, fontSize = 12.sp)
-                        if (trip.ownerId == accountId && member.userId != accountId) IconButton(onClick = {
-                            scope.launch { onRemove(member.userId).onFailure { error = it.message } }
-                        }) { Icon(Icons.Outlined.Delete, "Remove ${member.displayName ?: "traveller"}") }
+                        ) { Text((member.displayName ?: "T").take(1).uppercase(), style = MaterialTheme.typography.titleMedium) }
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text(member.displayName ?: "Traveller", style = MaterialTheme.typography.titleMedium)
+                            Text(if (member.role == "owner") "Organiser" else "Member", color = Ash, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (trip.ownerId == accountId && member.userId != accountId) {
+                            CircleIconButton(Icons.Outlined.Delete, "Remove ${member.displayName ?: "traveller"}") {
+                                scope.launch { onRemove(member.userId).onFailure { error = it.message } }
+                            }
+                        }
                     }
                 }
-                error?.let { Notice(it, true) }
-                if (trip.ownerId != accountId) OutlinedButton(
+                error?.let { Notice(it, true, Modifier.padding(top = 12.dp)) }
+                if (trip.ownerId != accountId) TextButton(
                     onClick = { scope.launch { onLeave().onFailure { error = it.message } } },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    shape = RoundedCornerShape(50),
-                ) { Text("Leave this trip", color = ClayDeep) }
+                ) { Text("Leave this trip", color = ErrorRed, style = MaterialTheme.typography.labelMedium) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Clay, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Ink, style = MaterialTheme.typography.labelMedium) } },
     )
 }
 
@@ -604,10 +614,10 @@ private fun UnsyncedExpenseDialog(
     val failed = expense.syncState == SyncState.Failed
     FormSheet(
         onDismissRequest = onDismiss,
-        title = { Text(if (failed) "This entry did not save" else "Still saving", fontWeight = FontWeight.Bold) },
+        title = { Text(if (failed) "This entry did not save" else "Still saving") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("${expense.title} · ${money(expense.amount, currency)}", fontWeight = FontWeight.SemiBold)
+                Text("${expense.title} · ${money(expense.amount, currency)}", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (failed) {
                         "It is kept here so nothing is lost, but it is not counted in the trip total " +
@@ -616,17 +626,17 @@ private fun UnsyncedExpenseDialog(
                         "It is saved on this phone and will sync as soon as there is a connection. " +
                             "You can edit it once it lands."
                     },
-                    color = InkSoft,
-                    fontSize = 13.sp,
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 expense.syncError?.let { Notice(it, error = failed) }
             }
         },
-        confirmButton = { TextButton(onClick = onRetry) { Text("Try again", color = Clay, fontWeight = FontWeight.SemiBold) } },
+        confirmButton = { PrimaryButton("Try again", onClick = onRetry) },
         dismissButton = {
             Row {
-                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = ClayDeep) }
-                TextButton(onClick = onDismiss) { Text("Close", color = Ink) }
+                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = ErrorRed, style = MaterialTheme.typography.labelMedium) }
+                TextButton(onClick = onDismiss) { Text("Close", color = Ink, style = MaterialTheme.typography.labelMedium) }
             }
         },
     )
