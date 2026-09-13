@@ -19,6 +19,7 @@ struct AuthScreen: View {
   @State private var password = ""
   @State private var busy = false
   @State private var error: String?
+  @State private var fieldErrors: [String: String] = [:]
 
   var body: some View {
     NavigationStack {
@@ -68,21 +69,30 @@ struct AuthScreen: View {
             VStack(alignment: .leading, spacing: 16) {
               if signup && !store.recovery { field("Your name", text: $name, content: .name) }
               if !store.recovery { field("Email address", text: $email, content: .emailAddress) }
-              VStack(alignment: .leading, spacing: 6) {
-                Text("Password").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+              LabeledField(label: "Password", error: fieldErrors["password"]) {
                 SecureField("At least 6 characters", text: $password)
                   .textContentType(signup || store.recovery ? .newPassword : .password)
-                  .typeStyle(.bodyLarge).authFieldChrome()
+                  .typeStyle(.bodyLarge).accessibilityLabel("Password")
               }
             }
             PrimaryButton(
               title: store.recovery ? "Update password" : signup ? "Create account" : "Sign in",
               busy: busy
             ) {
+              fieldErrors = [:]
+              if !store.recovery && !email.contains("@") {
+                fieldErrors["email"] = "Enter a valid email address."
+                return
+              }
+              if signup && !store.recovery && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                fieldErrors["name"] = "Enter the name your travel companions will see."
+                return
+              }
+              guard password.count >= 6 else {
+                fieldErrors["password"] = "Use at least six characters for your password."
+                return
+              }
               run {
-                guard password.count >= 6 else {
-                  throw FormError("Use at least six characters for your password.")
-                }
                 if store.recovery {
                   try await store.updatePassword(password)
                 } else if signup {
@@ -99,18 +109,19 @@ struct AuthScreen: View {
               VStack(spacing: 4) {
                 Button(signup ? "Already have an account? Sign in" : "New here? Create an account") {
                   signup.toggle()
+                  fieldErrors = [:]
                   error = nil
                   store.notice = nil
                 }.typeStyle(.labelMedium).foregroundStyle(Palette.ink)
                 Button("Forgot your password?") {
                   run {
-                    try validateEmail()
+                    guard validateEmail() else { return }
                     try await store.resetPassword(email: email)
                   }
                 }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
                 Button("Resend confirmation email") {
                   run {
-                    try validateEmail()
+                    guard validateEmail() else { return }
                     try await store.resendConfirmation(email: email)
                   }
                 }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
@@ -133,17 +144,18 @@ struct AuthScreen: View {
   private func field(_ label: String, text: Binding<String>, content: UITextContentType)
     -> some View
   {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(label).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-      TextField(label, text: text).textContentType(content)
-        .textInputAutocapitalization(content == .name ? .words : .never)
-        .keyboardType(content == .emailAddress ? .emailAddress : .default).autocorrectionDisabled()
-        .typeStyle(.bodyLarge).authFieldChrome()
-    }
+    WayfareTextField(label: label, text: text, error: fieldErrors[content == .name ? "name" : "email"])
+      .textContentType(content)
+      .textInputAutocapitalization(content == .name ? .words : .never)
+      .keyboardType(content == .emailAddress ? .emailAddress : .default).autocorrectionDisabled()
   }
 
-  private func validateEmail() throws {
-    guard email.contains("@") else { throw FormError("Enter your email address first.") }
+  private func validateEmail() -> Bool {
+    guard email.contains("@") else {
+      fieldErrors["email"] = "Enter your email address first."
+      return false
+    }
+    return true
   }
 
   private func run(_ action: @escaping () async throws -> Void) {
@@ -155,17 +167,6 @@ struct AuthScreen: View {
       defer { busy = false }
       do { try await action() } catch { self.error = error.localizedDescription }
     }
-  }
-}
-
-extension View {
-  /// A text input: white behind a hairline border at the control radius. The
-  /// system never tints a field with the accent.
-  fileprivate func authFieldChrome() -> some View {
-    padding(.horizontal, 16).frame(height: 48)
-      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.control))
-      .overlay(
-        RoundedRectangle(cornerRadius: Radius.control).stroke(Palette.hairline, lineWidth: 1))
   }
 }
 

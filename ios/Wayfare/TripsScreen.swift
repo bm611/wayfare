@@ -8,6 +8,7 @@ struct TripsScreen: View {
   @State private var joining = false
   @State private var signout = false
   @State private var recovery = false
+  @Environment(\.dynamicTypeSize) private var textSize
 
   private var sections: [(String, [Trip])] {
     ["Active trips", "Upcoming trips", "Dates open", "Past trips"].map { title in
@@ -50,7 +51,7 @@ struct TripsScreen: View {
               .padding(.horizontal, 24)
           }
           if store.loading && store.trips.isEmpty {
-            ProgressView().tint(Palette.rausch).frame(maxWidth: .infinity).padding(40)
+            TripLoadingSkeleton().padding(.horizontal, 24)
           } else if store.trips.isEmpty {
             emptyState.padding(.horizontal, 24)
           }
@@ -98,7 +99,6 @@ struct TripsScreen: View {
         Text("wayfare").typeStyle(.headlineSmall)
       }.foregroundStyle(Palette.rausch)
       Spacer(minLength: 0)
-      CircleIconButton(symbol: "ticket", label: "Join a trip") { joining = true }
       Menu {
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
         Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)
@@ -142,24 +142,19 @@ struct TripsScreen: View {
       TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 4 / 3)
         .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .overlay(alignment: .topLeading) { PhaseBadge(trip: trip).padding(12) }
-      // 4–8pt between stacked facts: the metadata reads as one unit.
-      VStack(alignment: .leading, spacing: 4) {
-        Text(trip.name).typeStyle(.titleMedium).lineLimit(1)
-        if let place = trip.destination, !place.isEmpty {
-          Text(place).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).lineLimit(1)
-        }
-        Text(dateRange(trip.startDate, trip.endDate)).typeStyle(.bodyMedium)
-          .foregroundStyle(Palette.ash)
+      VStack(alignment: .leading, spacing: 0) {
+        TripIdentity(trip: trip)
         // The price row: the figure in ink, its qualifier trailing in 500 weight.
-        HStack(alignment: .lastTextBaseline, spacing: 0) {
+        let layout = textSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .lastTextBaseline, spacing: 4))
+        layout {
           Text(money(summary.spent, trip.currency)).typeStyle(.titleMedium).monospacedDigit()
-          Text(trip.budget > 0 ? " of \(money(trip.budget, trip.currency))" : " logged")
+          Text(trip.budget > 0 ? "spent of \(money(trip.budget, trip.currency))" : "logged")
             .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).monospacedDigit()
-        }.padding(.top, 2)
+        }.padding(.top, 16)
         if trip.budget > 0 {
           BudgetMeter(spent: summary.spent, budget: trip.budget).padding(.top, 4)
         }
-      }.padding(.top, 12)
+      }.padding(.top, 16)
     }
   }
 }
@@ -173,33 +168,18 @@ struct JoinForm: View {
   let onJoin: (String) -> Void
   var body: some View {
     NavigationStack {
-      Form {
-        Section("Your invitation") {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
           Text("Enter the eight-character code your travel companion sent you.")
             .typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-          TextField("Invite code", text: $code).textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
+          WayfareTextField(label: "Invite code", text: $code, error: error)
+            .textInputAutocapitalization(.characters).autocorrectionDisabled()
+        }.padding(24).frame(maxWidth: 700).frame(maxWidth: .infinity)
+      }.canvasScreen()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          ActionBar { PrimaryButton(title: "Join trip", busy: busy, action: join) }
         }
-        if let error { Notice(text: error, isError: true) }
-        PrimaryButton(title: "Join trip", busy: busy) {
-          let clean = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-          guard clean.count == 8, clean.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
-          else {
-            error = "Enter all eight letters and numbers."
-            return
-          }
-          busy = true
-          Task {
-            defer { busy = false }
-            do {
-              let id = try await store.joinTrip(code: clean)
-              store.pendingInvite = ""
-              dismiss()
-              onJoin(id)
-            } catch { self.error = error.localizedDescription }
-          }
-        }
-      }.canvasScreen().navigationTitle("Join a trip").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Join a trip").navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
@@ -209,6 +189,25 @@ struct JoinForm: View {
           }
         }
     }.onAppear { code = store.pendingInvite }.interactiveDismissDisabled(busy)
+  }
+
+  private func join() {
+    let clean = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    guard clean.count == 8, clean.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
+    else {
+      error = "Enter all eight letters and numbers."
+      return
+    }
+    busy = true
+    Task {
+      defer { busy = false }
+      do {
+        let id = try await store.joinTrip(code: clean)
+        store.pendingInvite = ""
+        dismiss()
+        onJoin(id)
+      } catch { self.error = error.localizedDescription }
+    }
   }
 }
 

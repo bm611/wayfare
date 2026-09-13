@@ -56,7 +56,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var localError by rememberSaveable { mutableStateOf<String?>(null) }
+    var fieldErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     // Credential Manager where the device supports it. ComposeAuth runs `fallback` when it
     // does not; onGoogleResult sends a device that tries and fails down the same path.
@@ -113,7 +113,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
 
         if (mode != AuthMode.Reset) {
             GoogleButton(Modifier.fillMaxWidth(), busy = state.googleBusy) {
-                localError = null
+                fieldErrors = emptyMap()
                 viewModel.onGoogleFlowStarted()
                 googleSignIn.startFlow()
             }
@@ -128,25 +128,24 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
         }
 
         if (mode == AuthMode.SignUp) {
-            AuthField(name, { name = it }, "Display name", ImeAction.Next)
+            WayfareInput(name, { name = it; fieldErrors = fieldErrors - "name" }, "Display name", error = fieldErrors["name"], keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
             Spacer(Modifier.height(12.dp))
         }
-        AuthField(
-            email, { email = it }, "Email", if (mode == AuthMode.Reset) ImeAction.Done else ImeAction.Next,
-            keyboardType = KeyboardType.Email,
+        WayfareInput(
+            email, { email = it; fieldErrors = fieldErrors - "email" }, "Email", error = fieldErrors["email"],
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = if (mode == AuthMode.Reset) ImeAction.Done else ImeAction.Next),
         )
         if (mode != AuthMode.Reset) {
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true,
+            WayfareInput(
+                password, { password = it; fieldErrors = fieldErrors - "password" }, "Password", error = fieldErrors["password"],
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                shape = FieldShape,
-                colors = wayfareFieldColors(),
             )
+
         }
 
-        (localError ?: state.error)?.let { Notice(it, error = true, modifier = Modifier.padding(top = 14.dp)) }
+        state.error?.let { Notice(it, error = true, modifier = Modifier.padding(top = 14.dp)) }
         state.message?.let { Notice(it, modifier = Modifier.padding(top = 14.dp)) }
 
         PrimaryButton(
@@ -158,13 +157,13 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
             modifier = Modifier.fillMaxWidth().padding(top = 22.dp),
             busy = state.busy,
         ) {
-            localError = when {
-                email.isBlank() -> "Enter your email address."
-                mode == AuthMode.SignUp && name.isBlank() -> "Enter the name your travel companions will see."
-                mode != AuthMode.Reset && password.length < 6 -> "Use a password of at least six characters."
-                else -> null
+            fieldErrors = when {
+                !email.contains("@") -> mapOf("email" to "Enter a valid email address.")
+                mode == AuthMode.SignUp && name.isBlank() -> mapOf("name" to "Enter the name your travel companions will see.")
+                mode != AuthMode.Reset && password.length < 6 -> mapOf("password" to "Use a password of at least six characters.")
+                else -> emptyMap()
             }
-            if (localError == null) when (mode) {
+            if (fieldErrors.isEmpty()) when (mode) {
                 AuthMode.SignIn -> viewModel.signIn(email, password)
                 AuthMode.SignUp -> viewModel.signUp(name, email, password)
                 AuthMode.Reset -> viewModel.requestReset(email)
@@ -174,7 +173,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
         TextButton(
             onClick = {
                 mode = if (mode == AuthMode.SignIn) AuthMode.SignUp else AuthMode.SignIn
-                localError = null
+                fieldErrors = emptyMap()
                 viewModel.clearNotice()
             },
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp),
@@ -187,7 +186,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
         }
         if (mode == AuthMode.SignIn) {
             TextButton(
-                onClick = { mode = AuthMode.Reset; localError = null; viewModel.clearNotice() },
+                onClick = { mode = AuthMode.Reset; fieldErrors = emptyMap(); viewModel.clearNotice() },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             ) { Text("Forgot your password?", color = Ash) }
         }
@@ -203,29 +202,12 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
 }
 
 @Composable
-private fun AuthField(
-    value: String,
-    onChange: (String) -> Unit,
-    label: String,
-    imeAction: ImeAction,
-    keyboardType: KeyboardType = KeyboardType.Text,
-) {
-    OutlinedTextField(
-        value, onChange, Modifier.fillMaxWidth(), label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        shape = FieldShape,
-        colors = wayfareFieldColors(),
-    )
-}
-
-@Composable
 fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
     var password by rememberSaveable { mutableStateOf("") }
     var confirmation by rememberSaveable { mutableStateOf("") }
-    var localError by rememberSaveable { mutableStateOf<String?>(null) }
+    var fieldErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     Column(
-        Modifier.fillMaxSize().background(CanvasWhite).imePadding().padding(24.dp),
+        Modifier.fillMaxSize().background(CanvasWhite).safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Brand()
@@ -235,26 +217,24 @@ fun RecoveryScreen(state: AuthUiState, viewModel: AuthViewModel) {
             Modifier.padding(top = 10.dp, bottom = 26.dp),
             color = Ash,
         )
-        OutlinedTextField(
-            password, { password = it }, Modifier.fillMaxWidth(), label = { Text("New password") },
-            visualTransformation = PasswordVisualTransformation(), singleLine = true,
-            shape = FieldShape,
-            colors = wayfareFieldColors(),
+        WayfareInput(
+            password, { password = it; fieldErrors = fieldErrors - "password" }, "New password", error = fieldErrors["password"],
+            visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         )
-        OutlinedTextField(
-            confirmation, { confirmation = it }, Modifier.fillMaxWidth().padding(top = 12.dp),
-            label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true,
-            shape = FieldShape,
-            colors = wayfareFieldColors(),
+        WayfareInput(
+            confirmation, { confirmation = it; fieldErrors = fieldErrors - "confirmation" }, "Confirm password",
+            Modifier.padding(top = 12.dp), error = fieldErrors["confirmation"], visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         )
-        (localError ?: state.error)?.let { Notice(it, true, Modifier.padding(top = 14.dp)) }
+        state.error?.let { Notice(it, true, Modifier.padding(top = 14.dp)) }
         PrimaryButton("Save password", Modifier.fillMaxWidth().padding(top = 22.dp), state.busy) {
-            localError = when {
-                password.length < 6 -> "Use a password of at least six characters."
-                password != confirmation -> "Those passwords do not match."
-                else -> null
+            fieldErrors = when {
+                password.length < 6 -> mapOf("password" to "Use a password of at least six characters.")
+                password != confirmation -> mapOf("confirmation" to "Those passwords do not match.")
+                else -> emptyMap()
             }
-            if (localError == null) viewModel.updatePassword(password)
+            if (fieldErrors.isEmpty()) viewModel.updatePassword(password)
+
         }
         TextButton(onClick = viewModel::cancelRecovery, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Cancel", color = Ink)

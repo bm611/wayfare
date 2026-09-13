@@ -138,7 +138,7 @@ fun TripsScreen(
                 if (state.loading) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Rausch)
+                            TripLoadingSkeleton(Modifier.padding(horizontal = 24.dp))
                         }
                     }
                 } else if (state.trips.isEmpty()) {
@@ -247,13 +247,11 @@ internal fun JoinTripDialog(
                     color = Ash,
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                OutlinedTextField(
-                    code, { code = it.uppercase().filter(Char::isLetterOrDigit).take(8) },
-                    Modifier.fillMaxWidth().padding(top = 16.dp), label = { Text("Invite code") }, singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = wayfareFieldColors(),
+                WayfareInput(
+                    code, { code = it.uppercase().filter(Char::isLetterOrDigit).take(8); error = null },
+                    "Invite code", Modifier.padding(top = 16.dp), error = error,
                 )
-                error?.let { Notice(it, true, Modifier.padding(top = 12.dp)) }
+
             }
         },
         confirmButton = {

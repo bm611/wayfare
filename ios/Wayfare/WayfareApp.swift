@@ -20,7 +20,6 @@ struct WayfareApp: App {
       // name its own style should inherit Manrope rather than fall back to SF.
       .typeStyle(.bodyLarge)
       .tint(Palette.rausch)
-      .preferredColorScheme(.light)
       .task { await store.start() }
       .task(id: scenePhase) {
         guard scenePhase == .active else { return }

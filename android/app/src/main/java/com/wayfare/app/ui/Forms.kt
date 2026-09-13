@@ -1,6 +1,7 @@
 package com.wayfare.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -41,15 +42,26 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.wayfare.app.core.Category
 import com.wayfare.app.core.Expense
 import com.wayfare.app.core.ExpenseDraft
+import com.wayfare.app.core.SyncState
 import com.wayfare.app.core.Trip
 import com.wayfare.app.core.TripDraft
 import com.wayfare.app.core.money
@@ -73,13 +85,14 @@ fun TripFormDialog(
     var end by rememberSaveable(trip?.id) { mutableStateOf(trip?.endDate) }
     var budget by rememberSaveable(trip?.id) { mutableStateOf(trip?.budget?.stripTrailingZeros()?.toPlainString().orEmpty()) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var fieldErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var busy by remember { mutableStateOf(false) }
     var discard by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val dirty = name != trip?.name.orEmpty() || destination != trip?.destination.orEmpty() ||
         start != trip?.startDate || end != trip?.endDate || budget != trip?.budget?.stripTrailingZeros()?.toPlainString().orEmpty()
 
-    fun dismiss() { if (dirty && !busy) discard = true else onDismiss() }
+    fun dismiss() { if (busy) return; if (dirty) discard = true else onDismiss() }
 
     FormSheet(
         onDismissRequest = ::dismiss,
@@ -88,19 +101,16 @@ fun TripFormDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
-                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Trip name") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
-                OutlinedTextField(destination, { destination = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Destination") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DateField("Depart", start, { start = it }, Modifier.weight(1f))
-                    DateField("Return", end, { end = it }, Modifier.weight(1f))
-                }
-                OutlinedTextField(
-                    budget, { budget = it }, Modifier.fillMaxWidth(), label = { Text("Budget in EUR") },
-                    placeholder = { Text("2500") }, singleLine = true,
+                WayfareInput(name, { name = it.take(80); fieldErrors = fieldErrors - "name" }, "Trip name", error = fieldErrors["name"])
+                WayfareInput(destination, { destination = it.take(120) }, "Destination")
+                DateField("Departure", start, { start = it; fieldErrors = fieldErrors - "dates" }, Modifier.fillMaxWidth())
+                DateField("Return", end, { end = it; fieldErrors = fieldErrors - "dates" }, Modifier.fillMaxWidth(), error = fieldErrors["dates"])
+                WayfareInput(
+                    budget, { budget = it; fieldErrors = fieldErrors - "budget" }, "Budget in EUR",
+                    error = fieldErrors["budget"], helper = "Leave blank to track spend without a limit.",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    supportingText = { Text("Leave blank to track spend without a limit.") },
-                    shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
                 )
+
             }
         },
         confirmButton = {
@@ -109,13 +119,14 @@ fun TripFormDialog(
                 busy = busy,
             ) {
                 val amount = budget.ifBlank { "0" }.toBigDecimalOrNull()
-                error = when {
-                    name.isBlank() -> "Give the trip a name."
-                    amount == null || amount.signum() < 0 -> "Budget must be zero or more."
-                    start != null && end != null && end!! < start!! -> "The return date lands before departure."
-                    else -> null
+                error = null
+                fieldErrors = when {
+                    name.isBlank() -> mapOf("name" to "Give the trip a name.")
+                    amount == null || amount.signum() < 0 -> mapOf("budget" to "Budget must be zero or more.")
+                    start != null && end != null && end!! < start!! -> mapOf("dates" to "Return must be on or after departure.")
+                    else -> emptyMap()
                 }
-                if (error == null) scope.launch {
+                if (fieldErrors.isEmpty()) scope.launch {
                     busy = true
                     onSave(TripDraft(name.trim(), destination.trim().ifBlank { null }, start, end, amount!!))
                         .onSuccess { onDismiss() }
@@ -176,6 +187,7 @@ fun ExpenseFormDialog(
     var spentOn by rememberSaveable(expense?.id) { mutableStateOf(expense?.spentOn ?: LocalDate.now()) }
     var note by rememberSaveable(expense?.id) { mutableStateOf(expense?.note.orEmpty()) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var fieldErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var busy by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var discard by remember { mutableStateOf(false) }
@@ -198,18 +210,16 @@ fun ExpenseFormDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 error?.let { Notice(it, true) }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        amount, { amount = it }, Modifier.weight(1f), label = { Text("Amount") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
-                    )
-                    CurrencyPicker(paidIn, { paidIn = it })
-                }
+                WayfareInput(
+                    amount, { amount = it; fieldErrors = fieldErrors - "amount" }, "Amount paid",
+                    error = fieldErrors["amount"], keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+                CurrencyPicker(paidIn, { paidIn = it; fieldErrors = fieldErrors - "currency" })
+                fieldErrors["currency"]?.let { FieldError(it) }
                 if (paidIn != currency && converted != null) {
                     Notice("≈ ${money(converted, currency)} · 1 $paidIn = ${fx.rateBetween(paidIn, currency, snapshot)?.setScale(4, java.math.RoundingMode.HALF_UP)} $currency${if (snapshot.stale) " · offline rate" else ""}")
                 }
-                OutlinedTextField(title, { title = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("For") }, singleLine = true, shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors())
+                WayfareInput(title, { title = it.take(120); fieldErrors = fieldErrors - "title" }, "What did you spend on?", error = fieldErrors["title"])
                 Text("Category", color = Ash)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Category.entries.forEach { item ->
@@ -228,11 +238,7 @@ fun ExpenseFormDialog(
                     }
                 }
                 DateField("Date", spentOn, { spentOn = it ?: LocalDate.now() }, Modifier.fillMaxWidth())
-                OutlinedTextField(
-                    note, { note = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Note (optional)") },
-                    minLines = 2, maxLines = 4,
-                    shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
-                )
+                WayfareInput(note, { note = it.take(500) }, "Note (optional)", minLines = 2, maxLines = 4)
                 if (expense != null && onDelete != null) {
                     SecondaryButton("Delete entry", Modifier.fillMaxWidth(), pill = true) { confirmDelete = true }
                 }
@@ -244,13 +250,14 @@ fun ExpenseFormDialog(
                 busy = busy,
             ) {
                 val rate = if (paidIn == currency) null else fx.rateBetween(paidIn, currency, snapshot)
-                error = when {
-                    parsed == null || parsed.signum() <= 0 -> "Enter an amount above zero."
-                    title.isBlank() -> "What was it for?"
-                    paidIn != currency && rate == null -> "No rate is available for $paidIn to $currency."
-                    else -> null
+                error = null
+                fieldErrors = when {
+                    parsed == null || parsed.signum() <= 0 -> mapOf("amount" to "Enter an amount above zero.")
+                    title.isBlank() -> mapOf("title" to "What was it for?")
+                    paidIn != currency && rate == null -> mapOf("currency" to "No rate is available for $paidIn to $currency.")
+                    else -> emptyMap()
                 }
-                if (error == null) scope.launch {
+                if (fieldErrors.isEmpty()) scope.launch {
                     busy = true
                     val draft = ExpenseDraft(
                         title.trim(), converted ?: parsed!!.setScale(2, java.math.RoundingMode.HALF_UP),
@@ -282,6 +289,50 @@ fun ExpenseFormDialog(
         text = { Text("The expense has not been saved.") },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
         dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } },
+    )
+}
+
+/** An entry that never reached the server: kept, explained, retried or discarded. */
+@Composable
+fun UnsyncedExpenseDialog(
+    expense: Expense,
+    currency: String,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    val failed = expense.syncState == SyncState.Failed
+    FormSheet(
+        onDismissRequest = onDismiss,
+        title = { Text(if (failed) "This expense was not saved" else "Waiting to sync", fontWeight = FontWeight.SemiBold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        expense.title,
+                        Modifier.weight(1f).padding(end = 12.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(money(expense.amount, currency), style = MaterialTheme.typography.titleMedium)
+                }
+                Text(
+                    if (failed) "It is kept on this device so nothing is lost, but it is not counted in the trip total and other travellers cannot see it yet."
+                    else "It is saved on this device and will sync as soon as there is a connection. You can edit it once it lands.",
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                expense.syncError?.let { Notice(it, error = failed) }
+            }
+        },
+        confirmButton = { PrimaryButton("Try again", onClick = onRetry) },
+        dismissButton = {
+            Row {
+                if (failed) TextButton(onClick = onDiscard) { Text("Discard", color = ErrorRed, fontWeight = FontWeight.SemiBold) }
+                TextButton(onClick = onDismiss) { Text("Close", color = Ink) }
+            }
+        },
     )
 }
 
@@ -324,10 +375,10 @@ internal fun FormSheet(
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
             ) { text() }
-            Row(
+            FlowRow(
                 Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 dismissButton()
                 confirmButton()
@@ -338,26 +389,22 @@ internal fun FormSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, modifier: Modifier = Modifier) {
+fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, modifier: Modifier = Modifier, error: String? = null) {
     var open by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = value?.toString().orEmpty(),
-        onValueChange = {},
-        modifier = modifier.clickable { open = true },
-        enabled = false,
-        label = { Text(label) },
-        trailingIcon = { Icon(Icons.Outlined.CalendarMonth, null) },
-        shape = RoundedCornerShape(8.dp),
-        // Disabled only so the picker owns the tap: it still has to read as a
-        // live field, so it keeps the hairline border and ink text.
-        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-            disabledTextColor = Ink,
-            disabledBorderColor = Hairline,
-            disabledLabelColor = Ash,
-            disabledTrailingIconColor = Ash,
-            disabledContainerColor = CanvasWhite,
-        ),
-    )
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, color = Ash, style = MaterialTheme.typography.bodyMedium)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .border(1.dp, if (error != null) ErrorRed else Hairline, RoundedCornerShape(8.dp))
+                .clickable { open = true }.padding(16.dp)
+                .semantics { contentDescription = "$label, ${value ?: "No date selected"}" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(value?.let { com.wayfare.app.core.shortDate(it) } ?: "Add a date", Modifier.weight(1f), color = if (value == null) Ash else Ink)
+            Icon(Icons.Outlined.CalendarMonth, null, Modifier.size(18.dp), tint = Ash)
+        }
+        error?.let { FieldError(it) }
+    }
     if (open) {
         val millis = value?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
         val picker = rememberDatePickerState(initialSelectedDateMillis = millis)
@@ -379,42 +426,51 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DatePickerSheet(
-    value: LocalDate?,
-    onDismiss: () -> Unit,
-    allowClear: Boolean = true,
-    onChange: (LocalDate?) -> Unit,
-) {
-    val millis = value?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
-    val picker = rememberDatePickerState(initialSelectedDateMillis = millis)
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                onChange(picker.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() })
-            }) { Text("Use date", color = Ink, fontWeight = FontWeight.SemiBold) }
-        },
-        dismissButton = {
-            Row {
-                if (allowClear && value != null) TextButton(onClick = { onChange(null) }) { Text("Clear") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        },
-    ) { DatePicker(picker) }
-}
-
 @Composable
 private fun CurrencyPicker(value: String, onChange: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Column {
-        Text("Paid in", color = Ash, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+        Text("Paid in", color = Ash, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
         SecondaryButton(value, pill = true) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             FxRepository.CURRENCIES.forEach { currency ->
                 DropdownMenuItem(text = { Text(currency) }, onClick = { onChange(currency); open = false })
             }
         }
+    }
+}
+
+@Composable
+internal fun FieldError(message: String) {
+    Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = ErrorRed, style = MaterialTheme.typography.bodySmall)
+}
+
+/** Persistent labels and local feedback, shared by trip, expense and auth forms. */
+@Composable
+internal fun WayfareInput(
+    value: String,
+    onChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    error: String? = null,
+    helper: String? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    minLines: Int = 1,
+    maxLines: Int = 1,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(error) { if (error != null) focus.requestFocus() }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, color = Ash, style = MaterialTheme.typography.bodyMedium)
+        OutlinedTextField(
+            value, onChange,
+            Modifier.fillMaxWidth().focusRequester(focus).semantics { contentDescription = label },
+            isError = error != null, singleLine = maxLines == 1, minLines = minLines, maxLines = maxLines,
+            keyboardOptions = keyboardOptions, visualTransformation = visualTransformation,
+            shape = RoundedCornerShape(8.dp), colors = wayfareFieldColors(),
+        )
+        if (error != null) FieldError(error)
+        else if (helper != null) Text(helper, color = Ash, style = MaterialTheme.typography.bodySmall)
     }
 }

@@ -20,13 +20,17 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Hotel
@@ -53,7 +57,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
@@ -78,6 +81,7 @@ import com.wayfare.app.core.money
 import com.wayfare.app.core.tripPhase
 import java.math.BigDecimal
 import java.math.RoundingMode
+import kotlin.math.roundToInt
 
 /**
  * The system's signature three-layer lift: one tight shadow that reads as a
@@ -107,7 +111,7 @@ fun Brand(modifier: Modifier = Modifier, showWordmark: Boolean = true) {
 
 /**
  * The Rausch CTA. One per surface: the moment the whole grayscale palette exists
- * to set up. Pressing scales to 0.92 rather than tinting or lifting.
+ * to set up. Pressing scales to 0.98 rather than tinting or lifting.
  */
 @Composable
 fun PrimaryButton(
@@ -120,24 +124,24 @@ fun PrimaryButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Button press")
+    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Button press")
     Button(
         onClick = onClick,
-        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         enabled = enabled && !busy,
         colors = ButtonDefaults.buttonColors(
             containerColor = Rausch,
-            contentColor = CanvasWhite,
+            contentColor = Color.White,
             disabledContainerColor = SoftCloud,
             disabledContentColor = Stone,
         ),
         shape = RoundedCornerShape(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = CanvasWhite)
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
         } else {
             icon?.let {
                 Icon(it, null, Modifier.size(18.dp))
@@ -159,15 +163,15 @@ fun SecondaryButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Secondary press")
+    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Secondary press")
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         colors = ButtonDefaults.outlinedButtonColors(containerColor = CanvasWhite, contentColor = Ink),
         border = BorderStroke(1.dp, Hairline),
         shape = RoundedCornerShape(if (pill) 20.dp else 8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
     ) {
         icon?.let {
             Icon(it, null, Modifier.size(18.dp))
@@ -185,10 +189,10 @@ fun SecondaryButton(
 fun GoogleButton(modifier: Modifier = Modifier, busy: Boolean = false, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Google press")
+    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Google press")
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         enabled = !busy,
         colors = ButtonDefaults.outlinedButtonColors(
@@ -220,25 +224,32 @@ fun CircleIconButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     onPhotograph: Boolean = false,
-    raised: Boolean = false,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .92f else 1f, spring(stiffness = 600f), label = "Icon press")
+    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Icon press")
     Box(
         modifier
-            .size(44.dp)
+            .size(48.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
             // On photography a 4dp white ring separates the button from whatever
-            // colour happens to sit behind it.
-            .background(if (raised) CardRaised else if (onPhotograph) CanvasWhite else SoftCloud)
-            .then(if (onPhotograph) Modifier.border(1.dp, Hairline, CircleShape) else Modifier)
+            // colour happens to sit behind it. A toggle that is on takes an Ink
+            // ring, the same switch to Ink a focused field makes.
+            .background(if (active || onPhotograph) CanvasWhite else SoftCloud)
+            .then(
+                when {
+                    active -> Modifier.border(1.5.dp, Ink, CircleShape)
+                    onPhotograph -> Modifier.border(1.dp, Hairline, CircleShape)
+                    else -> Modifier
+                },
+            )
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription, Modifier.size(18.dp), tint = if (raised) Steel else Ink)
+        Icon(icon, contentDescription, Modifier.size(18.dp), tint = Ink)
     }
 }
 
@@ -287,35 +298,13 @@ fun ListingCard(
                 Text(phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall)
             }
         }
-        // 4–8dp between stacked facts: the metadata reads as one unit.
-        Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-            Text(
-                trip.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            trip.destination?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    it,
-                    Modifier.padding(top = 4.dp),
-                    color = Ash,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                dateRange(trip.startDate, trip.endDate),
-                Modifier.padding(top = 4.dp),
-                color = Ash,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            TripIdentity(trip)
             // The price row: the figure in ink, its qualifier trailing in 500 weight.
-            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+            FlowRow(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(money(summary.spent, trip.currency), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (trip.budget.signum() > 0) " of ${money(trip.budget, trip.currency)}" else " logged",
+                    if (trip.budget.signum() > 0) "spent of ${money(trip.budget, trip.currency)}" else "logged",
                     color = Ash,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -383,31 +372,39 @@ fun categoryIcon(category: Category): ImageVector = when (category) {
     Category.Other -> Icons.AutoMirrored.Outlined.ReceiptLong
 }
 
-/**
- * The boarding strip. Rausch is the one place a figure earns colour, so the
- * fill uses it and the track stays hairline.
- */
+/** A compact budget rail with an optional percentage readout on detail views. */
 @Composable
 fun BudgetMeter(
     spent: BigDecimal,
     budget: BigDecimal,
     modifier: Modifier = Modifier,
-    trackColor: Color = Hairline,
+    trackColor: Color = SoftCloud,
     progressColor: Color = Rausch,
+    showLabel: Boolean = false,
 ) {
-    val ratio = if (budget.signum() <= 0) 0f
-    else spent.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+    val rawRatio = if (budget.signum() <= 0) 0f
+    else spent.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceAtLeast(0f)
+    val ratio = rawRatio.coerceAtMost(1f)
+    val percentage = (rawRatio * 100).roundToInt()
     val animatedRatio by animateFloatAsState(ratio, tween(450), label = "Budget progress")
-    Box(
-        modifier.fillMaxWidth().height(4.dp)
-            .semantics { progressBarRangeInfo = ProgressBarRangeInfo(ratio, 0f..1f) }
-            .clip(CircleShape).background(trackColor),
-    ) {
-        if (animatedRatio > 0f) {
-            Box(
-                Modifier.fillMaxHeight().fillMaxWidth(animatedRatio)
-                    .clip(CircleShape).background(progressColor),
-            )
+    Column(modifier.fillMaxWidth()) {
+        if (showLabel) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Text("Budget used", Modifier.weight(1f), color = Ash, style = MaterialTheme.typography.bodySmall)
+                Text("$percentage%", color = Ash, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        Box(
+            Modifier.fillMaxWidth().height(4.dp)
+                .semantics { progressBarRangeInfo = ProgressBarRangeInfo(ratio, 0f..1f) }
+                .clip(CircleShape).background(trackColor),
+        ) {
+            if (animatedRatio > 0f) {
+                Box(
+                    Modifier.fillMaxHeight().fillMaxWidth(animatedRatio)
+                        .clip(CircleShape).background(if (rawRatio > 1f) ErrorRed else progressColor),
+                )
+            }
         }
     }
 }
@@ -443,120 +440,31 @@ fun phaseLabel(trip: Trip): String = when (val phase = tripPhase(trip)) {
 }
 
 @Composable
-fun MonoLabel(
-    text: String,
-    modifier: Modifier = Modifier,
-    color: Color = Paper,
-    tracking: androidx.compose.ui.unit.TextUnit = 1.2.sp,
-) {
-    Text(text, modifier, color = color, style = MonoLabelStyle.copy(letterSpacing = tracking))
-}
-
-@Composable
-fun FigureWithQualifier(value: String, qualifier: String?, size: androidx.compose.ui.unit.TextUnit) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(value, color = Amber, fontFamily = PlexMono, fontWeight = FontWeight.Medium, fontSize = size)
-        qualifier?.let { MonoLabel(it, Modifier.padding(start = 8.dp, bottom = 5.dp), color = Slate) }
-    }
-}
-
-@Composable
-fun DashedRule(modifier: Modifier = Modifier) {
-    Canvas(modifier.height(1.dp)) {
-        drawLine(
-            color = Outline,
-            start = Offset.Zero,
-            end = Offset(size.width, 0f),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
-        )
-    }
-}
-
-@Composable
-fun DottedLeaderRow(
-    label: String,
-    amount: String,
-    leading: @Composable (() -> Unit)? = null,
-    amountColor: Color = Paper,
-) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        leading?.invoke()
-        Text(
-            label,
-            Modifier.padding(start = if (leading == null) 0.dp else 8.dp),
-            color = Paper,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Canvas(Modifier.weight(1f).padding(horizontal = 8.dp).height(1.dp)) {
-            drawLine(
-                color = Outline,
-                start = Offset.Zero,
-                end = Offset(size.width, 0f),
-                strokeWidth = 1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx())),
-            )
+fun TripIdentity(trip: Trip, showPhase: Boolean = false) {
+    val destination = trip.destination?.trim().orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+            if (destination.isNotEmpty()) Icon(Icons.Outlined.Place, null, Modifier.padding(top = 4.dp).size(18.dp), tint = Ash)
+            Text(destination.ifEmpty { trip.name }, style = MaterialTheme.typography.headlineSmall)
         }
-        Text(amount, color = amountColor, fontFamily = PlexMono, fontWeight = FontWeight.Medium)
+        if (destination.isNotEmpty() && !destination.equals(trip.name.trim(), ignoreCase = true)) {
+            Text(trip.name, color = Ash, style = MaterialTheme.typography.bodyMedium)
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MetaLabel(Icons.Outlined.CalendarMonth, dateRange(trip.startDate, trip.endDate))
+            if (showPhase && tripPhase(trip) != TripPhase.Undated) {
+                Text(phaseLabel(trip), color = Ash, style = MaterialTheme.typography.labelMedium)
+            }
+        }
     }
 }
 
 @Composable
-fun CategoryDot(color: Color, modifier: Modifier = Modifier) {
-    Box(modifier.size(7.dp).clip(CircleShape).background(color))
-}
-
-fun categoryTint(rank: Int): Color = listOf(
-    Amber,
-    Color(0xFF5EC4B6),
-    Color(0xFF8A9FF0),
-    Color(0xFFE984A8),
-    Steel,
-)[rank.coerceIn(0, 4)]
-
-@Composable
-fun FilterPill(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    Box(
-        modifier.height(36.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (selected || pressed) Amber.copy(alpha = .20f) else Color.Transparent)
-            .border(1.dp, if (selected) Amber else Outline, RoundedCornerShape(18.dp))
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = if (selected) Amber else Steel, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-fun FabScaffold(
-    modifier: Modifier = Modifier,
-    fab: @Composable () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Box(modifier) {
-        content()
-        Box(Modifier.align(Alignment.BottomEnd).padding(20.dp)) { fab() }
-    }
-}
-
-@Composable
-fun AddLineFab(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        Modifier.size(60.dp).clip(CircleShape).background(Amber)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Outlined.Add, "Add a line", Modifier.size(24.dp), tint = Night)
+fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true) {
+    Column(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = if (showCover) "Loading trips" else "Loading trip details" }, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showCover) Spacer(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(14.dp)).background(SoftCloud))
+        Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(SoftCloud))
+        Spacer(Modifier.fillMaxWidth(.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(SoftCloud))
+        Spacer(Modifier.fillMaxWidth().height(if (showCover) 4.dp else 180.dp).clip(RoundedCornerShape(14.dp)).background(SoftCloud))
     }
 }

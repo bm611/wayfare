@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WayfareCore
 
 /// Airbnb design language, shared token-for-token with the native Android theme.
@@ -13,30 +14,39 @@ enum Palette {
   static let plusMagenta = Color(hex: 0x92174D)
   static let luxePurple = Color(hex: 0x460479)
 
-  static let canvas = Color(hex: 0xFFFFFF)
+  static let canvas = Color(light: 0xFFFFFF, dark: 0x181A1B)
   /// Subsurface tint for sections that should step back from the white canvas.
-  static let softCloud = Color(hex: 0xF7F7F7)
+  static let softCloud = Color(light: 0xF7F7F7, dark: 0x242729)
   /// The 1pt workhorse: every card-to-card and row-to-row divider.
-  static let hairline = Color(hex: 0xDDDDDD)
+  static let hairline = Color(light: 0xDDDDDD, dark: 0x44484B)
 
   /// The system's near-black. Roughly 90% of all text, and never pure black.
-  static let ink = Color(hex: 0x222222)
+  static let ink = Color(light: 0x222222, dark: 0xF3F3F2)
   /// Focused input text and one-step-down emphasis.
-  static let charcoal = Color(hex: 0x3F3F3F)
+  static let charcoal = Color(light: 0x3F3F3F, dark: 0xE2E3E3)
   /// Secondary labels and subtitle copy.
-  static let ash = Color(hex: 0x6A6A6A)
+  static let ash = Color(light: 0x6A6A6A, dark: 0xB6B9BB)
   /// Disabled controls and low-priority metadata.
-  static let mute = Color(hex: 0x929292)
+  static let mute = Color(light: 0x929292, dark: 0x94999D)
   /// Tertiary dividers, icon strokes, placeholder avatars.
-  static let stone = Color(hex: 0xC1C1C1)
+  static let stone = Color(light: 0xC1C1C1, dark: 0x70777C)
 
-  static let errorRed = Color(hex: 0xC13515)
+  static let errorRed = Color(light: 0xC13515, dark: 0xFF927D)
   static let deepError = Color(hex: 0xB32505)
   /// Legal and informational links — the one non-monochrome link colour.
   static let infoBlue = Color(hex: 0x428BFF)
 }
 
 extension Color {
+  init(light: UInt32, dark: UInt32) {
+    self.init(uiColor: UIColor { traits in
+      let hex = traits.userInterfaceStyle == .dark ? dark : light
+      return UIColor(red: Double((hex >> 16) & 255) / 255,
+                     green: Double((hex >> 8) & 255) / 255,
+                     blue: Double(hex & 255) / 255, alpha: 1)
+    })
+  }
+
   init(hex: UInt32) {
     self.init(
       red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255,
@@ -184,7 +194,7 @@ extension WayfareCore.Category {
 // MARK: - Buttons
 
 /// The Rausch CTA. One per surface: the moment the whole grayscale palette
-/// exists to set up. Pressing scales to 0.92 rather than tinting or lifting.
+/// exists to set up. Pressing scales to 0.98 rather than tinting or lifting.
 struct PrimaryButton: View {
   let title: String
   var busy = false
@@ -194,29 +204,31 @@ struct PrimaryButton: View {
     Button(action: action) {
       HStack(spacing: 8) {
         if busy {
-          ProgressView().tint(Palette.canvas)
+          ProgressView().tint(.white)
         } else {
           if let icon { Image(systemName: icon).font(.system(size: 16)) }
           Text(title).typeStyle(.labelLarge)
         }
       }
-      .frame(maxWidth: .infinity).frame(height: 48)
+      .frame(maxWidth: .infinity).frame(minHeight: 48)
     }
     .buttonStyle(RauschButtonStyle())
+    .accessibilityLabel(title).accessibilityValue(busy ? "Saving" : "")
     .disabled(busy)
   }
 }
 
 private struct RauschButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isEnabled) private var enabled
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .foregroundStyle(enabled ? Palette.canvas : Palette.stone)
+      .foregroundStyle(enabled ? Color.white : Palette.stone)
       .background(
         enabled ? Palette.rausch : Palette.softCloud,
         in: RoundedRectangle(cornerRadius: Radius.control))
-      .scaleEffect(configuration.isPressed ? 0.92 : 1)
-      .animation(.spring(duration: 0.2), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+      .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
   }
 }
 
@@ -232,21 +244,22 @@ struct SecondaryButton: View {
         if let icon { Image(systemName: icon).font(.system(size: 16)) }
         Text(title).typeStyle(.labelLarge)
       }
-      .frame(maxWidth: .infinity).frame(height: 48)
+      .frame(maxWidth: .infinity).frame(minHeight: 48)
     }
     .buttonStyle(OutlineButtonStyle(radius: pill ? Radius.panel : Radius.control))
   }
 }
 
 private struct OutlineButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   let radius: CGFloat
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .foregroundStyle(Palette.ink)
       .background(Palette.canvas, in: RoundedRectangle(cornerRadius: radius))
       .overlay(RoundedRectangle(cornerRadius: radius).stroke(Palette.hairline, lineWidth: 1))
-      .scaleEffect(configuration.isPressed ? 0.92 : 1)
-      .animation(.spring(duration: 0.2), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+      .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
   }
 }
 
@@ -258,27 +271,36 @@ struct CircleIconButton: View {
   /// On photography the button turns white and takes a hairline ring so it
   /// separates from whatever colour happens to sit behind it.
   var onPhotograph = false
+  /// A toggle that is on: white with an Ink ring, the same switch to Ink a
+  /// focused field makes, so the state reads at a glance without the accent.
+  var active = false
   let action: () -> Void
   var body: some View {
     Button(action: action) {
       Image(systemName: symbol).font(.system(size: 16, weight: .medium))
         .foregroundStyle(Palette.ink).frame(width: 44, height: 44)
     }
-    .buttonStyle(CircleButtonStyle(onPhotograph: onPhotograph))
+    .buttonStyle(CircleButtonStyle(onPhotograph: onPhotograph, active: active))
     .accessibilityLabel(label)
   }
 }
 
 private struct CircleButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   let onPhotograph: Bool
+  let active: Bool
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .background(onPhotograph ? Palette.canvas : Palette.softCloud, in: Circle())
+      .background(active || onPhotograph ? Palette.canvas : Palette.softCloud, in: Circle())
       .overlay {
-        if onPhotograph { Circle().stroke(Palette.hairline, lineWidth: 1) }
+        if active {
+          Circle().strokeBorder(Palette.ink, lineWidth: 1.5)
+        } else if onPhotograph {
+          Circle().stroke(Palette.hairline, lineWidth: 1)
+        }
       }
-      .scaleEffect(configuration.isPressed ? 0.92 : 1)
-      .animation(.spring(duration: 0.2), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+      .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
   }
 }
 
@@ -299,6 +321,104 @@ struct Notice: View {
         }
       }
       .accessibilityAddTraits(.updatesFrequently)
+  }
+}
+
+// MARK: - Inputs
+
+extension View {
+  /// A text input: white behind a hairline border at the control radius,
+  /// switching to Ink on focus. The system never tints a field with the accent.
+  func fieldChrome(focused: Bool = false, invalid: Bool = false) -> some View {
+    padding(.horizontal, 16).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.control))
+      .overlay(
+        RoundedRectangle(cornerRadius: Radius.control)
+          .stroke(invalid ? Palette.errorRed : focused ? Palette.ink : Palette.hairline, lineWidth: 1))
+  }
+}
+
+/// A label set above its input, the way the sign-in fields read. The visible
+/// label is hidden from VoiceOver because the control inside carries it.
+struct LabeledField<Content: View>: View {
+  let label: String
+  var focused = false
+  var error: String?
+  @ViewBuilder let content: Content
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(label).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).accessibilityHidden(true)
+      content.fieldChrome(focused: focused, invalid: error != nil)
+      if let error { FieldError(text: error) }
+    }
+  }
+}
+
+struct WayfareTextField: View {
+  let label: String
+  @Binding var text: String
+  var prompt = ""
+  var error: String?
+  /// A range makes the field grow vertically. Applied to the field alone, since
+  /// a line limit set from outside would also stretch the label above it.
+  var lines: ClosedRange<Int>?
+  @FocusState private var focused: Bool
+  var body: some View {
+    LabeledField(label: label, focused: focused, error: error) {
+      TextField(
+        label, text: $text, prompt: Text(prompt).foregroundStyle(Palette.ash),
+        axis: lines == nil ? .horizontal : .vertical
+      )
+      .lineLimit(lines ?? 1...1)
+      .typeStyle(.bodyLarge).foregroundStyle(focused ? Palette.charcoal : Palette.ink)
+      .focused($focused)
+      .onChange(of: error) { _, message in if message != nil { focused = true } }
+      .padding(.vertical, lines == nil ? 0 : 12)
+    }
+  }
+}
+
+/// A choice from a menu, drawn as a field rather than as a tinted control.
+struct MenuField<Options: View>: View {
+  let label: String
+  let value: String
+  @ViewBuilder let options: Options
+  var body: some View {
+    LabeledField(label: label) {
+      Menu {
+        options
+      } label: {
+        HStack(spacing: 8) {
+          Text(value).typeStyle(.bodyLarge).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+          Spacer(minLength: 8)
+          Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Palette.ash)
+        }
+        .frame(minHeight: 48).contentShape(Rectangle())
+      }
+      .accessibilityLabel(label).accessibilityValue(value)
+    }
+  }
+}
+
+/// The reserve bar: a sheet's one primary action pinned under its content with
+/// a hairline above, so it never scrolls away or sits inside a row. An error
+/// shows directly above the button that caused it.
+struct ActionBar<Content: View>: View {
+  var error: String?
+  @ViewBuilder let content: Content
+  var body: some View {
+    VStack(spacing: 0) {
+      HairlineDivider()
+      VStack(spacing: 12) {
+        if let error { Notice(text: error, isError: true) }
+        content
+      }
+      .padding(.horizontal, 24).padding(.vertical, 12)
+      .frame(maxWidth: 700)
+    }
+    .frame(maxWidth: .infinity)
+    .background(Palette.canvas)
   }
 }
 
@@ -397,30 +517,43 @@ struct TripMeta: View {
   }
 }
 
-/// The boarding strip. Rausch is the one place a figure earns colour, so the
-/// fill uses it and the track stays hairline.
+/// A compact budget rail with an optional percentage readout on detail views.
 struct BudgetMeter: View {
   let spent: Decimal
   let budget: Decimal
+  var showLabel = false
   var fill: Color = Palette.rausch
-  var track: Color = Palette.hairline
-  private var ratio: Double {
+  var track: Color = Palette.softCloud
+  private var rawRatio: Double {
     guard budget > 0 else { return 0 }
-    let value =
-      (spent as NSDecimalNumber).doubleValue / (budget as NSDecimalNumber).doubleValue
-    return min(max(value, 0), 1)
+    return max(
+      (spent as NSDecimalNumber).doubleValue / (budget as NSDecimalNumber).doubleValue, 0)
+  }
+  private var ratio: Double {
+    min(rawRatio, 1)
   }
   var body: some View {
-    GeometryReader { geometry in
-      ZStack(alignment: .leading) {
-        Capsule().fill(track)
-        Capsule().fill(fill).frame(width: geometry.size.width * ratio)
+    VStack(spacing: 8) {
+      if showLabel {
+        HStack {
+          Text("Budget used").typeStyle(.bodySmall).foregroundStyle(Palette.ash)
+          Spacer()
+          Text("\(Int((rawRatio * 100).rounded()))%")
+            .typeStyle(.labelMedium).foregroundStyle(Palette.ash).monospacedDigit()
+        }
       }
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          Capsule().fill(track)
+          Capsule().fill(rawRatio > 1 ? Palette.errorRed : fill)
+            .frame(width: geometry.size.width * ratio)
+        }
+      }
+      .frame(height: 4)
     }
-    .frame(height: 4)
     .accessibilityElement()
     .accessibilityLabel("Budget progress")
-    .accessibilityValue("\(Int(ratio * 100)) percent of budget spent")
+    .accessibilityValue("\(Int((rawRatio * 100).rounded())) percent of budget spent")
   }
 }
 
@@ -431,5 +564,59 @@ struct PhaseBadge: View {
     Text(phaseLabel(trip)).typeStyle(.labelSmall).foregroundStyle(Palette.ink)
       .padding(.horizontal, 10).padding(.vertical, 6)
       .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.card))
+  }
+}
+
+/// Destination leads; a distinct trip name adds context without repeating it.
+struct TripIdentity: View {
+  let trip: Trip
+  var showPhase = false
+  private var destination: String { trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        if !destination.isEmpty {
+          Image(systemName: "mappin.and.ellipse").font(.system(size: 17)).foregroundStyle(Palette.ash)
+            .accessibilityHidden(true)
+        }
+        Text(destination.isEmpty ? trip.name : destination).typeStyle(.headlineSmall)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      if !destination.isEmpty && destination.caseInsensitiveCompare(trip.name.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame {
+        Text(trip.name).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 12) { dates }
+        VStack(alignment: .leading, spacing: 6) { dates }
+      }
+    }
+  }
+  @ViewBuilder private var dates: some View {
+    Label(dateRange(trip.startDate, trip.endDate), systemImage: "calendar")
+      .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).fixedSize(horizontal: false, vertical: true)
+    if showPhase && tripPhase(trip) != .undated {
+      Text(phaseLabel(trip)).typeStyle(.labelMedium).foregroundStyle(Palette.ash)
+    }
+  }
+}
+
+struct FieldError: View {
+  let text: String
+  var body: some View {
+    Text(text).typeStyle(.bodySmall).foregroundStyle(Palette.errorRed)
+      .fixedSize(horizontal: false, vertical: true)
+      .accessibilityAddTraits(.updatesFrequently)
+  }
+}
+
+struct TripLoadingSkeleton: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      RoundedRectangle(cornerRadius: Radius.card).fill(Palette.softCloud).aspectRatio(4 / 3, contentMode: .fit)
+      RoundedRectangle(cornerRadius: 4).fill(Palette.softCloud).frame(width: 210, height: 24)
+      RoundedRectangle(cornerRadius: 4).fill(Palette.softCloud).frame(width: 160, height: 16)
+      RoundedRectangle(cornerRadius: 4).fill(Palette.softCloud).frame(height: 4)
+    }.accessibilityElement(children: .ignore).accessibilityLabel("Loading trips")
   }
 }

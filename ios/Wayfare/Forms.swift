@@ -11,6 +11,7 @@ struct TripForm: View {
   @State private var budget: String
   @State private var busy = false
   @State private var error: String?
+  @State private var fieldErrors: [String: String] = [:]
   @State private var discard = false
 
   init(trip: Trip, isNew: Bool, onSave: @escaping (String) -> Void) {
@@ -24,25 +25,28 @@ struct TripForm: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        Section("The next chapter") {
-          TextField("Trip name", text: $draft.name)
-          TextField(
-            "Destination",
-            text: Binding(get: { draft.destination ?? "" }, set: { draft.destination = $0 }))
-        }
-        Section("When") {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          WayfareTextField(label: "Trip name", text: $draft.name, error: fieldErrors["name"])
+          WayfareTextField(
+            label: "Destination",
+            text: Binding(get: { draft.destination ?? "" }, set: { draft.destination = $0 }), error: fieldErrors["destination"])
           OptionalDatePicker(title: "Departure", value: $draft.startDate)
-          OptionalDatePicker(title: "Return", value: $draft.endDate)
+          OptionalDatePicker(title: "Return", value: $draft.endDate, error: fieldErrors["dates"])
+          VStack(alignment: .leading, spacing: 6) {
+            WayfareTextField(label: "Budget in \(draft.currency)", text: $budget, prompt: "2500", error: fieldErrors["budget"])
+              .keyboardType(.decimalPad)
+            Text("Leave blank to track spending without a limit.").typeStyle(.bodySmall)
+              .foregroundStyle(Palette.ash)
+          }
+        }.padding(24).frame(maxWidth: 700).frame(maxWidth: .infinity)
+      }.scrollDismissesKeyboard(.interactively).canvasScreen().disabled(busy)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          ActionBar(error: error) {
+            PrimaryButton(
+              title: isNew ? "Start the ledger" : "Save changes", busy: busy, action: save)
+          }
         }
-        Section {
-          TextField("Budget in \(draft.currency)", text: $budget).keyboardType(.decimalPad)
-        } footer: {
-          Text("Leave blank to track spending without a limit.")
-        }
-        if let error { Notice(text: error, isError: true) }
-        PrimaryButton(title: isNew ? "Start the ledger" : "Save changes", busy: busy, action: save)
-      }.canvasScreen().disabled(busy)
         .navigationTitle(isNew ? "Where are you headed?" : "Update your trip")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -60,60 +64,89 @@ struct TripForm: View {
 
   private func save() {
     guard !busy else { return }
-    do {
-      var result = draft
-      result.name = result.name.trimmingCharacters(in: .whitespacesAndNewlines)
-      result.destination = result.destination?.trimmingCharacters(in: .whitespacesAndNewlines)
-      if result.destination?.isEmpty == true { result.destination = nil }
-      guard (1...80).contains(result.name.count), (result.destination?.count ?? 0) <= 120 else {
-        throw FormError(
-          "Use a trip name of 1–80 characters and a destination of at most 120 characters.")
-      }
-      guard let amount = parseAmount(budget.isEmpty ? "0" : budget), amount >= 0,
-        amount < 10_000_000_000
-      else {
-        throw FormError("Enter a valid budget of zero or more.")
-      }
-      if let start = result.startDate, let end = result.endDate, end < start {
-        throw FormError("The return date is before departure.")
-      }
-      result.budget = rounded(amount)
-      busy = true
-      error = nil
-      Task {
-        defer { busy = false }
-        do {
-          let id = try await store.saveTrip(result, isNew: isNew)
-          // Cover generation is optional and cannot turn a saved trip into a failed form.
-          if isNew && result.destination != nil {
-            Task {
-              do { try await store.requestCover(tripId: id) } catch {
-                store.notice =
-                  "Trip saved. The cover could not be generated; retry from trip options."
-              }
+    fieldErrors = [:]
+    error = nil
+    var result = draft
+    result.name = result.name.trimmingCharacters(in: .whitespacesAndNewlines)
+    result.destination = result.destination?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if result.destination?.isEmpty == true { result.destination = nil }
+    guard (1...80).contains(result.name.count) else {
+      fieldErrors["name"] = "Use a trip name of 1–80 characters."
+      return
+    }
+    guard (result.destination?.count ?? 0) <= 120 else {
+      fieldErrors["destination"] = "Use at most 120 characters."
+      return
+    }
+    guard let amount = parseAmount(budget.isEmpty ? "0" : budget), amount >= 0,
+      amount < 10_000_000_000 else {
+      fieldErrors["budget"] = "Enter a budget from zero to 9,999,999,999.99."
+      return
+    }
+    if let start = result.startDate, let end = result.endDate, end < start {
+      fieldErrors["dates"] = "Return must be on or after departure."
+      return
+    }
+    result.budget = rounded(amount)
+    busy = true
+    error = nil
+    Task {
+      defer { busy = false }
+      do {
+        let id = try await store.saveTrip(result, isNew: isNew)
+        // Cover generation is optional and cannot turn a saved trip into a failed form.
+        if isNew && result.destination != nil {
+          Task {
+            do { try await store.requestCover(tripId: id) } catch {
+              store.notice =
+                "Trip saved. The cover could not be generated; retry from trip options."
             }
           }
-          dismiss()
-          onSave(id)
-        } catch { self.error = error.localizedDescription }
-      }
-    } catch { self.error = error.localizedDescription }
+        }
+        dismiss()
+        onSave(id)
+      } catch { self.error = error.localizedDescription }
+    }
   }
 }
 
 struct OptionalDatePicker: View {
   let title: String
   @Binding var value: String?
+  var error: String?
+  @State private var open = false
+  @State private var selected = Date()
   var body: some View {
-    Toggle(
-      "Set \(title.lowercased()) date",
-      isOn: Binding(get: { value != nil }, set: { value = $0 ? Day.today : nil }))
-    if value != nil {
-      DatePicker(
-        title,
-        selection: Binding(
-          get: { value.flatMap(Day.date) ?? Date() }, set: { value = Day.string($0) }),
-        displayedComponents: .date)
+    LabeledField(label: title, error: error) {
+      Button {
+        selected = value.flatMap(Day.date) ?? Date()
+        open = true
+      } label: {
+        HStack {
+          Text(value.flatMap(shortDate) ?? "Add a date").typeStyle(.bodyLarge)
+          Spacer(minLength: 8)
+          Image(systemName: "calendar").font(.system(size: 16))
+        }.foregroundStyle(value == nil ? Palette.ash : Palette.ink)
+          .frame(minHeight: 48).contentShape(Rectangle())
+      }.buttonStyle(.plain).accessibilityLabel(title)
+        .accessibilityValue(value ?? "No date selected")
+    }
+    .sheet(isPresented: $open) {
+      NavigationStack {
+        ScrollView {
+          DatePicker(title, selection: $selected, displayedComponents: .date)
+            .datePickerStyle(.graphical).padding(16)
+        }.canvasScreen().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { open = false } }
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Use date") { value = Day.string(selected); open = false }
+            }
+            ToolbarItem(placement: .bottomBar) {
+              if value != nil { Button("Clear date", role: .destructive) { value = nil; open = false } }
+            }
+          }
+      }.presentationDetents([.large])
     }
   }
 }
@@ -129,6 +162,7 @@ struct ExpenseForm: View {
   @State private var currency: String
   @State private var busy = false
   @State private var error: String?
+  @State private var fieldErrors: [String: String] = [:]
   @State private var discard = false
   @State private var deleting = false
 
@@ -168,76 +202,101 @@ struct ExpenseForm: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        if readOnly || unsynced {
-          Section {
-            Text(expense.title).typeStyle(.titleMedium)
-            Text(money(expense.amount, trip.currency)).typeStyle(.displaySmall)
-            Text("\(expense.category.label) · \(expense.spentOn)")
-            if let note = expense.note { Text(note) }
-            if let original = expense.originalAmount, let code = expense.originalCurrency {
-              Text("Originally \(money(original, code))")
-            }
-          }
-          if readOnly {
-            Text(
-              "Paid by \(store.name(for: expense.userId)). Only the traveller who added this expense can edit it."
-            )
-          } else {
-            Notice(
-              text: liveExpense.syncState == .failed
-                ? "This entry did not reach the server. It is not counted in totals."
-                : "Saved on this device. Waiting to sync; you can edit it once it lands.")
-            if let message = liveExpense.syncError { Notice(text: message, isError: true) }
-            Button("Try again") { perform { try await store.retryExpense(liveExpense) } }
-            if liveExpense.syncState == .failed {
-              Button("Discard entry", role: .destructive) { deleting = true }
-            }
-          }
-        } else {
-          Section("The expense") {
-            TextField("What did you spend on?", text: $draft.title)
-            TextField("Amount paid", text: $amount).keyboardType(.decimalPad)
-            Picker("Paid in", selection: $currency) {
-              ForEach(Array(Set(store.fx.rates.keys).union([currency])).sorted(), id: \.self) {
-                Text($0).tag($0)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          if readOnly || unsynced {
+            VStack(alignment: .leading, spacing: 8) {
+              Text(expense.title).typeStyle(.titleMedium)
+              Text(money(expense.amount, trip.currency)).typeStyle(.displaySmall).monospacedDigit()
+              Text("\(expense.category.label) · \(expense.spentOn)").typeStyle(.bodyMedium)
+                .foregroundStyle(Palette.ash)
+              if let note = expense.note { Text(note).typeStyle(.bodyLarge) }
+              if let original = expense.originalAmount, let code = expense.originalCurrency {
+                Text("Originally \(money(original, code))").typeStyle(.bodyMedium)
+                  .foregroundStyle(Palette.ash)
               }
             }
-            Picker("Category", selection: $draft.category) {
-              ForEach(WayfareCore.Category.allCases, id: \.self) {
-                Label($0.label, systemImage: $0.symbol).tag($0)
-              }
-            }
-            DatePicker(
-              "Paid on",
-              selection: Binding(
-                get: { Day.date(draft.spentOn) ?? Date() }, set: { draft.spentOn = Day.string($0) }),
-              displayedComponents: .date)
-          }
-          Section("Note (optional)") {
-            TextField(
-              "A little context",
-              text: Binding(get: { draft.note ?? "" }, set: { draft.note = $0 }), axis: .vertical
-            ).lineLimit(3...6)
-          }
-          if currency != trip.currency {
-            Section("Ledger amount") {
-              Text(converted.map { money($0, trip.currency) } ?? "Enter an amount")
+            if readOnly {
               Text(
-                !isNew && currency == expense.originalCurrency
-                  ? "Using the rate saved with this expense."
-                  : store.fx.stale
-                    ? "Offline estimate from cached reference rates. This rate will be saved with the expense."
-                    : "ECB reference rate · \(store.fx.date)"
-              )
-              .typeStyle(.bodySmall).foregroundStyle(Palette.ash)
+                "Paid by \(store.name(for: expense.userId)). Only the traveller who added this expense can edit it."
+              ).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+            } else {
+              Notice(
+                text: liveExpense.syncState == .failed
+                  ? "This entry did not reach the server. It is not counted in totals."
+                  : "Saved on this device. Waiting to sync; you can edit it once it lands.")
+              if let message = liveExpense.syncError { Notice(text: message, isError: true) }
+              if liveExpense.syncState == .failed {
+                destructiveButton("Discard entry") { deleting = true }
+              }
+            }
+          } else {
+            WayfareTextField(label: "What did you spend on?", text: $draft.title, error: fieldErrors["title"])
+            WayfareTextField(label: "Amount paid", text: $amount, prompt: "0.00", error: fieldErrors["amount"])
+              .keyboardType(.decimalPad)
+            MenuField(label: "Paid in", value: currency) {
+              Picker("Paid in", selection: $currency) {
+                ForEach(Array(Set(store.fx.rates.keys).union([currency])).sorted(), id: \.self) {
+                  Text($0).tag($0)
+                }
+              }
+            }
+            MenuField(label: "Category", value: draft.category.label) {
+              Picker("Category", selection: $draft.category) {
+                ForEach(WayfareCore.Category.allCases, id: \.self) {
+                  Label($0.label, systemImage: $0.symbol).tag($0)
+                }
+              }
+            }
+            LabeledField(label: "Paid on") {
+              DatePicker(
+                "Paid on",
+                selection: Binding(
+                  get: { Day.date(draft.spentOn) ?? Date() },
+                  set: { draft.spentOn = Day.string($0) }),
+                displayedComponents: .date
+              ).labelsHidden()
+            }
+            WayfareTextField(
+              label: "Note (optional)",
+              text: Binding(get: { draft.note ?? "" }, set: { draft.note = $0 }),
+              prompt: "A little context", error: fieldErrors["note"], lines: 3...6)
+            if currency != trip.currency {
+              VStack(alignment: .leading, spacing: 4) {
+                Text("Ledger amount").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+                Text(converted.map { money($0, trip.currency) } ?? "Enter an amount")
+                  .typeStyle(.titleMedium).monospacedDigit()
+                Text(
+                  !isNew && currency == expense.originalCurrency
+                    ? "Using the rate saved with this expense."
+                    : store.fx.stale
+                      ? "Offline estimate from cached reference rates. This rate will be saved with the expense."
+                      : "ECB reference rate · \(store.fx.date)"
+                )
+                .typeStyle(.bodySmall).foregroundStyle(Palette.ash)
+              }
+              .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+              .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.control))
+            }
+            if !isNew { destructiveButton("Delete expense") { deleting = true } }
+          }
+        }.padding(24).frame(maxWidth: 700).frame(maxWidth: .infinity)
+      }.scrollDismissesKeyboard(.interactively).canvasScreen().disabled(busy)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          // Someone else's expense has nothing to act on, so it gets no bar.
+          if !readOnly {
+            ActionBar(error: error) {
+              if unsynced {
+                PrimaryButton(title: "Try again", busy: busy) {
+                  perform { try await store.retryExpense(liveExpense) }
+                }
+              } else {
+                PrimaryButton(
+                  title: isNew ? "Add expense" : "Save changes", busy: busy, action: save)
+              }
             }
           }
-          PrimaryButton(title: isNew ? "Add expense" : "Save changes", busy: busy, action: save)
-          if !isNew { Button("Delete expense", role: .destructive) { deleting = true } }
         }
-        if let error { Notice(text: error, isError: true) }
-      }.canvasScreen().disabled(busy)
         .navigationTitle(readOnly ? "Expense details" : isNew ? "Add expense" : "Update expense")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -269,30 +328,42 @@ struct ExpenseForm: View {
     }
   }
 
+  private func destructiveButton(_ title: String, action: @escaping () -> Void) -> some View {
+    Button(role: .destructive, action: action) {
+      Text(title).typeStyle(.labelMedium).foregroundStyle(Palette.errorRed)
+        .frame(maxWidth: .infinity, minHeight: 44)
+    }
+  }
+
   private func save() {
-    do {
-      var result = draft
-      result.title = result.title.trimmingCharacters(in: .whitespacesAndNewlines)
-      guard (1...120).contains(result.title.count), (result.note?.count ?? 0) <= 500 else {
-        throw FormError("Use a title of 1–120 characters and a note of at most 500 characters.")
-      }
-      guard let original = parseAmount(amount), original > 0, original < 10_000_000_000,
-        let ledger = converted, ledger > 0, ledger < 10_000_000_000, let rate = appliedRate
-      else {
-        throw FormError("Enter a positive amount with a supported currency.")
-      }
-      result.amount = ledger
-      result.originalAmount = rounded(original)
-      result.originalCurrency = currency
-      result.fxRate = rate
-      result.syncState = .synced
-      if isNew { result.createdAt = ISO8601DateFormatter().string(from: Date()) }
-      perform {
-        try await store.saveExpense(result, isNew: isNew)
-        UserDefaults.standard.set(currency, forKey: "paidIn.\(result.userId).\(trip.id)")
-        dismiss()
-      }
-    } catch { self.error = error.localizedDescription }
+    fieldErrors = [:]
+    error = nil
+    var result = draft
+    result.title = result.title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard (1...120).contains(result.title.count) else {
+      fieldErrors["title"] = "Use a title of 1–120 characters."
+      return
+    }
+    guard (result.note?.count ?? 0) <= 500 else {
+      fieldErrors["note"] = "Use at most 500 characters."
+      return
+    }
+    guard let original = parseAmount(amount), original > 0, original < 10_000_000_000,
+      let ledger = converted, ledger > 0, ledger < 10_000_000_000, let rate = appliedRate else {
+      fieldErrors["amount"] = "Enter a positive amount with a supported currency."
+      return
+    }
+    result.amount = ledger
+    result.originalAmount = rounded(original)
+    result.originalCurrency = currency
+    result.fxRate = rate
+    result.syncState = .synced
+    if isNew { result.createdAt = ISO8601DateFormatter().string(from: Date()) }
+    perform {
+      try await store.saveExpense(result, isNew: isNew)
+      UserDefaults.standard.set(currency, forKey: "paidIn.\(result.userId).\(trip.id)")
+      dismiss()
+    }
   }
 
   private func perform(_ action: @escaping () async throws -> Void) {

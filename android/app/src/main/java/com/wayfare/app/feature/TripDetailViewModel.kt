@@ -15,9 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Below this many entries, filter pills are more clutter than help. */
-const val EXPENSE_FILTER_THRESHOLD = 6
-
 data class TripDetailUiState(
     val trip: Trip? = null,
     val expenses: List<Expense> = emptyList(),
@@ -30,16 +27,10 @@ data class TripDetailUiState(
     val category: Category? = null,
     val payerId: String? = null,
 ) {
-    // Guarded here too, not just in the UI: a trip that shrinks under the
-    // threshold (an expense deleted) can't end up silently filtered with no
-    // visible pill left to clear it.
-    val filteredExpenses: List<Expense> get() {
-        if (expenses.size < EXPENSE_FILTER_THRESHOLD) return expenses
-        return expenses.filter { expense ->
-            (query.isBlank() || expense.title.contains(query, true) || expense.note?.contains(query, true) == true) &&
-                (category == null || expense.category == category) &&
-                (payerId == null || expense.userId == payerId)
-        }
+    val filteredExpenses: List<Expense> get() = expenses.filter { expense ->
+        (query.isBlank() || expense.title.contains(query, true) || expense.note?.contains(query, true) == true) &&
+            (category == null || expense.category == category) &&
+            (payerId == null || expense.userId == payerId)
     }
 }
 

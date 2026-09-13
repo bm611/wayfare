@@ -137,17 +137,6 @@
 }
 
 @layer utilities {
-  /* Segmented meter reveal — pure CSS cascade so no card re-renders on mount. */
-  @keyframes seg-in {
-    from { transform: scaleY(0.2); opacity: 0; }
-    to   { transform: scaleY(1);   opacity: 1; }
-  }
-  .seg {
-    transform-origin: center;
-    animation: seg-in 0.42s var(--ease-out-expo) both;
-    animation-delay: calc(var(--i) * 16ms);
-  }
-
   /* Boarding light on the active trip's stub. */
   @keyframes beacon {
     0%, 100% { opacity: 0.35; transform: scale(0.82); }

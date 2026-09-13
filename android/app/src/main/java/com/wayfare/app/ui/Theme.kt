@@ -5,7 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -28,63 +32,42 @@ val RauschDeep = Color(0xFFE00B41)
 val PlusMagenta = Color(0xFF92174D)
 val LuxePurple = Color(0xFF460479)
 
-val CanvasWhite = Color(0xFFFFFFFF)
-/** Subsurface tint for sections that should step back from the white canvas. */
-val SoftCloud = Color(0xFFF7F7F7)
-/** The 1dp workhorse: every card-to-card and row-to-row divider. */
-val Hairline = Color(0xFFDDDDDD)
-
-/** The system's near-black. Roughly 90% of all text, and never pure #000000. */
-val Ink = Color(0xFF222222)
-/** Focused input text and one-step-down emphasis. */
-val Charcoal = Color(0xFF3F3F3F)
-/** Secondary labels and subtitle copy. */
-val Ash = Color(0xFF6A6A6A)
-/** Disabled controls and low-priority metadata. */
-val Mute = Color(0xFF929292)
-/** Tertiary dividers, icon strokes, placeholder avatars. */
-val Stone = Color(0xFFC1C1C1)
-
-val ErrorRed = Color(0xFFC13515)
-val DeepError = Color(0xFFB32505)
-/** Legal and informational links — the one non-monochrome link colour. */
+// Semantic getters let all existing screens follow the system appearance.
+val CanvasWhite: Color @Composable get() = MaterialTheme.colorScheme.surface
+val SoftCloud: Color @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+val Hairline: Color @Composable get() = MaterialTheme.colorScheme.outline
+val Ink: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+val Charcoal: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+val Ash: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val Mute: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val Stone: Color @Composable get() = MaterialTheme.colorScheme.outline
+val ErrorRed: Color @Composable get() = MaterialTheme.colorScheme.error
+val DeepError: Color @Composable get() = MaterialTheme.colorScheme.error
 val InfoBlue = Color(0xFF428BFF)
 
-// Departure palette. These tokens are kept separate from the established light
-// scheme while the new tape and account surfaces are introduced alongside it.
-val Night = Color(0xFF10151F)
-val NightDeep = Color(0xFF080C12)
-val CardNavy = Color(0xFF18202D)
-val CardRaised = Color(0xFF222C3B)
-val NavBar = Color(0xFF0C111A)
-val Outline = Color(0xFF334052)
-val Paper = Color(0xFFF4EFE4)
-val Slate = Color(0xFF8A96A8)
-val Steel = Color(0xFFBCC5D1)
-val Amber = Color(0xFFFFB547)
-
 private val WayfareColors = lightColorScheme(
-    primary = Rausch,
-    onPrimary = CanvasWhite,
-    primaryContainer = Rausch,
-    onPrimaryContainer = CanvasWhite,
-    secondary = Ink,
-    onSecondary = CanvasWhite,
-    background = CanvasWhite,
-    onBackground = Ink,
-    surface = CanvasWhite,
-    onSurface = Ink,
-    surfaceVariant = SoftCloud,
-    onSurfaceVariant = Ash,
-    surfaceContainer = SoftCloud,
-    // Dialogs, sheets and menus are white cards on a white canvas; the hairline
-    // border and the layered shadow do the separating, never a tinted surface.
-    surfaceContainerHigh = CanvasWhite,
-    surfaceContainerHighest = CanvasWhite,
-    outline = Hairline,
-    outlineVariant = Hairline,
-    error = ErrorRed,
-    onError = CanvasWhite,
+    primary = Rausch, onPrimary = Color.White,
+    primaryContainer = Rausch, onPrimaryContainer = Color.White,
+    secondary = Color(0xFF222222), onSecondary = Color.White,
+    background = Color.White, onBackground = Color(0xFF222222),
+    surface = Color.White, onSurface = Color(0xFF222222),
+    surfaceVariant = Color(0xFFF7F7F7), onSurfaceVariant = Color(0xFF6A6A6A),
+    surfaceContainer = Color(0xFFF7F7F7),
+    surfaceContainerHigh = Color.White, surfaceContainerHighest = Color.White,
+    outline = Color(0xFFDDDDDD), outlineVariant = Color(0xFFDDDDDD),
+    error = Color(0xFFC13515), onError = Color.White,
+)
+private val WayfareDarkColors = darkColorScheme(
+    primary = Rausch, onPrimary = Color.White,
+    primaryContainer = Rausch, onPrimaryContainer = Color.White,
+    secondary = Color(0xFFF3F3F2), onSecondary = Color(0xFF181A1B),
+    background = Color(0xFF181A1B), onBackground = Color(0xFFF3F3F2),
+    surface = Color(0xFF181A1B), onSurface = Color(0xFFF3F3F2),
+    surfaceVariant = Color(0xFF242729), onSurfaceVariant = Color(0xFFB6B9BB),
+    surfaceContainer = Color(0xFF242729),
+    surfaceContainerHigh = Color(0xFF242729), surfaceContainerHighest = Color(0xFF242729),
+    outline = Color(0xFF44484B), outlineVariant = Color(0xFF44484B),
+    error = Color(0xFFFF927D), onError = Color(0xFF181A1B),
 )
 
 /**
@@ -97,21 +80,6 @@ private val Cereal = FontFamily(
     Font(R.font.manrope, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     Font(R.font.manrope, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
     Font(R.font.manrope, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-)
-
-val PlexMono = FontFamily(
-    Font(R.font.ibm_plex_mono_regular, weight = FontWeight.Normal),
-    Font(R.font.ibm_plex_mono_medium, weight = FontWeight.Medium),
-    Font(R.font.ibm_plex_mono_semibold, weight = FontWeight.SemiBold),
-)
-
-val MonoLabelStyle = TextStyle(
-    fontFamily = PlexMono,
-    fontWeight = FontWeight.Medium,
-    fontSize = 10.sp,
-    lineHeight = 14.sp,
-    letterSpacing = 1.2.sp,
-    color = Paper,
 )
 
 // One family carries 11sp badges through 32sp display. Display sizes compress
@@ -193,10 +161,11 @@ val WayfareShapes = Shapes(
 
 @Composable
 fun WayfareTheme(content: @Composable () -> Unit) {
+    val colors = if (isSystemInDarkTheme()) WayfareDarkColors else WayfareColors
     MaterialTheme(
-        colorScheme = WayfareColors,
+        colorScheme = colors,
         typography = WayfareTypography,
         shapes = WayfareShapes,
-        content = content,
+        content = { CompositionLocalProvider(LocalContentColor provides colors.onSurface, content = content) },
     )
 }

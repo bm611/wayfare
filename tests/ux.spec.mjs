@@ -11,7 +11,10 @@ const user = { id: 'traveller-you', aud: 'authenticated', role: 'authenticated',
 const session = { access_token: `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify({ sub: user.id, exp: 4102444800 })).toString('base64url')}.test`, refresh_token: 'test-refresh', expires_at: 4102444800, expires_in: 3600, token_type: 'bearer', user };
 const trip = { id: 'lisbon', user_id: user.id, name: 'A week in Lisbon', destination: 'Lisbon, Portugal', start_date: '2026-09-03', end_date: '2026-09-09', budget: 1500, currency: 'EUR', accent: 'clay', share_code: 'BCDF2345', cover_status: 'ready', cover_path: null, created_at: '2026-09-01T00:00:00Z' };
 const expenses = [
-  { id: 'flight', title: 'Flights to Lisbon', amount: 300, category: 'flights', user_id: user.id, spent_on: '2026-09-01', note: null },
+  { id: 'flight', title: 'Flights to Lisbon', amount: 200, category: 'flights', user_id: user.id, spent_on: '2026-09-01', note: null },
+  { id: 'hotel', title: 'Hotel deposit', amount: 50, category: 'stays', user_id: user.id, spent_on: '2026-09-01', note: null },
+  { id: 'museum', title: 'Museum tickets', amount: 30, category: 'activities', user_id: 'traveller-maya', spent_on: '2026-09-04', note: null },
+  { id: 'souvenirs', title: 'Souvenirs', amount: 20, category: 'shopping', user_id: 'traveller-maya', spent_on: '2026-09-04', note: null },
   { id: 'dinner', title: 'Dinner by the river', amount: 50, category: 'food', user_id: 'traveller-maya', spent_on: '2026-09-05', note: 'Booked a table outside' },
   { id: 'tram', title: 'Tram tickets', amount: 10, category: 'transport', user_id: user.id, spent_on: '2026-09-05', note: null },
 ].map((expense) => ({ ...expense, trip_id: trip.id, original_currency: null, original_amount: null, fx_rate: null, created_at: '2026-09-05T10:00:00Z' }));
@@ -70,10 +73,17 @@ test('budget, grouped trips, ledger search and filters', async ({ page }, testIn
   await expect(page.getByText('Budget remaining', { exact: true })).toBeVisible();
   await expect(page.getByText('€228.00')).toBeVisible();
   await expect(page.getByText('Group budget', { exact: false })).toBeVisible();
+  await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveAttribute('aria-valuetext', '24% of budget used');
+  await expect(page.getByLabel('Search expenses')).toHaveCount(0);
+  await expect(page.getByLabel('Category', { exact: true })).toHaveCount(0);
   await capture(page, { path: testInfo.outputPath('trip-mobile.png'), fullPage: true });
+  await page.locator('#ledger').scrollIntoViewIfNeeded();
+  await capture(page, { path: testInfo.outputPath('ledger-collapsed.png') });
+  await page.getByRole('button', { name: 'Show search' }).click();
   await page.getByLabel('Search expenses').fill('outside');
   await expect(page.getByRole('status')).toHaveText('1 matching expense');
   await expect(page.getByRole('button', { name: /Dinner by the river/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Show filters' }).click();
   await page.getByLabel('Category', { exact: true }).selectOption('transport');
   await expect(page.getByText('No expenses match.', { exact: false })).toBeVisible();
   await capture(page, { path: testInfo.outputPath('no-results.png'), fullPage: true });
@@ -155,7 +165,7 @@ test('other travellers entries are read-only and own entries remain editable', a
   await capture(page, { path: testInfo.outputPath('read-only.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: /Tram tickets/ }).click();
+  await page.getByRole('button', { name: /^Tram tickets You/ }).click();
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Delete entry' })).toBeVisible();
 });
@@ -184,12 +194,14 @@ test('over-budget, zero-budget and last-day guidance', async ({ page }, testInfo
   await expect(page.getByText('€0.00 available/day remaining')).toBeVisible();
   await expect(page.getByText('Across 1 day, including today.', { exact: false })).toBeVisible();
   await expect(page.getByText('over by €60.00', { exact: false })).toBeVisible();
+  await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveAttribute('aria-valuetext', '120% of budget used');
   await capture(page, { path: testInfo.outputPath('over-budget.png'), fullPage: true });
   await page.getByRole('button', { name: 'Edit trip details' }).click();
   await page.getByLabel('Budget', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('No budget set', { exact: false })).toBeVisible();
   await expect(page.getByText('available/day remaining', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveCount(0);
 });
 
 test('password visibility and reset request with cooldown', async ({ page }, testInfo) => {

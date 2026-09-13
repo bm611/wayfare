@@ -8,14 +8,13 @@ import com.wayfare.app.core.dayTotals
 import com.wayfare.app.core.routeCode
 import com.wayfare.app.core.stampDate
 import com.wayfare.app.core.tapeDayLabel
-import com.wayfare.app.ui.applyKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.junit.Test
 
-/** The furniture the Departure design adds: ticket stubs, tape rules, the keypad. */
+/** The furniture the Departure design adds: ticket stubs, tape rules, day totals. */
 class DepartureTest {
     private fun trip(name: String = "Lisbon & Porto", destination: String? = "Lisbon & Porto") = Trip(
         id = "t", ownerId = "u", name = name, destination = destination,
@@ -97,35 +96,5 @@ class DepartureTest {
 
     @Test fun `no expenses means no bars rather than an empty one`() {
         assertTrue(dayTotals(emptyList()).isEmpty())
-    }
-
-    // MARK: the keypad
-
-    @Test fun `digits append and a leading zero is replaced`() {
-        assertEquals("3", applyKey("", "3"))
-        assertEquals("38", applyKey("3", "8"))
-        assertEquals("5", applyKey("0", "5"))
-    }
-
-    @Test fun `there is only ever one decimal point`() {
-        assertEquals("38.", applyKey("38", "."))
-        assertEquals("38.", applyKey("38.", "."))
-        assertEquals("0.", applyKey("", "."))
-    }
-
-    @Test fun `cents stop at two places`() {
-        assertEquals("38.5", applyKey("38.", "5"))
-        assertEquals("38.50", applyKey("38.5", "0"))
-        assertEquals("38.50", applyKey("38.50", "9"))
-    }
-
-    @Test fun `backspace walks back, including off the end`() {
-        assertEquals("38.", applyKey("38.5", "⌫"))
-        assertEquals("", applyKey("3", "⌫"))
-        assertEquals("", applyKey("", "⌫"))
-    }
-
-    @Test fun `an amount cannot run away past a sensible length`() {
-        assertEquals("123456789012", applyKey("123456789012", "3"))
     }
 }

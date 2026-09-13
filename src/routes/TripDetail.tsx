@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, PencilSimple, Plus, Trash, UsersThree } from "@phosphor-icons/react";
+import { ArrowLeft, FunnelSimple, MagnifyingGlass, PencilSimple, Plus, Trash, UsersThree } from "@phosphor-icons/react";
 import { Barcode, Postmark, Ticket } from "../components/Ticket";
 import { BudgetMeter } from "../components/BudgetMeter";
 import { CountUp } from "../components/CountUp";
@@ -35,7 +35,7 @@ import {
   tripCode,
   tripPhase,
 } from "../lib/format";
-import { hash } from "../lib/cx";
+import { cx, hash } from "../lib/cx";
 import type { Expense } from "../lib/types";
 
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
@@ -67,6 +67,8 @@ export function TripDetail() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [payerFilter, setPayerFilter] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const membership = useMembers(id);
   const isOwner = !!trip && trip.user_id === user?.id;
@@ -247,7 +249,7 @@ export function TripDetail() {
               {isShared && <p className="mt-3 text-sm leading-relaxed text-ink-soft">Group budget · includes everyone’s expenses. This ledger tracks spending, not who owes whom.</p>}
             </div>
 
-            <BudgetMeter spent={spent} budget={trip.budget} />
+            <BudgetMeter spent={spent} budget={trip.budget} showLabel />
             <Barcode seed={hash(trip.id)} className="opacity-45" />
           </div>
         </Ticket>
@@ -258,28 +260,67 @@ export function TripDetail() {
           <summary className="cursor-pointer py-2 text-sm font-medium">Spending by category</summary>
           <div className="mt-3"><CategorySplit expenses={expenses} currency={trip.currency} onSelect={(category) => {
             setCategoryFilter(category);
+            setFiltersOpen(true);
             document.getElementById("ledger")?.scrollIntoView({ block: "start" });
           }} /></div>
         </details>
       )}
 
       <section id="ledger" className="mt-8 scroll-mt-6">
-        <h2 className="text-base font-semibold text-ink">
-          The ledger
-        </h2>
-        {filtersEnabled && (
-          <div className="mt-4 space-y-3">
-            <Field label="Search expenses" type="search" placeholder="Search titles and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <div className="grid grid-cols-2 gap-3">
-              <Select label="Category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="">All categories</option>
-                {CATEGORY_LIST.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}
-              </Select>
-              {isShared && <Select label="Paid by" value={payerFilter} onChange={(e) => setPayerFilter(e.target.value)}>
-                <option value="">Everyone</option>
-                {membership.members.map((member) => <option key={member.user_id} value={member.user_id}>{member.is_you ? "You" : member.display_name ?? "Traveller"}</option>)}
-              </Select>}
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-ink">
+            The ledger
+          </h2>
+          {filtersEnabled && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label={searchOpen ? "Hide search" : "Show search"}
+                aria-controls="ledger-search"
+                aria-expanded={searchOpen}
+                onClick={() => setSearchOpen((open) => !open)}
+                className={cx(
+                  "press grid size-11 place-items-center rounded-xl text-ink-soft hover:bg-paper-deep hover:text-ink",
+                  (searchOpen || search) && "bg-clay-wash text-clay-deep",
+                )}
+              >
+                <MagnifyingGlass size={19} weight={search ? "bold" : "regular"} />
+              </button>
+              <button
+                type="button"
+                aria-label={filtersOpen ? "Hide filters" : "Show filters"}
+                aria-controls="ledger-filters"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((open) => !open)}
+                className={cx(
+                  "press grid size-11 place-items-center rounded-xl text-ink-soft hover:bg-paper-deep hover:text-ink",
+                  (filtersOpen || categoryFilter || payerFilter) && "bg-clay-wash text-clay-deep",
+                )}
+              >
+                <FunnelSimple size={19} weight={categoryFilter || payerFilter ? "fill" : "regular"} />
+              </button>
             </div>
+          )}
+        </div>
+        {filtersEnabled && (
+          <div className={cx((searchOpen || filtersOpen || hasFilters) && "mt-3", "space-y-3")}>
+            {searchOpen && (
+              <div id="ledger-search">
+                <Field label="Search expenses" type="search" placeholder="Search titles and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+            )}
+            {filtersOpen && (
+              <div id="ledger-filters" className={cx("grid gap-3", isShared && "grid-cols-2")}>
+                <Select label="Category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                  <option value="">All categories</option>
+                  {CATEGORY_LIST.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}
+                </Select>
+                {isShared && <Select label="Paid by" value={payerFilter} onChange={(e) => setPayerFilter(e.target.value)}>
+                  <option value="">Everyone</option>
+                  {membership.members.map((member) => <option key={member.user_id} value={member.user_id}>{member.is_you ? "You" : member.display_name ?? "Traveller"}</option>)}
+                </Select>}
+              </div>
+            )}
             {hasFilters && <div className="flex items-center justify-between text-sm text-ink-soft">
               <p role="status">{filteredExpenses.length} matching {filteredExpenses.length === 1 ? "expense" : "expenses"}</p>
               <button className="press min-h-11 text-clay underline underline-offset-4" onClick={() => { setSearch(""); setCategoryFilter(""); setPayerFilter(""); }}>Clear filters</button>
