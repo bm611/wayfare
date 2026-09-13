@@ -1,6 +1,16 @@
 import SwiftUI
 import UIKit
 
+private let loginBackgroundImage: UIImage = {
+  guard let path = Bundle.main.path(forResource: "login-background", ofType: "png"),
+    let image = UIImage(contentsOfFile: path)
+  else {
+    assertionFailure("Missing login-background.png from the app bundle")
+    return UIImage()
+  }
+  return image
+}()
+
 struct AuthScreen: View {
   @Environment(AppStore.self) private var store
   @State private var signup = false
@@ -12,90 +22,111 @@ struct AuthScreen: View {
 
   var body: some View {
     NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 24) {
-          HStack(spacing: 8) {
-            Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
-            Text("wayfare").typeStyle(.headlineSmall)
-          }.foregroundStyle(Palette.rausch).padding(.top, 12)
-          VStack(alignment: .leading, spacing: 14) {
-            Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
-              .typeStyle(.displaySmall)
-            Text(
-              store.recovery
-                ? "Choose a new password for your account."
-                : "A little ledger for your next big chapter."
-            ).typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading).padding(24)
-          .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
-          if !store.configured {
-            Notice(
-              text:
-                "Add your public Supabase configuration to ios/Config/Local.xcconfig, then rebuild the app."
-            )
-          }
-          if let error { Notice(text: error, isError: true) }
-          if let notice = store.notice { Notice(text: notice) }
-          VStack(alignment: .leading, spacing: 16) {
-            if signup && !store.recovery { field("Your name", text: $name, content: .name) }
-            if !store.recovery { field("Email address", text: $email, content: .emailAddress) }
-            VStack(alignment: .leading, spacing: 6) {
-              Text("Password").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-              SecureField("At least 6 characters", text: $password)
-                .textContentType(signup || store.recovery ? .newPassword : .password)
-                .typeStyle(.bodyLarge).authFieldChrome()
-            }
-          }
-          PrimaryButton(
-            title: store.recovery ? "Update password" : signup ? "Create account" : "Sign in",
-            busy: busy
-          ) {
-            run {
-              guard password.count >= 6 else {
-                throw FormError("Use at least six characters for your password.")
-              }
-              if store.recovery {
-                try await store.updatePassword(password)
-              } else if signup {
-                try await store.signUp(name: name, email: email, password: password)
-              } else {
-                try await store.signIn(email: email, password: password)
-              }
-            }
-          }.disabled(!store.configured)
-          if !store.recovery {
-            SecondaryButton(title: "Continue with Google", icon: "person.badge.key") {
-              run { try await store.signInWithGoogle() }
-            }
-            VStack(spacing: 4) {
-              Button(signup ? "Already have an account? Sign in" : "New here? Create an account") {
-                signup.toggle()
-                error = nil
-                store.notice = nil
-              }.typeStyle(.labelMedium).foregroundStyle(Palette.ink)
-              Button("Forgot your password?") {
-                run {
-                  try validateEmail()
-                  try await store.resetPassword(email: email)
-                }
-              }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-              Button("Resend confirmation email") {
-                run {
-                  try validateEmail()
-                  try await store.resendConfirmation(email: email)
-                }
-              }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
-            }.frame(maxWidth: .infinity)
-          } else {
-            Button("Back to sign in") { run { try await store.signOut() } }
-              .typeStyle(.labelMedium).foregroundStyle(Palette.ink)
-              .frame(maxWidth: .infinity)
-          }
+      ZStack {
+        GeometryReader { geometry in
+          Image(uiImage: loginBackgroundImage)
+            .resizable()
+            .scaledToFill()
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
         }
-        .disabled(busy || !store.configured).padding(24).frame(maxWidth: 480)
-        .frame(maxWidth: .infinity)
-      }.canvasScreen()
+        .ignoresSafeArea()
+        LinearGradient(
+          stops: [
+            .init(color: Palette.canvas.opacity(0.04), location: 0),
+            .init(color: Palette.canvas.opacity(0.5), location: 0.28),
+            .init(color: Palette.canvas.opacity(0.82), location: 0.48),
+            .init(color: Palette.canvas.opacity(0.9), location: 1),
+          ],
+          startPoint: .top, endPoint: .bottom
+        ).ignoresSafeArea()
+        ScrollView {
+          VStack(alignment: .leading, spacing: 24) {
+            HStack(spacing: 8) {
+              Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
+              Text("wayfare").typeStyle(.headlineSmall)
+            }.foregroundStyle(Palette.rausch).padding(.top, 12)
+            VStack(alignment: .leading, spacing: 14) {
+              Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
+                .typeStyle(.displaySmall)
+              Text(
+                store.recovery
+                  ? "Choose a new password for your account."
+                  : "A little ledger for your next big chapter."
+              ).typeStyle(.bodyMedium).foregroundStyle(Palette.ink.opacity(0.76))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 12)
+            if !store.configured {
+              Notice(
+                text:
+                  "Add your public Supabase configuration to ios/Config/Local.xcconfig, then rebuild the app."
+              )
+            }
+            if let error { Notice(text: error, isError: true) }
+            if let notice = store.notice { Notice(text: notice) }
+            VStack(alignment: .leading, spacing: 16) {
+              if signup && !store.recovery { field("Your name", text: $name, content: .name) }
+              if !store.recovery { field("Email address", text: $email, content: .emailAddress) }
+              VStack(alignment: .leading, spacing: 6) {
+                Text("Password").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+                SecureField("At least 6 characters", text: $password)
+                  .textContentType(signup || store.recovery ? .newPassword : .password)
+                  .typeStyle(.bodyLarge).authFieldChrome()
+              }
+            }
+            PrimaryButton(
+              title: store.recovery ? "Update password" : signup ? "Create account" : "Sign in",
+              busy: busy
+            ) {
+              run {
+                guard password.count >= 6 else {
+                  throw FormError("Use at least six characters for your password.")
+                }
+                if store.recovery {
+                  try await store.updatePassword(password)
+                } else if signup {
+                  try await store.signUp(name: name, email: email, password: password)
+                } else {
+                  try await store.signIn(email: email, password: password)
+                }
+              }
+            }.disabled(!store.configured)
+            if !store.recovery {
+              SecondaryButton(title: "Continue with Google", icon: "person.badge.key") {
+                run { try await store.signInWithGoogle() }
+              }
+              VStack(spacing: 4) {
+                Button(signup ? "Already have an account? Sign in" : "New here? Create an account") {
+                  signup.toggle()
+                  error = nil
+                  store.notice = nil
+                }.typeStyle(.labelMedium).foregroundStyle(Palette.ink)
+                Button("Forgot your password?") {
+                  run {
+                    try validateEmail()
+                    try await store.resetPassword(email: email)
+                  }
+                }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+                Button("Resend confirmation email") {
+                  run {
+                    try validateEmail()
+                    try await store.resendConfirmation(email: email)
+                  }
+                }.typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+              }.frame(maxWidth: .infinity)
+            } else {
+              Button("Back to sign in") { run { try await store.signOut() } }
+                .typeStyle(.labelMedium).foregroundStyle(Palette.ink)
+                .frame(maxWidth: .infinity)
+            }
+          }
+          .disabled(busy || !store.configured).padding(24).frame(maxWidth: 480)
+          .frame(maxWidth: .infinity)
+        }
+        .scrollContentBackground(.hidden)
+        .foregroundStyle(Palette.ink)
+      }
     }
   }
 

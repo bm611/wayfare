@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         handleIncoming(intent)
         setContent {
             WayfareTheme {
-                Box(Modifier.fillMaxSize().background(CanvasWhite).systemBarsPadding()) {
+                Box(Modifier.fillMaxSize().background(CanvasWhite)) {
                     WayfareApp(authViewModel, container)
                 }
             }
@@ -80,12 +80,17 @@ class MainActivity : ComponentActivity() {
 private fun WayfareApp(authViewModel: AuthViewModel, container: AppContainer) {
     val auth by authViewModel.state.collectAsStateWithLifecycle()
     when {
-        auth.initializing -> Box(Modifier.fillMaxSize().background(CanvasWhite), contentAlignment = Alignment.Center) {
+        auth.initializing -> Box(
+            Modifier.fillMaxSize().background(CanvasWhite).systemBarsPadding(),
+            contentAlignment = Alignment.Center,
+        ) {
             CircularProgressIndicator(color = Rausch)
         }
-        auth.recovery -> RecoveryScreen(auth, authViewModel)
+        auth.recovery -> Box(Modifier.fillMaxSize().systemBarsPadding()) {
+            RecoveryScreen(auth, authViewModel)
+        }
         auth.userId == null -> AuthScreen(auth, authViewModel, container)
-        else -> {
+        else -> Box(Modifier.fillMaxSize().systemBarsPadding()) {
             val accountId = requireNotNull(auth.userId)
             val navController = rememberNavController()
             NavHost(navController = navController, startDestination = "trips") {

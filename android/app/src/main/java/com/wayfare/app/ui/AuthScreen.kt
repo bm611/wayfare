@@ -1,10 +1,11 @@
 package com.wayfare.app.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,12 +30,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.wayfare.app.AppContainer
+import com.wayfare.app.R
 import com.wayfare.app.feature.AuthUiState
 import com.wayfare.app.feature.AuthViewModel
 import io.github.jan.supabase.compose.auth.composable.GoogleDialogType
@@ -61,14 +66,31 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
         fallback = { viewModel.signInWithGoogleInBrowser() },
     )
 
-    Column(
-        Modifier.fillMaxSize().background(CanvasWhite).safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.Start,
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(R.drawable.login_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to CanvasWhite.copy(alpha = 0.04f),
+                    0.28f to CanvasWhite.copy(alpha = 0.5f),
+                    0.48f to CanvasWhite.copy(alpha = 0.82f),
+                    1f to CanvasWhite.copy(alpha = 0.9f),
+                ),
+            ),
+        )
+        Column(
+            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 24.dp, vertical = 24.dp).animateContentSize(),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.Start,
+        ) {
         Brand()
         Spacer(Modifier.height(20.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SoftCloud).padding(24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
             Text(
                 when (mode) {
                     AuthMode.SignIn -> "Go places.\nKeep count."
@@ -83,7 +105,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
                     AuthMode.SignUp -> "Create an account to keep every trip in one place."
                     AuthMode.Reset -> "We’ll email you a secure password reset link."
                 },
-                Modifier.padding(top = 14.dp), color = Ash,
+                Modifier.padding(top = 14.dp), color = Ink.copy(alpha = 0.76f),
                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             )
         }
@@ -175,6 +197,7 @@ fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel, container: AppConta
                 onClick = { viewModel.resendConfirmation(email) },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             ) { Text("Resend confirmation", color = Ink, style = androidx.compose.material3.MaterialTheme.typography.labelMedium) }
+        }
         }
     }
 }

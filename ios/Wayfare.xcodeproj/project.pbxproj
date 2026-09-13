@@ -19,12 +19,14 @@
 		C8DE472DCE8969163571E8F4 /* WayfareCore in Frameworks */ = {isa = PBXBuildFile; productRef = CEE65ACEAF7888B702E17E70 /* WayfareCore */; };
 		E815EBDFE0C702899BC8000C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC90C2E9D1B06721650192A1 /* Theme.swift */; };
 		EF71A3B8312088738D75E1CC /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97672F2F5037BBDB984D308D /* AppStore.swift */; };
+		F0F0E8E80DB9B9BF03BF1C95 /* login-background.png in Resources */ = {isa = PBXBuildFile; fileRef = 259AB30F025BE136B0ECBAF6 /* login-background.png */; };
 		F4C9126CB69174D7836C32A3 /* Manrope-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		00AFCAC4EF220FAEE6736E8F /* WayfareApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WayfareApp.swift; sourceTree = "<group>"; };
 		1F170A1AC5FABC6AC2EA1C63 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
+		259AB30F025BE136B0ECBAF6 /* login-background.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "login-background.png"; sourceTree = "<group>"; };
 		322FD859C166B4F6C921DA22 /* Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Forms.swift; sourceTree = "<group>"; };
 		3E475665AB348C09D6C3B66C /* Wayfare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wayfare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Bold.ttf"; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 		E73EB150E80B5A9CA1A9F524 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				259AB30F025BE136B0ECBAF6 /* login-background.png */,
 				440421B2EB11AC5B9200DDA0 /* Manrope-Bold.ttf */,
 				4FECC72F67B63A0F5F16D0E1 /* Manrope-Medium.ttf */,
 				ABCBA720F7C02406340AA1C1 /* Manrope-Regular.ttf */,
@@ -185,6 +188,7 @@
 				19123B2BF4AA2628B331A4FA /* Manrope-Regular.ttf in Resources */,
 				7C4004521DDEADACA023FA1E /* Manrope-SemiBold.ttf in Resources */,
 				BF123AEF9DBABFAC81C260F6 /* PrivacyInfo.xcprivacy in Resources */,
+				F0F0E8E80DB9B9BF03BF1C95 /* login-background.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
