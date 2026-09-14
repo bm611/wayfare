@@ -94,15 +94,6 @@ struct TripForm: View {
       defer { busy = false }
       do {
         let id = try await store.saveTrip(result, isNew: isNew)
-        // Cover generation is optional and cannot turn a saved trip into a failed form.
-        if isNew && result.destination != nil {
-          Task {
-            do { try await store.requestCover(tripId: id) } catch {
-              store.notice =
-                "Trip saved. The cover could not be generated; retry from trip options."
-            }
-          }
-        }
         dismiss()
         onSave(id)
       } catch { self.error = error.localizedDescription }

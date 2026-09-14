@@ -49,6 +49,7 @@ import WayfareCore
   private var outboxSyncTask: Task<Void, Never>?
   private var outboxSyncID: UUID?
   private var outbox: [String: Expense] = [:]
+  private var requestedCoverSubjects: [String: String] = [:]
   private var monitor: AnyObject?
   #if canImport(AuthenticationServices)
     private var webSession: ASWebAuthenticationSession?
@@ -201,6 +202,7 @@ import WayfareCore
       trips = old
       throw error
     }
+    await requestMissingCovers([saved])
     return saved.id
   }
 
@@ -325,6 +327,24 @@ import WayfareCore
     }
   }
 
+  /// Pick up covers invalidated by edits as well as trips created on another device.
+  private func requestMissingCovers(_ candidates: [Trip]) async {
+    guard configuration.cover != nil, let account = userId else { return }
+    for trip in candidates where trip.coverStatus == "idle" && trip.coverPath == nil {
+      let subject = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        ?? trip.name.trimmingCharacters(in: .whitespacesAndNewlines)
+      let key = "\(account)/\(trip.id)"
+      guard !subject.isEmpty, requestedCoverSubjects[key] != subject else { continue }
+      guard userId == account else { return }
+      // One automatic attempt per subject per session; manual retry remains available.
+      requestedCoverSubjects[key] = subject
+      do { try await requestCover(tripId: trip.id) } catch {
+        guard userId == account else { return }
+        notice = "Trip saved. The cover could not be generated; retry from trip options."
+      }
+    }
+  }
+
   public func refresh() async {
     if let dataRefreshTask {
       await dataRefreshTask.value
@@ -371,6 +391,7 @@ import WayfareCore
       if notice == refreshNotice { notice = nil }
       refreshNotice = nil
       do { try persist() } catch { notice = "Could not save refreshed data: \(message(error))" }
+      await requestMissingCovers(remoteTrips)
     } catch {
       if marker == epoch {
         refreshNotice = message(error)
@@ -510,10 +531,10 @@ extension AppStore {
       cover = Self.httpsURL(bundle.object(forInfoDictionaryKey: "COVER_ENDPOINT") as? String)
       web = Self.httpsURL(bundle.object(forInfoDictionaryKey: "WEB_URL") as? String)
     }
-    init(url: URL, key: String) {
+    init(url: URL, key: String, cover: URL? = nil) {
       self.url = url
       self.key = key
-      cover = nil
+      self.cover = cover
       web = nil
     }
     static func httpsURL(_ value: String?) -> URL? {

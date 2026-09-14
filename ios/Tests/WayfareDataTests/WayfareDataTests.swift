@@ -30,12 +30,13 @@ private final class StubProtocol: URLProtocol, @unchecked Sendable {
 @Suite(.serialized) @MainActor
 struct DataTests {
   private func makeStore(
-    directory: URL, writeSession: @escaping (Session) throws -> Void = { _ in }
+    directory: URL, cover: URL? = nil,
+    writeSession: @escaping (Session) throws -> Void = { _ in }
   ) -> AppStore {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [StubProtocol.self]
     return AppStore(
-      configuration: .init(url: URL(string: "https://test.invalid")!, key: "public-test-key"),
+      configuration: .init(url: URL(string: "https://test.invalid")!, key: "public-test-key", cover: cover),
       http: URLSession(configuration: config), defaults: UserDefaults(suiteName: "wayfare-tests")!,
       directory: directory, readSession: { nil }, writeSession: writeSession, clearSession: {})
   }
@@ -46,6 +47,59 @@ struct DataTests {
   }
   private func temporary() -> URL {
     FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  }
+
+  @Test func editedAndRefreshedTripsRequestMissingCoversOncePerSubject() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = makeStore(directory: directory, cover: URL(string: "https://test.invalid/cover")!)
+    try store.adopt(account())
+    var trip = Trip(id: "rome", userId: "alice", name: "Autumn holiday", destination: "Rome")
+    var coverRequests = 0
+    StubProtocol.handler = { request in
+      if request.url?.path == "/cover" {
+        coverRequests += 1
+        return (202, Data())
+      }
+      if request.url?.path == "/rest/v1/trips" {
+        return (200, try AppStore.encoder.encode([trip]))
+      }
+      return (200, Data("[]".utf8))
+    }
+    // Recover the already-missing thumbnail on load.
+    await store.refresh()
+    #expect(coverRequests == 1)
+    #expect(store.trips.first?.coverStatus == "pending")
+    await store.refresh()
+    #expect(coverRequests == 1)
+    // A changed subject can request a replacement during the same session.
+    trip.destination = "Florence"
+    _ = try await store.saveTrip(trip, isNew: false)
+    #expect(coverRequests == 2)
+    #expect(store.trips.first?.coverStatus == "pending")
+    // Renaming a trip with an existing destination cover preserves that cover.
+    trip.name = "Italy with friends"
+    trip.coverPath = "rome/cover.jpg"
+    trip.coverStatus = "ready"
+    _ = try await store.saveTrip(trip, isNew: false)
+    #expect(coverRequests == 2)
+    #expect(store.trips.first?.coverPath == "rome/cover.jpg")
+  }
+
+  @Test func coverFailureDoesNotFailSavingANameOnlyTrip() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = makeStore(directory: directory, cover: URL(string: "https://test.invalid/cover")!)
+    try store.adopt(account())
+    let trip = Trip(id: "holiday", userId: "alice", name: "Rome")
+    StubProtocol.handler = { request in
+      if request.url?.path == "/cover" { throw URLError(.notConnectedToInternet) }
+      return (200, try AppStore.encoder.encode([trip]))
+    }
+    let savedID = try await store.saveTrip(trip, isNew: true)
+    #expect(savedID == trip.id)
+    #expect(store.trips.first?.name == "Rome")
+    #expect(store.notice?.contains("cover could not be generated") == true)
   }
 
   @Test func successfulRefreshClearsOnlyItsOwnError() async throws {

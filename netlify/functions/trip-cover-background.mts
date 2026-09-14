@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import Together from "together-ai";
 
 /**
- * Draws the destination shot that sits behind a trip's boarding pass.
+ * Draws the destination illustration displayed on trip cards.
  *
  * A background function rather than a plain one: the model takes ~15s, which
  * is past what a synchronous Netlify function is allowed to hold open. The
@@ -11,27 +11,27 @@ import Together from "together-ai";
 
 const MODEL = "black-forest-labs/FLUX.2-pro";
 // Wide enough to stay sharp on a 2x phone screen, small enough that a list of
-// cards is not megabytes of photography.
+// cards is not megabytes of artwork.
 const WIDTH = 1024;
 const HEIGHT = 640;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * The image has to survive a dark scrim and light text laid over it, so this
- * asks for haze, low contrast and an unpeopled wide shot rather than a punchy
- * postcard. The negatives earn their place: a hallucinated sign or a face in
- * frame reads as a mistake once the trip name is sitting on top of it.
+ * Keep the watercolor direction consistent while letting the destination
+ * determine the landmarks and geography, rather than reusing London's scene.
  */
 function coverPrompt(subject: string) {
   return [
-    `Wide panoramic establishing photograph of ${subject}.`,
-    "The iconic architecture, landmarks and landscape of the place, seen from an elevated distance at golden hour.",
-    "Warm muted film palette: sun-bleached terracotta, sand, faded ochre, soft dusty teal sky.",
-    "Gentle atmospheric haze, low contrast, fine 35mm grain, editorial travel photography, natural light.",
-    "Calm and unpeopled, no foreground clutter.",
-    "The scene fills the frame edge to edge with the horizon near the middle.",
-    "No text, no lettering, no signage, no logos, no watermark, no people, no borders, no collage, no split frames.",
+    `Create a refined watercolor-and-ink illustration of ${subject} on textured warm cream paper.`,
+    `Show the skyline and clearly recognizable landmarks of ${subject}, selecting three to five iconic architectural features authentic to this destination.`,
+    "Arrange the landmarks harmoniously across the scene with locally characteristic architecture and soft clusters of greenery.",
+    "Reflect the destination's actual geography: include its river, canals, coast, bridges and small boats only where appropriate, with gentle reflections in any water. For inland places without a defining waterfront, use characteristic streets, squares, gardens or terrain instead. Do not borrow landmarks from other cities.",
+    "Style the scene as a sophisticated architectural travel sketch using delicate ink linework, translucent watercolor washes, soft pale blues, muted greens, warm beige stone tones, and subtle gray-blue shadows.",
+    "Keep the painting airy and elegant with loose brush edges, minimal detail in the distant skyline, and plenty of clean negative space around the illustration.",
+    "The composition should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Keep the main recognizable landmarks near the center so they remain visible when cropped for a portrait trip card.",
+    "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a premium museum-shop travel illustration, a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
+    `No text, no typography, no lettering, no signage, no logos, no watermark, no border, no poster title. Only the watercolor illustration of ${subject} centered on a warm cream background. High resolution, horizontal panoramic composition.`,
   ].join(" ");
 }
 

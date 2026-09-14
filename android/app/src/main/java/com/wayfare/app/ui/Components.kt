@@ -267,11 +267,7 @@ fun Notice(message: String, error: Boolean = false, modifier: Modifier = Modifie
     )
 }
 
-/**
- * The listing card: a 4:3 photograph at 14dp radius with its facts stacked
- * directly underneath on the bare canvas. No border, no shadow — the whitespace
- * between cards and the radius of the photograph do all the separating.
- */
+/** A photo-led card with a content-sized overlay and Material touch feedback. */
 @Composable
 fun ListingCard(
     summary: TripSummary,
@@ -280,38 +276,65 @@ fun ListingCard(
     onClick: () -> Unit,
 ) {
     val trip = summary.trip
-    Column(modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(14.dp))) {
+    val destination = trip.destination?.trim().orEmpty()
+    val shape = RoundedCornerShape(28.dp)
+    Box(
+        modifier.fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(32.dp))
+            .clip(RoundedCornerShape(32.dp)).background(CanvasWhite).padding(4.dp)
+            .clip(shape).clickable(onClickLabel = "Open trip", onClick = onClick),
+    ) {
+        Box(Modifier.matchParentSize()) {
             DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) AsyncImage(
-                model = coverUrl,
-                contentDescription = trip.destination?.let { "Destination cover for $it" },
+                model = coverUrl, contentDescription = null,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
             )
-            // The award-badge position: a white pill riding the top-left corner.
-            Box(
-                Modifier.padding(12.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(CanvasWhite)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall)
-            }
         }
-        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            TripIdentity(trip)
-            // The price row: the figure in ink, its qualifier trailing in 500 weight.
-            FlowRow(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(money(summary.spent, trip.currency), style = MaterialTheme.typography.titleMedium)
-                Text(
-                    if (trip.budget.signum() > 0) "spent of ${money(trip.budget, trip.currency)}" else "logged",
-                    color = Ash,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            if (trip.budget.signum() > 0) {
-                Spacer(Modifier.height(8.dp))
-                BudgetMeter(summary.spent, trip.budget)
+        Column(Modifier.fillMaxWidth().heightIn(min = 410.dp)) {
+            Text(
+                phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(20.dp).clip(RoundedCornerShape(12.dp))
+                    .background(CanvasWhite).padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+            Spacer(Modifier.height(100.dp))
+            Column(
+                Modifier.fillMaxWidth().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to Color.Transparent, .25f to Color.Black.copy(alpha = .72f),
+                        1f to Color.Black.copy(alpha = .88f),
+                    ),
+                ).padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(destination.ifEmpty { trip.name }, color = Color.White,
+                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                if (destination.isNotEmpty() && !destination.equals(trip.name.trim(), ignoreCase = true)) {
+                    Text(trip.name, color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.CalendarMonth, null, Modifier.size(16.dp), tint = Color.White.copy(alpha = .85f))
+                    Text(dateRange(trip.startDate, trip.endDate), color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium)
+                }
+                if (trip.coverStatus == "pending") {
+                    Text("Developing your cover…", color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.labelSmall)
+                }
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(Modifier.padding(end = 12.dp)) {
+                        Text(money(summary.spent, trip.currency), color = Color.White,
+                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(if (trip.budget.signum() > 0) "of ${money(trip.budget, trip.currency)} spent" else "spent",
+                            color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Open trip", color = Color.White, style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.clearAndSetSemantics { }
+                            .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = .65f))
+                            .padding(horizontal = 22.dp, vertical = 16.dp))
+                }
             }
         }
     }
@@ -461,8 +484,20 @@ fun TripIdentity(trip: Trip, showPhase: Boolean = false) {
 
 @Composable
 fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true) {
+    if (showCover) {
+        Column(
+            modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)).background(SoftCloud)
+                .clearAndSetSemantics { contentDescription = "Loading trips" }.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Spacer(Modifier.height(240.dp))
+            Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+            Spacer(Modifier.fillMaxWidth(.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+            Spacer(Modifier.fillMaxWidth(.3f).height(36.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+        }
+        return
+    }
     Column(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = if (showCover) "Loading trips" else "Loading trip details" }, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (showCover) Spacer(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(14.dp)).background(SoftCloud))
         Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(SoftCloud))
         Spacer(Modifier.fillMaxWidth(.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(SoftCloud))
         Spacer(Modifier.fillMaxWidth().height(if (showCover) 4.dp else 180.dp).clip(RoundedCornerShape(14.dp)).background(SoftCloud))
