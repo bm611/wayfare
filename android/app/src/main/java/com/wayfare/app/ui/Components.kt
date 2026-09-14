@@ -10,6 +10,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.clickable
@@ -281,10 +285,10 @@ fun ListingCard(
     val trip = summary.trip
     val destination = trip.destination?.trim().orEmpty()
     val isPrint = trip.coverPath?.endsWith("-print.jpg") == true
-    val spent = "${money(summary.spent, trip.currency)} spent"
-    // The cover stays untouched; the numbers ride in a drawer tucked under it.
-    // Only covers without lettering need the place named in words.
-    val drawer = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+    // The cover stays untouched apart from the countdown; the numbers ride in a
+    // drawer tucked under it. Only covers without lettering need the place
+    // named in words.
+    val drawer = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
     Column(modifier.fillMaxWidth().clickable(onClickLabel = "Open trip", onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().zIndex(1f)
@@ -298,29 +302,35 @@ fun ListingCard(
                 contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
             )
+            Text(
+                phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(12.dp))
+                    .background(CanvasWhite).padding(horizontal = 10.dp, vertical = 6.dp),
+            )
         }
         // Tucked 12dp up under the card, so its top edge disappears behind it.
         Row(
-            Modifier.padding(horizontal = 16.dp).fillMaxWidth()
+            Modifier.padding(horizontal = 14.dp).fillMaxWidth()
                 .layout { measurable, constraints ->
                     val tuck = 12.dp.roundToPx()
                     val placeable = measurable.measure(constraints)
                     layout(placeable.width, placeable.height - tuck) { placeable.place(0, -tuck) }
                 }
                 .clip(drawer).background(SoftCloud).border(1.dp, Hairline, drawer)
-                .padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 10.dp),
+                .padding(start = 18.dp, end = 18.dp, top = 26.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val ash = Ash
             Text(
-                when {
-                    trip.coverStatus == "pending" -> "Creating your cover…"
-                    isPrint -> spent
-                    else -> "${destination.ifEmpty { trip.name }} · $spent"
+                if (trip.coverStatus == "pending") AnnotatedString("Creating your cover…") else buildAnnotatedString {
+                    if (!isPrint) withStyle(SpanStyle(color = ash)) { append("${destination.ifEmpty { trip.name }} · ") }
+                    withStyle(SpanStyle(color = RauschDeep, fontWeight = FontWeight.Bold)) { append(money(summary.spent, trip.currency)) }
+                    withStyle(SpanStyle(color = ash)) { append(" spent") }
                 },
                 Modifier.weight(1f), color = Ash, maxLines = 1,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
             )
-            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(16.dp), tint = Ash)
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
         }
     }
 }

@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowUpRight, UsersThree } from "@phosphor-icons/react";
-import { money, symbolFor } from "../lib/format";
+import { money, symbolFor, tripPhase } from "../lib/format";
 import { cx } from "../lib/cx";
 import { coverUrl } from "../lib/covers";
 import type { TripWithSpend } from "../hooks/useTrips";
 
 export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared?: boolean }) {
+  const phase = tripPhase(trip);
   const symbol = symbolFor(trip.currency);
   const cover = trip.cover_status === "ready" ? coverUrl(trip.cover_path) : null;
   const [paintedSrc, setPaintedSrc] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
     >
       <Link
         to={`/trip/${trip.id}`}
-        aria-label={`${place}, ${spent}`}
+        aria-label={`${place}, ${phaseLabel(phase)}, ${spent}`}
         className="press group block"
       >
         {/* The whole card is the cover, in the 8:5 frame it is generated at. */}
@@ -50,19 +51,49 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
                 )}
               />
             )}
+            <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-xl bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink shadow-sm">
+              {phase.kind === "active" && (
+                <span className="beacon size-1.5 rounded-full bg-clay" aria-hidden />
+              )}
+              {phaseLabel(phase)}
+            </span>
           </div>
         </div>
 
         {/* The numbers ride in a drawer tucked under the cover rather than on
             it. Only covers without lettering need the place named in words. */}
-        <div className="mx-4 -mt-3 flex items-center gap-2 rounded-b-2xl border border-line bg-line-soft px-4 pt-5 pb-2.5 text-[13px] text-ink-soft">
+        <div className="mx-3.5 -mt-3 flex items-center gap-3 rounded-b-[20px] border border-line bg-line-soft px-5 pt-6 pb-3.5 text-[15px] text-ink-soft">
           <p className="tabular flex min-w-0 flex-1 items-center gap-1.5 truncate">
-            {developing ? "Creating your cover…" : isPrint ? spent : `${place} · ${spent}`}
-            {shared && <UsersThree size={13} weight="bold" aria-label="Shared" className="shrink-0" />}
+            {developing ? (
+              "Creating your cover…"
+            ) : (
+              <span className="truncate">
+                {!isPrint && `${place} · `}
+                <span className="font-bold text-clay-deep">
+                  {symbol}
+                  {money(trip.spent)}
+                </span>{" "}
+                spent
+              </span>
+            )}
+            {shared && <UsersThree size={14} weight="bold" aria-label="Shared" className="shrink-0" />}
           </p>
-          <ArrowUpRight size={14} weight="bold" aria-hidden />
+          <ArrowUpRight size={18} weight="bold" className="text-ink" aria-hidden />
         </div>
       </Link>
     </motion.li>
   );
+}
+
+function phaseLabel(phase: ReturnType<typeof tripPhase>) {
+  switch (phase.kind) {
+    case "active":
+      return `Day ${phase.day} of ${phase.total}`;
+    case "upcoming":
+      return phase.days === 1 ? "Tomorrow" : `In ${phase.days} days`;
+    case "past":
+      return "Wrapped";
+    default:
+      return "Open ended";
+  }
 }
