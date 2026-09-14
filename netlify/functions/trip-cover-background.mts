@@ -23,15 +23,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 function coverPrompt(subject: string) {
   return [
-    `Create a refined watercolor-and-ink illustration of ${subject} on textured warm cream paper.`,
+    `Create a premium watercolor-and-ink travel print for ${subject} on textured warm cream paper, in a horizontal 8:5 composition.`,
+    "Use two clear sections: the upper 60 percent is the panoramic illustration; the lower 40 percent is an airy cream-paper typography area. Keep the entire illustration and lettering inside the canvas with generous margins.",
     `Show the skyline and clearly recognizable landmarks of ${subject}, selecting three to five iconic architectural features authentic to this destination.`,
     "Arrange the landmarks harmoniously across the scene with locally characteristic architecture and soft clusters of greenery.",
     "Reflect the destination's actual geography: include its river, canals, coast, bridges and small boats only where appropriate, with gentle reflections in any water. For inland places without a defining waterfront, use characteristic streets, squares, gardens or terrain instead. Do not borrow landmarks from other cities.",
     "Style the scene as a sophisticated architectural travel sketch using delicate ink linework, translucent watercolor washes, soft pale blues, muted greens, warm beige stone tones, and subtle gray-blue shadows.",
     "Keep the painting airy and elegant with loose brush edges, minimal detail in the distant skyline, and plenty of clean negative space around the illustration.",
-    "The composition should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Keep the main recognizable landmarks near the center so they remain visible when cropped for a portrait trip card.",
+    "The upper illustration should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Let watercolor edges and reflections dissolve softly into the cream paper above the lettering.",
     "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a premium museum-shop travel illustration, a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
-    `No text, no typography, no lettering, no signage, no logos, no watermark, no border, no poster title. Only the watercolor illustration of ${subject} centered on a warm cream background. High resolution, horizontal panoramic composition.`,
+    `In the lower section, print the geographic location name from ${JSON.stringify(subject)} in large, beautifully spaced uppercase serif lettering, centered in muted ink blue. If the subject contains holiday names, seasons, dates, or travel companions, omit those from the large lettering and use only the actual place name.`,
+    "Above the large location name, include its country in very small, widely spaced uppercase letters only when unambiguous and different from the main location name. A pair of fine understated horizontal rules may frame the smaller label.",
+    "Keep spelling accurate and typography crisp and legible.",
+    "No other text: no tagline, no slogan, no subtitle, no year, no trip dates, no captions, no signage, no logos, no watermark, no border. Keep the lower paper light and clean, without gradients, shadows or dark panels. High resolution, refined museum-shop travel print.",
   ].join(" ");
 }
 
@@ -105,7 +109,8 @@ export default async (req: Request) => {
 
     // A fresh name per generation, so a regenerated cover is never served from
     // a stale CDN cache under the old URL.
-    const file = `${Date.now()}.jpg`;
+    // Native cards recognize the print suffix and omit their duplicate title.
+    const file = `${Date.now()}-print.jpg`;
     const path = `${tripId}/${file}`;
     const { error: uploadError } = await supabase.storage
       .from("trip-covers")

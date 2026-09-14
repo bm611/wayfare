@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.padding
@@ -277,67 +278,39 @@ fun ListingCard(
 ) {
     val trip = summary.trip
     val destination = trip.destination?.trim().orEmpty()
-    val shape = RoundedCornerShape(28.dp)
-    Box(
+    val isPrint = trip.coverPath?.endsWith("-print.jpg") == true
+    Column(
         modifier.fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(32.dp))
-            .clip(RoundedCornerShape(32.dp)).background(CanvasWhite).padding(4.dp)
-            .clip(shape).clickable(onClickLabel = "Open trip", onClick = onClick),
+            .shadow(4.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
+            .clip(RoundedCornerShape(24.dp)).clickable(onClickLabel = "Open trip", onClick = onClick),
     ) {
-        Box(Modifier.matchParentSize()) {
+        Box(Modifier.fillMaxWidth().aspectRatio(8f / 5f)) {
             DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) AsyncImage(
-                model = coverUrl, contentDescription = null,
-                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                model = coverUrl,
+                contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
             )
         }
-        Column(Modifier.fillMaxWidth().heightIn(min = 410.dp)) {
-            Text(
-                phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(20.dp).clip(RoundedCornerShape(12.dp))
-                    .background(CanvasWhite).padding(horizontal = 10.dp, vertical = 6.dp),
-            )
-            Spacer(Modifier.height(100.dp))
-            Column(
-                Modifier.fillMaxWidth().background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0f to Color.Transparent, .25f to Color.Black.copy(alpha = .72f),
-                        1f to Color.Black.copy(alpha = .88f),
-                    ),
-                ).padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(destination.ifEmpty { trip.name }, color = Color.White,
-                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                if (destination.isNotEmpty() && !destination.equals(trip.name.trim(), ignoreCase = true)) {
-                    Text(trip.name, color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.CalendarMonth, null, Modifier.size(16.dp), tint = Color.White.copy(alpha = .85f))
-                    Text(dateRange(trip.startDate, trip.endDate), color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium)
-                }
-                if (trip.coverStatus == "pending") {
-                    Text("Developing your cover…", color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.labelSmall)
-                }
-                FlowRow(
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Column(Modifier.padding(end = 12.dp)) {
-                        Text(money(summary.spent, trip.currency), color = Color.White,
-                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(if (trip.budget.signum() > 0) "of ${money(trip.budget, trip.currency)} spent" else "spent",
-                            color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text("Open trip", color = Color.White, style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.clearAndSetSemantics { }
-                            .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = .65f))
-                            .padding(horizontal = 22.dp, vertical = 16.dp))
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!isPrint) {
+                Text(destination.ifEmpty { trip.name }, color = Ink,
+                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            if (trip.coverStatus == "pending") {
+                Text("Creating your cover…", color = Ash, style = MaterialTheme.typography.labelSmall)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${money(summary.spent, trip.currency)} spent", Modifier.weight(1f), color = Ink,
+                    style = MaterialTheme.typography.bodyMedium)
+                Box(Modifier.size(44.dp).clip(CircleShape).background(SoftCloud), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
                 }
             }
         }
     }
+
 }
 
 /** One small fact beside a glyph, kept on one line. */
@@ -490,10 +463,8 @@ fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true
                 .clearAndSetSemantics { contentDescription = "Loading trips" }.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Spacer(Modifier.height(240.dp))
+            Spacer(Modifier.fillMaxWidth().aspectRatio(8f / 5f))
             Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
-            Spacer(Modifier.fillMaxWidth(.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
-            Spacer(Modifier.fillMaxWidth(.3f).height(36.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
         }
         return
     }

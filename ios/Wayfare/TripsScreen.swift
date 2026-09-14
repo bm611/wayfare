@@ -8,7 +8,6 @@ struct TripsScreen: View {
   @State private var joining = false
   @State private var signout = false
   @State private var recovery = false
-  @Environment(\.dynamicTypeSize) private var textSize
 
   private var sections: [(String, [Trip])] {
     ["Active trips", "Upcoming trips", "Dates open", "Past trips"].map { title in
@@ -137,66 +136,40 @@ struct TripsScreen: View {
     let expenses = store.expenses.filter { $0.tripId == trip.id }
     let summary = budgetSummary(trip, expenses: expenses)
     let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    let shape = RoundedRectangle(cornerRadius: 30, style: .continuous)
+    let isPrint = trip.coverPath?.hasSuffix("-print.jpg") == true
     return VStack(alignment: .leading, spacing: 0) {
-      PhaseBadge(trip: trip)
-      Spacer(minLength: 100)
+      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
+        .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 10) {
-        Text(destination.isEmpty ? trip.name : destination)
-          .font(.system(.largeTitle, design: .rounded, weight: .bold))
-          .fixedSize(horizontal: false, vertical: true)
-        if !destination.isEmpty && destination.caseInsensitiveCompare(trip.name.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame {
-          Text(trip.name).font(.subheadline).foregroundStyle(.white.opacity(0.85))
+        if !isPrint {
+          Text(destination.isEmpty ? trip.name : destination)
+            .font(.system(.title2, design: .rounded, weight: .bold))
+            .fixedSize(horizontal: false, vertical: true)
         }
-        Label(dateRange(trip.startDate, trip.endDate), systemImage: "calendar")
-          .font(.subheadline).foregroundStyle(.white.opacity(0.85))
         if trip.coverStatus == "pending" {
-          Text("Developing your cover…").font(.caption).foregroundStyle(.white.opacity(0.85))
+          Text("Creating your cover…").font(.caption).foregroundStyle(Palette.ash)
         }
-        let layout = textSize.isAccessibilitySize
-          ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
-          : AnyLayout(HStackLayout(alignment: .bottom, spacing: 12))
-        layout {
-          VStack(alignment: .leading, spacing: 3) {
-            Text(money(summary.spent, trip.currency)).font(.title3.weight(.bold)).monospacedDigit()
-            Text(trip.budget > 0 ? "of \(money(trip.budget, trip.currency)) spent" : "spent")
-              .font(.caption).foregroundStyle(.white.opacity(0.8))
-          }.frame(maxWidth: .infinity, alignment: .leading)
-          HStack(spacing: 8) {
-            Text("Open trip").font(.subheadline.weight(.semibold))
-            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-          }
-          .padding(.horizontal, 18).frame(minHeight: 48)
-          .background(.black.opacity(0.65), in: Capsule())
-          .accessibilityHidden(true)
-        }.padding(.top, 12)
-      }
-      .padding(.top, 48)
-      .background {
-        LinearGradient(stops: [
-          .init(color: .clear, location: 0),
-          .init(color: .black.opacity(0.72), location: 0.25),
-          .init(color: .black.opacity(0.88), location: 1),
-        ], startPoint: .top, endPoint: .bottom)
-        .padding(.horizontal, -22).padding(.bottom, -22)
-      }
+        HStack(spacing: 12) {
+          Text("\(money(summary.spent, trip.currency)) spent")
+            .font(.subheadline).monospacedDigit()
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Image(systemName: "arrow.up.right").font(.body.weight(.semibold))
+            .frame(width: 44, height: 44)
+            .background(Palette.softCloud, in: Circle())
+            .accessibilityHidden(true)
+        }
+      }.padding(.horizontal, 18).padding(.vertical, 12)
     }
-    .foregroundStyle(.white)
-    .padding(22).frame(maxWidth: .infinity, minHeight: 410, alignment: .bottomLeading)
-    .background {
-      GeometryReader { geometry in
-        TripArtwork(trip: trip, url: store.coverURL(trip.coverPath),
-                    aspect: geometry.size.width / geometry.size.height)
-          .accessibilityHidden(true)
-      }
-    }
-    .clipShape(shape)
+    .foregroundStyle(Palette.ink)
+    .background(Palette.canvas)
+    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     .padding(5)
-    .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 35, style: .continuous))
-    .overlay(RoundedRectangle(cornerRadius: 35, style: .continuous).stroke(.white.opacity(0.25), lineWidth: 1))
-    .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 8)
-    .accessibilityElement(children: .combine)
+    .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 31, style: .continuous))
+    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(destination.isEmpty ? trip.name : destination), \(money(summary.spent, trip.currency)) spent")
     .accessibilityHint("Opens trip details")
+
   }
 
 }

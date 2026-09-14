@@ -441,6 +441,7 @@ struct TripArtwork: View {
   let trip: Trip
   let url: URL?
   var aspect: CGFloat = 4 / 3
+  var showStatus = true
   var body: some View {
     Color.clear
       .aspectRatio(aspect, contentMode: .fit)
@@ -457,7 +458,7 @@ struct TripArtwork: View {
           } placeholder: {
             Color.clear
           }
-          if trip.coverStatus == "pending" {
+          if showStatus && trip.coverStatus == "pending" {
             Text("Developing your cover…").typeStyle(.labelSmall).foregroundStyle(Palette.ink)
               .padding(.horizontal, 10).padding(.vertical, 6)
               .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.card))
@@ -624,12 +625,10 @@ struct FieldError: View {
 struct TripLoadingSkeleton: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Spacer(minLength: 240)
+      RoundedRectangle(cornerRadius: 20).fill(Palette.softCloud).aspectRatio(8 / 5, contentMode: .fit)
       RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 210, height: 24)
-      RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 160, height: 16)
-      RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 110, height: 36)
     }
-    .padding(26).frame(maxWidth: .infinity, minHeight: 420, alignment: .leading)
+    .padding(18).frame(maxWidth: .infinity, alignment: .leading)
     .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: 35, style: .continuous))
     .accessibilityElement(children: .ignore).accessibilityLabel("Loading trips")
   }
