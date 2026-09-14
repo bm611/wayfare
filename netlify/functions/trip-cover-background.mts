@@ -9,7 +9,7 @@ import Together from "together-ai";
  * caller gets a 202 immediately and watches `trips.cover_status` instead.
  */
 
-const MODEL = "black-forest-labs/FLUX.2-pro";
+const MODEL = "google/flash-image-3.1";
 // Wide enough to stay sharp on a 2x phone screen, small enough that a list of
 // cards is not megabytes of artwork.
 const WIDTH = 1024;
@@ -17,33 +17,31 @@ const HEIGHT = 640;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const SEASONS = ["WINTER", "WINTER", "SPRING", "SPRING", "SPRING", "SUMMER", "SUMMER", "SUMMER", "AUTUMN", "AUTUMN", "AUTUMN", "WINTER"];
-
 /**
- * The one line lettered onto the print, built here rather than left to the
- * model, which otherwise invents subtitles and shop names. "Iceland - Winter
- * '26" as a destination is trimmed back to the place before the season is
- * added from the trip's own dates.
+ * The words lettered onto the print, built here rather than left to the model,
+ * which otherwise invents subtitles and drops characters. A destination like
+ * "Iceland - Winter '26" is trimmed back to the place; the year comes from the
+ * trip's own dates.
  */
-function coverTitle(subject: string, startDate: string | null) {
+function coverLettering(subject: string, startDate: string | null) {
   const place = subject
     .replace(/\s*[-–—·,|/]?\s*\b(spring|summer|autumn|fall|winter)\b.*$/i, "")
     .replace(/\s*[-–—·,|/]?\s*'?\d{2,4}\s*$/, "")
+    .replace(/['’.]/g, "")
+    .replace(/[^\p{L}\p{N} ]+/gu, " ")
+    .replace(/\s+/g, " ")
     .trim() || subject.trim();
-  const match = startDate?.match(/^(\d{4})-(\d{2})/);
-  if (!match) return place.toUpperCase();
-  const season = SEASONS[Number(match[2]) - 1];
-  return `${place.toUpperCase()} - ${season} '${match[1].slice(2)}`;
+  return { place: place.toUpperCase(), year: startDate?.match(/^\d{4}/)?.[0] ?? null };
 }
 
 /**
  * Keep the watercolor direction consistent while letting the destination
  * determine the landmarks and geography, rather than reusing London's scene.
  */
-function coverPrompt(subject: string, title: string) {
+function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
   return [
     `Create an elegant watercolor-and-ink travel print of ${subject} on textured warm cream paper, in a horizontal 8:5 composition.`,
-    "The upper 65 percent is the panoramic illustration. Below it is plain cream paper holding a single line of lettering. Keep the entire illustration and lettering inside the canvas with generous margins.",
+    "The upper 65 percent is the panoramic illustration. Below it is plain cream paper holding the lettering. Keep the entire illustration and lettering inside the canvas with generous margins.",
     `Show the skyline and clearly recognizable landmarks of ${subject}, selecting three to five iconic architectural features authentic to this destination.`,
     "Arrange the landmarks harmoniously across the scene with locally characteristic architecture and soft clusters of greenery.",
     "Reflect the destination's actual geography: include its river, canals, coast, bridges and small boats only where appropriate, with gentle reflections in any water. For inland places without a defining waterfront, use characteristic streets, squares, gardens or terrain instead. Do not borrow landmarks from other cities.",
@@ -51,10 +49,14 @@ function coverPrompt(subject: string, title: string) {
     "Keep the painting airy and elegant with loose brush edges, minimal detail in the distant skyline, and plenty of clean negative space around the illustration.",
     "The illustration should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Let watercolor edges and reflections dissolve softly into the cream paper above the lettering.",
     "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
-    `Below the illustration, letter exactly this text and nothing else, on one line: ${JSON.stringify(title)}. Use widely spaced uppercase serif lettering in muted ink blue, centered horizontally, sitting about 80 percent of the way down the canvas and spanning no more than the middle half of its width. Copy the characters exactly, including the dash and apostrophe.`,
-    "Leave the bottom 12 percent of the canvas, and both lower corners, as empty cream paper.",
-    "That single line is the only text in the image: no second line, no country label, no tagline, no subtitle, no handwriting, no shop or studio name, no captions, no signage, no logos, no watermark, no border, no decorative rules. Keep the paper light and clean, without gradients, shadows or dark panels. High resolution.",
-  ].join(" ");
+    `Below the illustration, centered horizontally, letter ${JSON.stringify(place)} in large, widely spaced uppercase serif capitals in muted ink blue, sitting about 78 percent of the way down the canvas.`,
+    year
+      ? `Directly beneath it, letter the year ${JSON.stringify(year)} in the same serif typeface and color, much smaller and widely spaced.`
+      : "",
+    "Copy the letters and digits exactly. Use a classic engraved serif typeface, never sans-serif, script or handwriting.",
+    "Leave the bottom 10 percent of the canvas as empty cream paper.",
+    `${year ? "Those two lines are" : "That line is"} the only text in the image: no punctuation, no season, no country label, no tagline, no subtitle, no shop or studio name, no captions, no signage, no logos, no watermark, no border, no decorative rules. Keep the paper light and clean, without gradients, shadows or dark panels. High resolution.`,
+  ].filter(Boolean).join(" ");
 }
 
 export default async (req: Request) => {
@@ -114,7 +116,7 @@ export default async (req: Request) => {
     const together = new Together({ apiKey: togetherKey });
     const result = await together.images.generate({
       model: MODEL,
-      prompt: coverPrompt(subject, coverTitle(subject, trip.start_date)),
+      prompt: coverPrompt(subject, coverLettering(subject, trip.start_date)),
       width: WIDTH,
       height: HEIGHT,
       response_format: "base64",
