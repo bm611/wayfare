@@ -31,11 +31,11 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
         aria-label={`${place}, ${phaseLabel(phase)}, ${spent}`}
         className="press group block"
       >
-        {/* The whole card is the cover, in the 8:5 frame it is generated at. */}
+        {/* The whole card is the cover, in the 3:2 frame it is generated at. */}
         <div className="relative z-10 rounded-ticket border border-line bg-card p-1 shadow-lift">
           <div
             className={cx(
-              "relative aspect-[8/5] overflow-hidden rounded-[calc(var(--radius-ticket)-5px)] bg-paper",
+              "relative aspect-[3/2] overflow-hidden rounded-[calc(var(--radius-ticket)-5px)] bg-paper",
               developing && "developing",
             )}
           >

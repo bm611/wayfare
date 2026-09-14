@@ -12,8 +12,8 @@ import Together from "together-ai";
 const MODEL = "google/flash-image-3.1";
 // Wide enough to stay sharp on a 2x phone screen, small enough that a list of
 // cards is not megabytes of artwork.
-const WIDTH = 1024;
-const HEIGHT = 640;
+const WIDTH = 1264;
+const HEIGHT = 848;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -40,7 +40,7 @@ function coverLettering(subject: string, startDate: string | null) {
  */
 function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
   return [
-    `A watercolor-and-ink travel print of ${subject} on textured warm cream paper, horizontal 8:5.`,
+    `A watercolor-and-ink travel print of ${subject} on textured warm cream paper, horizontal 3:2.`,
     `Upper two thirds: a panoramic skyline with three to five real, recognizable landmarks of ${subject}, set in its actual geography (river, coast or canals with soft reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
     "Style: delicate ink linework, translucent washes in pale blue, muted green and warm beige, loose edges fading into the paper. Airy and uncrowded; not photorealistic, saturated or cartoonish.",
     `Lower third: plain cream paper with ${JSON.stringify(place)} centered in large, widely spaced, ink-blue engraved serif capitals${year ? `, and ${JSON.stringify(year)} beneath it, much smaller, in the same type` : ""}. Leave empty paper below.`,

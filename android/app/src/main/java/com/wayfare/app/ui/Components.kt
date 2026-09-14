@@ -294,7 +294,7 @@ fun ListingCard(
             Modifier.fillMaxWidth().zIndex(1f)
                 .shadow(4.dp, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
-                .clip(RoundedCornerShape(24.dp)).aspectRatio(8f / 5f),
+                .clip(RoundedCornerShape(24.dp)).aspectRatio(3f / 2f),
         ) {
             DestinationArtwork(Modifier.fillMaxSize(), trip)
             if (coverUrl != null) AsyncImage(
@@ -485,7 +485,7 @@ fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true
                 .clearAndSetSemantics { contentDescription = "Loading trips" }.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Spacer(Modifier.fillMaxWidth().aspectRatio(8f / 5f))
+            Spacer(Modifier.fillMaxWidth().aspectRatio(3f / 2f))
             Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
         }
         return

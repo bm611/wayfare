@@ -141,7 +141,7 @@ struct TripsScreen: View {
     // drawer tucked under it. Only covers without lettering need the place
     // named in words.
     return VStack(spacing: 0) {
-      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
+      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 3 / 2, showStatus: false)
         .accessibilityHidden(true)
         .overlay(alignment: .topLeading) { PhaseBadge(trip: trip).padding(12) }
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))

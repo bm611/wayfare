@@ -625,7 +625,7 @@ struct FieldError: View {
 struct TripLoadingSkeleton: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      RoundedRectangle(cornerRadius: 20).fill(Palette.softCloud).aspectRatio(8 / 5, contentMode: .fit)
+      RoundedRectangle(cornerRadius: 20).fill(Palette.softCloud).aspectRatio(3 / 2, contentMode: .fit)
       RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 210, height: 24)
     }
     .padding(18).frame(maxWidth: .infinity, alignment: .leading)
