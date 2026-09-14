@@ -151,7 +151,7 @@ fun TripsScreen(
                             Box(
                                 Modifier.size(64.dp).clip(CircleShape).background(CanvasWhite),
                                 contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.Explore, null, tint = Rausch, modifier = Modifier.size(28.dp)) }
+                            ) { Icon(Icons.Outlined.Explore, null, tint = AccentInk, modifier = Modifier.size(28.dp)) }
                             Text(
                                 "Good trips start here",
                                 Modifier.padding(top = 18.dp),
@@ -262,7 +262,7 @@ internal fun JoinTripDialog(
                     onJoin(code).onFailure { error = it.message ?: "That code did not work." }
                     busy = false
                 }
-            }) { Text(if (busy) "Joining…" else "Join", color = Rausch, style = MaterialTheme.typography.labelMedium) }
+            }) { Text(if (busy) "Joining…" else "Join", color = AccentInk, style = MaterialTheme.typography.labelMedium) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Ink, style = MaterialTheme.typography.labelMedium) } },
     )

@@ -29,7 +29,7 @@ import com.wayfare.app.feature.TripDetailViewModel
 import com.wayfare.app.feature.TripsViewModel
 import com.wayfare.app.ui.AuthScreen
 import com.wayfare.app.ui.CanvasWhite
-import com.wayfare.app.ui.Rausch
+import com.wayfare.app.ui.AccentInk
 import com.wayfare.app.ui.RecoveryScreen
 import com.wayfare.app.ui.TripDetailScreen
 import com.wayfare.app.ui.TripsScreen
@@ -84,7 +84,7 @@ private fun WayfareApp(authViewModel: AuthViewModel, container: AppContainer) {
             Modifier.fillMaxSize().background(CanvasWhite).systemBarsPadding(),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(color = Rausch)
+            CircularProgressIndicator(color = AccentInk)
         }
         auth.recovery -> Box(Modifier.fillMaxSize().systemBarsPadding()) {
             RecoveryScreen(auth, authViewModel)

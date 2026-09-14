@@ -2,17 +2,17 @@ import SwiftUI
 import UIKit
 import WayfareCore
 
-/// Airbnb design language, shared token-for-token with the native Android theme.
-/// One accent, one type family, disciplined grayscale for everything else — the
-/// photography is meant to carry the colour.
+/// Shared token-for-token with the native Android theme. One soft pastel accent,
+/// one type family, disciplined grayscale for everything else — the watercolor
+/// covers are meant to carry the colour.
 enum Palette {
-  /// The signature coral-pink. Primary CTAs and the active-tab indicator only.
-  static let rausch = Color(hex: 0xFF385C)
-  /// Pressed and active states of anything filled with ``rausch``.
-  static let rauschDeep = Color(hex: 0xE00B41)
-  /// Product-tier accents. The only colours allowed beside ``rausch``.
-  static let plusMagenta = Color(hex: 0x92174D)
-  static let luxePurple = Color(hex: 0x460479)
+  /// Pastel blue fill for the one primary action on a surface. Too light for
+  /// white text, so anything on it uses ``onAccent``.
+  static let accent = Color(light: 0xC6DAEF, dark: 0xB3CDE8)
+  /// Labels and glyphs sitting on ``accent``.
+  static let onAccent = Color(hex: 0x1E2B3A)
+  /// The accent as text, icons and meter fills, dark enough to read on canvas.
+  static let accentInk = Color(light: 0x3E6A93, dark: 0xA9C8E8)
 
   static let canvas = Color(light: 0xFFFFFF, dark: 0x181A1B)
   /// Subsurface tint for sections that should step back from the white canvas.
@@ -204,7 +204,7 @@ extension WayfareCore.Category {
 
 // MARK: - Buttons
 
-/// The Rausch CTA. One per surface: the moment the whole grayscale palette
+/// The accent CTA. One per surface: the moment the whole grayscale palette
 /// exists to set up. Pressing scales to 0.98 rather than tinting or lifting.
 struct PrimaryButton: View {
   let title: String
@@ -215,7 +215,7 @@ struct PrimaryButton: View {
     Button(action: action) {
       HStack(spacing: 8) {
         if busy {
-          ProgressView().tint(.white)
+          ProgressView().tint(Palette.onAccent)
         } else {
           if let icon { Image(systemName: icon).font(.system(size: 16)) }
           Text(title).typeStyle(.labelLarge)
@@ -223,20 +223,20 @@ struct PrimaryButton: View {
       }
       .frame(maxWidth: .infinity).frame(minHeight: 48)
     }
-    .buttonStyle(RauschButtonStyle())
+    .buttonStyle(AccentButtonStyle())
     .accessibilityLabel(title).accessibilityValue(busy ? "Saving" : "")
     .disabled(busy)
   }
 }
 
-private struct RauschButtonStyle: ButtonStyle {
+private struct AccentButtonStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isEnabled) private var enabled
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .foregroundStyle(enabled ? Color.white : Palette.stone)
+      .foregroundStyle(enabled ? Palette.onAccent : Palette.stone)
       .background(
-        enabled ? Palette.rausch : Palette.softCloud,
+        enabled ? Palette.accent : Palette.softCloud,
         in: RoundedRectangle(cornerRadius: Radius.control))
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
       .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
@@ -448,7 +448,7 @@ struct TripArtwork: View {
       .overlay {
         ZStack {
           // A placeholder should read as an unloaded image, not as a second
-          // accent colour competing with Rausch.
+          // accent colour competing with the real one.
           Palette.softCloud
           Image(systemName: "photo")
             .font(.system(size: 28, weight: .light))
@@ -534,7 +534,7 @@ struct BudgetMeter: View {
   let spent: Decimal
   let budget: Decimal
   var showLabel = false
-  var fill: Color = Palette.rausch
+  var fill: Color = Palette.accentInk
   var track: Color = Palette.softCloud
   private var rawRatio: Double {
     guard budget > 0 else { return 0 }

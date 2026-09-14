@@ -102,12 +102,12 @@ fun Modifier.panelElevation(shape: Shape): Modifier = this
 @Composable
 fun Brand(modifier: Modifier = Modifier, showWordmark: Boolean = true) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Outlined.FlightTakeoff, null, Modifier.size(28.dp), tint = Rausch)
+        Icon(Icons.Outlined.FlightTakeoff, null, Modifier.size(28.dp), tint = AccentInk)
         if (showWordmark) {
             Text(
                 "wayfare",
                 modifier = Modifier.padding(start = 8.dp),
-                color = Rausch,
+                color = AccentInk,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.6).sp,
@@ -117,7 +117,7 @@ fun Brand(modifier: Modifier = Modifier, showWordmark: Boolean = true) {
 }
 
 /**
- * The Rausch CTA. One per surface: the moment the whole grayscale palette exists
+ * The accent CTA. One per surface: the moment the whole grayscale palette exists
  * to set up. Pressing scales to 0.98 rather than tinting or lifting.
  */
 @Composable
@@ -138,8 +138,8 @@ fun PrimaryButton(
         interactionSource = interactionSource,
         enabled = enabled && !busy,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Rausch,
-            contentColor = Color.White,
+            containerColor = Accent,
+            contentColor = OnAccent,
             disabledContainerColor = SoftCloud,
             disabledContentColor = Stone,
         ),
@@ -148,7 +148,7 @@ fun PrimaryButton(
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = OnAccent)
         } else {
             icon?.let {
                 Icon(it, null, Modifier.size(18.dp))
@@ -324,7 +324,7 @@ fun ListingCard(
             Text(
                 if (trip.coverStatus == "pending") AnnotatedString("Creating your cover…") else buildAnnotatedString {
                     if (!isPrint) withStyle(SpanStyle(color = ash)) { append("${destination.ifEmpty { trip.name }} · ") }
-                    withStyle(SpanStyle(color = RauschDeep, fontWeight = FontWeight.Bold)) { append(money(summary.spent, trip.currency)) }
+                    withStyle(SpanStyle(color = AccentInk, fontWeight = FontWeight.Bold)) { append(money(summary.spent, trip.currency)) }
                     withStyle(SpanStyle(color = ash)) { append(" spent") }
                 },
                 Modifier.weight(1f), color = Ash, maxLines = 1,
@@ -354,7 +354,7 @@ fun MetaLabel(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
 /**
  * Stands in for the cover photograph until one is generated. Deliberately
  * grayscale: a placeholder should read as an unloaded image, not as a second
- * accent colour competing with Rausch.
+ * accent colour competing with the real one.
  */
 @Composable
 fun DestinationArtwork(modifier: Modifier = Modifier, trip: Trip? = null) {
@@ -397,7 +397,7 @@ fun BudgetMeter(
     budget: BigDecimal,
     modifier: Modifier = Modifier,
     trackColor: Color = SoftCloud,
-    progressColor: Color = Rausch,
+    progressColor: Color = AccentInk,
     showLabel: Boolean = false,
 ) {
     val rawRatio = if (budget.signum() <= 0) 0f

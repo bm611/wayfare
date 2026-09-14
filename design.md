@@ -1,8 +1,8 @@
 # Wayfare native design
 
-The iOS and Android apps use the Airbnb design language: a white canvas, one
-coral accent, photography at hero scale, and disciplined grayscale for
-everything else. This system applies to native screens, not the separately
+The iOS and Android apps use a white canvas, one soft pastel accent,
+watercolor cover art at hero scale, and disciplined grayscale for everything
+else. This system applies to native screens, not the separately
 maintained website in `src/`.
 
 Source tokens live in `ios/Wayfare/Theme.swift` and Android's `ui/Theme.kt`.
@@ -12,10 +12,9 @@ The two files mirror each other name for name; change both or neither.
 
 | Role | Token | sRGB |
 | --- | --- | --- |
-| Primary CTA, active indicator | Rausch | `#FF385C` |
-| Pressed accent | Rausch Deep | `#E00B41` |
-| Plus tier | Plus Magenta | `#92174D` |
-| Luxe tier | Luxe Purple | `#460479` |
+| Primary CTA fill | Accent | `#C6DAEF` (dark `#B3CDE8`) |
+| Label on accent fill | On Accent | `#1E2B3A` |
+| Accent text, icons, meter fill | Accent Ink | `#3E6A93` (dark `#A9C8E8`) |
 | Page background | Canvas White | `#FFFFFF` |
 | Subsurface | Soft Cloud | `#F7F7F7` |
 | Border, divider | Hairline Gray | `#DDDDDD` |
@@ -28,10 +27,12 @@ The two files mirror each other name for name; change both or neither.
 | Pressed error | Deep Error | `#B32505` |
 | Legal / informational link | Info Blue | `#428BFF` |
 
-Rausch is reserved for the one primary action on a surface, the active-tab
-indicator, and the budget meter's fill. It is never used decoratively. Ink
+Accent fills only the one primary action on a surface, and is too light for
+white text: labels on it use On Accent. Anything that must read against the
+canvas — the wordmark, links, the spent amount, the budget meter, progress —
+uses Accent Ink. Neither is used decoratively. Ink
 Black carries roughly 90% of all text and is never pure `#000000`. No accent
-outside Rausch / Plus Magenta / Luxe Purple may be introduced — expense
+outside that pastel blue may be introduced — expense
 categories are distinguished by their glyph, not by colour.
 
 ## Typography
@@ -92,7 +93,7 @@ low-opacity shadows (~2%, 4%, 10%) that read as one cohesive elevation —
 
 ## Components
 
-- **Primary CTA** — Rausch fill, white 16/500 label, 8pt radius, 48pt tall.
+- **Primary CTA** — Accent fill, On Accent 16/500 label, 8pt radius, 48pt tall.
   Pressing scales to 0.92; it never tints or lifts. One per surface.
 - **Secondary button** — white, 1pt Hairline border, Ink label, 8pt radius, or
   20pt when used as a pill (filter menus, currency picker).
@@ -107,7 +108,7 @@ low-opacity shadows (~2%, 4%, 10%) that read as one cohesive elevation —
   size the way a nightly price is. A hairline strip below it carries remaining,
   daily average and entry count.
 - **Reserve bar** — on a phone the panel's action collapses to a bottom-anchored
-  bar: the figure on the left, the one Rausch button on the right, hairline above.
+  bar: the figure on the left, the one accent button on the right, hairline above.
 - **Amenity rows** — the category breakdown: a 24pt monochrome glyph, a 16pt
   label, a hairline between every row.
 - **Review rows** — the ledger: a 40pt circular glyph where an avatar would sit,

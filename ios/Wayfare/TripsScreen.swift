@@ -90,13 +90,13 @@ struct TripsScreen: View {
     }
   }
 
-  /// Top nav: the Rausch wordmark and circular controls.
+  /// Top nav: the accent wordmark and circular controls.
   private var topNav: some View {
     HStack(spacing: 8) {
       HStack(spacing: 8) {
         Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
         Text("wayfare").typeStyle(.headlineSmall)
-      }.foregroundStyle(Palette.rausch)
+      }.foregroundStyle(Palette.accentInk)
       Spacer(minLength: 0)
       Menu {
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
@@ -118,7 +118,7 @@ struct TripsScreen: View {
   private var emptyState: some View {
     VStack(spacing: 0) {
       Image(systemName: "safari").font(.system(size: 28, weight: .light))
-        .foregroundStyle(Palette.rausch).frame(width: 64, height: 64)
+        .foregroundStyle(Palette.accentInk).frame(width: 64, height: 64)
         .background(Palette.canvas, in: Circle())
       Text("Good trips start here").typeStyle(.titleLarge).padding(.top, 18)
       Text("Add a trip, set a budget, and log each cost as it lands.")
@@ -155,7 +155,7 @@ struct TripsScreen: View {
             Text("Creating your cover…").foregroundColor(Palette.ash)
           } else {
             Text(isPrint ? "" : "\(destination.isEmpty ? trip.name : destination) · ").foregroundColor(Palette.ash)
-              + Text(money(summary.spent, trip.currency)).fontWeight(.bold).foregroundColor(Palette.rauschDeep)
+              + Text(money(summary.spent, trip.currency)).fontWeight(.bold).foregroundColor(Palette.accentInk)
               + Text(" spent").foregroundColor(Palette.ash)
           }
         }

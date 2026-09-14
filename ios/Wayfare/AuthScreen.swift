@@ -46,7 +46,7 @@ struct AuthScreen: View {
             HStack(spacing: 8) {
               Image(systemName: "airplane.departure").font(.system(size: 20, weight: .medium))
               Text("wayfare").typeStyle(.headlineSmall)
-            }.foregroundStyle(Palette.rausch).padding(.top, 12)
+            }.foregroundStyle(Palette.accentInk).padding(.top, 12)
             VStack(alignment: .leading, spacing: 14) {
               Text(store.recovery ? "A fresh start." : "Go places.\nKeep count.")
                 .typeStyle(.displaySmall)

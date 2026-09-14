@@ -21,17 +21,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wayfare.app.R
 
-// Airbnb design language. One accent, one type family, disciplined grayscale for
-// everything else — the photography is meant to carry the colour. Token names
-// match `design.md` and the iOS `Palette` so the two clients stay in step.
+// One soft pastel accent, one type family, disciplined grayscale for everything
+// else — the watercolor covers are meant to carry the colour. Token names match
+// `design.md` and the iOS `Palette` so the two clients stay in step.
 
-/** The signature coral-pink. Primary CTAs and the active-tab indicator only. */
-val Rausch = Color(0xFFFF385C)
-/** Pressed and active states of anything filled with [Rausch]. */
-val RauschDeep = Color(0xFFE00B41)
-/** Product-tier accents. The only colours allowed beside [Rausch]. */
-val PlusMagenta = Color(0xFF92174D)
-val LuxePurple = Color(0xFF460479)
+/**
+ * Pastel blue fill for the one primary action on a surface. Too light for white
+ * text, so anything on it uses [OnAccent].
+ */
+val Accent: Color @Composable get() = MaterialTheme.colorScheme.primaryContainer
+/** Labels and glyphs sitting on [Accent]. */
+val OnAccent: Color @Composable get() = MaterialTheme.colorScheme.onPrimaryContainer
+/** The accent as text, icons and meter fills, dark enough to read on canvas. */
+val AccentInk: Color @Composable get() = MaterialTheme.colorScheme.primary
 
 // Semantic getters let all existing screens follow the system appearance.
 val CanvasWhite: Color @Composable get() = MaterialTheme.colorScheme.surface
@@ -47,8 +49,8 @@ val DeepError: Color @Composable get() = MaterialTheme.colorScheme.error
 val InfoBlue = Color(0xFF428BFF)
 
 private val WayfareColors = lightColorScheme(
-    primary = Rausch, onPrimary = Color.White,
-    primaryContainer = Rausch, onPrimaryContainer = Color.White,
+    primary = Color(0xFF3E6A93), onPrimary = Color.White,
+    primaryContainer = Color(0xFFC6DAEF), onPrimaryContainer = Color(0xFF1E2B3A),
     secondary = Color(0xFF222222), onSecondary = Color.White,
     background = Color.White, onBackground = Color(0xFF222222),
     surface = Color.White, onSurface = Color(0xFF222222),
@@ -59,8 +61,8 @@ private val WayfareColors = lightColorScheme(
     error = Color(0xFFC13515), onError = Color.White,
 )
 private val WayfareDarkColors = darkColorScheme(
-    primary = Rausch, onPrimary = Color.White,
-    primaryContainer = Rausch, onPrimaryContainer = Color.White,
+    primary = Color(0xFFA9C8E8), onPrimary = Color(0xFF1E2B3A),
+    primaryContainer = Color(0xFFB3CDE8), onPrimaryContainer = Color(0xFF1E2B3A),
     secondary = Color(0xFFF3F3F2), onSecondary = Color(0xFF181A1B),
     background = Color(0xFF181A1B), onBackground = Color(0xFFF3F3F2),
     surface = Color(0xFF181A1B), onSurface = Color(0xFFF3F3F2),
