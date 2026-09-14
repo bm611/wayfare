@@ -1,6 +1,12 @@
 package com.wayfare.app.ui
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,6 +91,12 @@ import com.wayfare.app.feature.TripDetailViewModel
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+
+// A tap-revealed panel (search, filters, breakdown) fades and expands in on an
+// ease-out; the exit is quicker, matching the asymmetric feel of a released
+// control rather than a held one.
+private val revealEnter = fadeIn(tween(180, easing = EaseOutStrong)) + expandVertically(tween(180, easing = EaseOutStrong))
+private val revealExit = fadeOut(tween(140, easing = EaseOutStrong)) + shrinkVertically(tween(140, easing = EaseOutStrong))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -297,14 +309,16 @@ private fun TripDetailContent(
                     Text("Spending by category", Modifier.weight(1f), color = Ink)
                     Icon(if (breakdownOpen) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = Ash)
                 }
-                if (breakdownOpen) CategoryBreakdown(counted, trip.currency, {
-                    viewModel.setCategory(it)
-                    filtersOpen = true
-                    breakdownOpen = false
-                    // Header, budget panel, then this breakdown: the ledger controls follow.
-                    val ledgerIndex = (if (state.error != null) 1 else 0) + 3
-                    scope.launch { listState.animateScrollToItem(ledgerIndex) }
-                })
+                AnimatedVisibility(breakdownOpen, enter = revealEnter, exit = revealExit) {
+                    CategoryBreakdown(counted, trip.currency, {
+                        viewModel.setCategory(it)
+                        filtersOpen = true
+                        breakdownOpen = false
+                        // Header, budget panel, then this breakdown: the ledger controls follow.
+                        val ledgerIndex = (if (state.error != null) 1 else 0) + 3
+                        scope.launch { listState.animateScrollToItem(ledgerIndex) }
+                    })
+                }
             }
         }
         item {
@@ -341,7 +355,7 @@ private fun TripDetailContent(
                         }
                     }
                 }
-                if (showSearch) {
+                AnimatedVisibility(showSearch, enter = revealEnter, exit = revealExit) {
                     // The search pill: full 32dp radius, hairline border, one soft shadow.
                     OutlinedTextField(
                         state.query, viewModel::setQuery,
@@ -353,7 +367,7 @@ private fun TripDetailContent(
                         colors = wayfareFieldColors(),
                     )
                 }
-                if (showFilters) {
+                AnimatedVisibility(showFilters, enter = revealEnter, exit = revealExit) {
                     Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterMenu(
                             label = state.category?.label ?: "All categories",

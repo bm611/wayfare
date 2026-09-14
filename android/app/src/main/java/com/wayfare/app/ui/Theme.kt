@@ -1,5 +1,6 @@
 package com.wayfare.app.ui
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -158,6 +159,13 @@ val WayfareShapes = Shapes(
     large = RoundedCornerShape(20.dp),       // pill buttons, hero images, booking panel
     extraLarge = RoundedCornerShape(32.dp),  // search pill, extra-large containers
 )
+
+/**
+ * A stronger ease-out than the system default. Reserved for content a tap
+ * reveals directly (search, filters) so it reads as an instant response, not
+ * a decorative entrance — mirrors iOS's `Animation.easeOutStrong`.
+ */
+val EaseOutStrong = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
 
 @Composable
 fun WayfareTheme(content: @Composable () -> Unit) {

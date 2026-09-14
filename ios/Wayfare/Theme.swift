@@ -153,6 +153,17 @@ extension View {
   }
 }
 
+// MARK: - Motion
+
+extension Animation {
+  /// A stronger ease-out than the system default. Reserved for content a tap
+  /// reveals directly (search, filters) so it reads as an instant response,
+  /// not a decorative entrance — mirrors Android's `EaseOutStrong`.
+  static func easeOutStrong(_ duration: Double) -> Animation {
+    .timingCurve(0.23, 1, 0.32, 1, duration: duration)
+  }
+}
+
 /// A 1pt hairline. Every card-to-card and row-to-row separation in the system.
 struct HairlineDivider: View {
   var body: some View {

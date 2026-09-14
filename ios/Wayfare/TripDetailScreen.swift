@@ -37,6 +37,16 @@ struct TripDetailScreen: View {
   private var showSearch: Bool { searchOpen || !query.isEmpty }
   private var showFilters: Bool { filtersOpen || !category.isEmpty || !payer.isEmpty }
 
+  /// A tap-revealed panel fades and slides in on an ease-out; the exit is
+  /// quicker, matching the asymmetric feel of a released control.
+  private var revealTransition: AnyTransition {
+    reduceMotion
+      ? .identity
+      : .asymmetric(
+        insertion: .opacity.combined(with: .move(edge: .top)).animation(.easeOutStrong(0.18)),
+        removal: .opacity.animation(.easeOutStrong(0.14)))
+  }
+
   var body: some View {
     Group {
       if let trip {
@@ -87,8 +97,8 @@ struct TripDetailScreen: View {
                     }
                   }
                 }
-                if showSearch { searchField }
-                if showFilters { filters }
+                if showSearch { searchField.transition(revealTransition) }
+                if showFilters { filters.transition(revealTransition) }
               }.padding(.horizontal, 24).id(ledgerAnchor)
               if filtered.isEmpty {
                 ledgerEmptyState
