@@ -16,6 +16,7 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
   // would only repeat it.
   const isPrint = cover !== null && trip.cover_path?.endsWith("-print.jpg") === true;
   const place = trip.destination?.trim() || trip.name;
+  const spent = `${symbol}${money(trip.spent)} spent`;
 
   return (
     <motion.li
@@ -26,47 +27,40 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
     >
       <Link
         to={`/trip/${trip.id}`}
-        aria-label={`${place}, ${symbol}${money(trip.spent)} spent`}
-        className="press block rounded-ticket border border-line bg-card p-1 shadow-lift"
+        aria-label={`${place}, ${spent}`}
+        className="press group block"
       >
-        {/* The whole card is the cover, in the 8:5 frame it is generated at.
-            Controls rest on the empty paper the print leaves along its bottom
-            edge, either side of the lettered title. */}
-        <div
-          className={cx(
-            "relative aspect-[8/5] overflow-hidden rounded-[calc(var(--radius-ticket)-5px)] bg-paper",
-            developing && "developing",
-          )}
-        >
-          {cover && (
-            <img
-              src={cover}
-              alt=""
-              decoding="async"
-              onLoad={() => setPaintedSrc(cover)}
-              className={cx(
-                "size-full object-cover transition-opacity duration-700 ease-out",
-                paintedSrc === cover ? "opacity-100" : "opacity-0",
-              )}
-            />
-          )}
-
-          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-4 pb-3 text-ink">
-            {!isPrint && (
-              <h3 className="truncate font-display text-xl font-semibold leading-tight tracking-tight">
-                {place}
-              </h3>
+        {/* The whole card is the cover, in the 8:5 frame it is generated at. */}
+        <div className="relative z-10 rounded-ticket border border-line bg-card p-1 shadow-lift">
+          <div
+            className={cx(
+              "relative aspect-[8/5] overflow-hidden rounded-[calc(var(--radius-ticket)-5px)] bg-paper",
+              developing && "developing",
             )}
-            {developing && <p className="text-xs text-ink-soft">Creating your cover…</p>}
-            <div className="flex items-center justify-between gap-3">
-              <p className="tabular flex items-center gap-1.5 text-[15px] font-semibold">
-                {symbol}
-                {money(trip.spent)} spent
-                {shared && <UsersThree size={14} weight="bold" aria-label="Shared" />}
-              </p>
-              <ArrowUpRight size={20} weight="bold" aria-hidden />
-            </div>
+          >
+            {cover && (
+              <img
+                src={cover}
+                alt=""
+                decoding="async"
+                onLoad={() => setPaintedSrc(cover)}
+                className={cx(
+                  "size-full object-cover transition-opacity duration-700 ease-out",
+                  paintedSrc === cover ? "opacity-100" : "opacity-0",
+                )}
+              />
+            )}
           </div>
+        </div>
+
+        {/* The numbers ride in a drawer tucked under the cover rather than on
+            it. Only covers without lettering need the place named in words. */}
+        <div className="mx-4 -mt-3 flex items-center gap-2 rounded-b-2xl border border-line bg-line-soft px-4 pt-5 pb-2.5 text-[13px] text-ink-soft">
+          <p className="tabular flex min-w-0 flex-1 items-center gap-1.5 truncate">
+            {developing ? "Creating your cover…" : isPrint ? spent : `${place} · ${spent}`}
+            {shared && <UsersThree size={13} weight="bold" aria-label="Shared" className="shrink-0" />}
+          </p>
+          <ArrowUpRight size={14} weight="bold" aria-hidden />
         </div>
       </Link>
     </motion.li>

@@ -10,6 +10,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -279,34 +281,46 @@ fun ListingCard(
     val trip = summary.trip
     val destination = trip.destination?.trim().orEmpty()
     val isPrint = trip.coverPath?.endsWith("-print.jpg") == true
-    // The whole card is the cover. Controls rest on the empty paper the print
-    // leaves along its bottom edge, either side of the lettered title.
-    Box(
-        modifier.fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
-            .clip(RoundedCornerShape(24.dp)).clickable(onClickLabel = "Open trip", onClick = onClick)
-            .aspectRatio(8f / 5f),
-    ) {
-        DestinationArtwork(Modifier.fillMaxSize(), trip)
-        if (coverUrl != null) AsyncImage(
-            model = coverUrl,
-            contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
-            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-        )
-        Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 12.dp)) {
-            if (!isPrint) {
-                Text(destination.ifEmpty { trip.name }, color = Ink, maxLines = 1,
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            if (trip.coverStatus == "pending") {
-                Text("Creating your cover…", color = Ash, style = MaterialTheme.typography.labelSmall)
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("${money(summary.spent, trip.currency)} spent", Modifier.weight(1f), color = Ink,
-                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
-            }
+    val spent = "${money(summary.spent, trip.currency)} spent"
+    // The cover stays untouched; the numbers ride in a drawer tucked under it.
+    // Only covers without lettering need the place named in words.
+    val drawer = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+    Column(modifier.fillMaxWidth().clickable(onClickLabel = "Open trip", onClick = onClick)) {
+        Box(
+            Modifier.fillMaxWidth().zIndex(1f)
+                .shadow(4.dp, RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
+                .clip(RoundedCornerShape(24.dp)).aspectRatio(8f / 5f),
+        ) {
+            DestinationArtwork(Modifier.fillMaxSize(), trip)
+            if (coverUrl != null) AsyncImage(
+                model = coverUrl,
+                contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+            )
+        }
+        // Tucked 12dp up under the card, so its top edge disappears behind it.
+        Row(
+            Modifier.padding(horizontal = 16.dp).fillMaxWidth()
+                .layout { measurable, constraints ->
+                    val tuck = 12.dp.roundToPx()
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, placeable.height - tuck) { placeable.place(0, -tuck) }
+                }
+                .clip(drawer).background(SoftCloud).border(1.dp, Hairline, drawer)
+                .padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                when {
+                    trip.coverStatus == "pending" -> "Creating your cover…"
+                    isPrint -> spent
+                    else -> "${destination.ifEmpty { trip.name }} · $spent"
+                },
+                Modifier.weight(1f), color = Ash, maxLines = 1,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(16.dp), tint = Ash)
         }
     }
 }

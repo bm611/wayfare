@@ -137,35 +137,32 @@ struct TripsScreen: View {
     let summary = budgetSummary(trip, expenses: expenses)
     let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let isPrint = trip.coverPath?.hasSuffix("-print.jpg") == true
-    // The whole card is the cover. Controls rest on the empty paper the print
-    // leaves along its bottom edge, either side of the lettered title.
-    return TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
-      .accessibilityHidden(true)
-      .overlay(alignment: .bottom) {
-        VStack(alignment: .leading, spacing: 2) {
-          if !isPrint {
-            Text(destination.isEmpty ? trip.name : destination)
-              .font(.system(.title3, design: .rounded, weight: .bold))
-              .lineLimit(1)
-          }
-          if trip.coverStatus == "pending" {
-            Text("Creating your cover…").font(.caption).foregroundStyle(Palette.ash)
-          }
-          HStack(alignment: .lastTextBaseline, spacing: 12) {
-            Text("\(money(summary.spent, trip.currency)) spent")
-              .font(.subheadline.weight(.semibold)).monospacedDigit()
-            Spacer(minLength: 0)
-            Image(systemName: "arrow.up.right").font(.body.weight(.semibold))
-          }
-        }
-        .padding(.horizontal, 16).padding(.bottom, 12)
+    let spent = "\(money(summary.spent, trip.currency)) spent"
+    // The cover stays untouched; the numbers ride in a drawer tucked under it.
+    // Only covers without lettering need the place named in words.
+    return VStack(spacing: 0) {
+      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
+        .accessibilityHidden(true)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .padding(5)
+        .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 31, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
+        .zIndex(1)
+      HStack(spacing: 8) {
+        Text(trip.coverStatus == "pending" ? "Creating your cover…"
+             : isPrint ? spent : "\(destination.isEmpty ? trip.name : destination) · \(spent)")
+          .font(.footnote).monospacedDigit().lineLimit(1)
+        Spacer(minLength: 0)
+        Image(systemName: "arrow.up.right").font(.footnote.weight(.semibold))
       }
+      .foregroundStyle(Palette.ash)
+      .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 10)
+      .background(Palette.softCloud, in: UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous))
+      .overlay(UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+        .stroke(Palette.hairline, lineWidth: 1))
+      .padding(.top, -12).padding(.horizontal, 16)
+    }
     .foregroundStyle(Palette.ink)
-    .background(Palette.canvas)
-    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-    .padding(5)
-    .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 31, style: .continuous))
-    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("\(destination.isEmpty ? trip.name : destination), \(money(summary.spent, trip.currency)) spent")
     .accessibilityHint("Opens trip details")
