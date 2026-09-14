@@ -40,23 +40,12 @@ function coverLettering(subject: string, startDate: string | null) {
  */
 function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
   return [
-    `Create an elegant watercolor-and-ink travel print of ${subject} on textured warm cream paper, in a horizontal 8:5 composition.`,
-    "The upper 65 percent is the panoramic illustration. Below it is plain cream paper holding the lettering. Keep the entire illustration and lettering inside the canvas with generous margins.",
-    `Show the skyline and clearly recognizable landmarks of ${subject}, selecting three to five iconic architectural features authentic to this destination.`,
-    "Arrange the landmarks harmoniously across the scene with locally characteristic architecture and soft clusters of greenery.",
-    "Reflect the destination's actual geography: include its river, canals, coast, bridges and small boats only where appropriate, with gentle reflections in any water. For inland places without a defining waterfront, use characteristic streets, squares, gardens or terrain instead. Do not borrow landmarks from other cities.",
-    "Style the scene as a sophisticated architectural travel sketch using delicate ink linework, translucent watercolor washes, soft pale blues, muted greens, warm beige stone tones, and subtle gray-blue shadows.",
-    "Keep the painting airy and elegant with loose brush edges, minimal detail in the distant skyline, and plenty of clean negative space around the illustration.",
-    "The illustration should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Let watercolor edges and reflections dissolve softly into the cream paper above the lettering.",
-    "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
-    `Below the illustration, centered horizontally, letter ${JSON.stringify(place)} in large, widely spaced uppercase serif capitals in muted ink blue, sitting about 78 percent of the way down the canvas.`,
-    year
-      ? `Directly beneath it, letter the year ${JSON.stringify(year)} in the same serif typeface and color, much smaller and widely spaced.`
-      : "",
-    "Copy the letters and digits exactly. Use a classic engraved serif typeface, never sans-serif, script or handwriting.",
-    "Leave the bottom 10 percent of the canvas as empty cream paper.",
-    `${year ? "Those two lines are" : "That line is"} the only text in the image: no punctuation, no season, no country label, no tagline, no subtitle, no shop or studio name, no captions, no signage, no logos, no watermark, no border, no decorative rules. Keep the paper light and clean, without gradients, shadows or dark panels. High resolution.`,
-  ].filter(Boolean).join(" ");
+    `A watercolor-and-ink travel print of ${subject} on textured warm cream paper, horizontal 8:5.`,
+    `Upper two thirds: a panoramic skyline with three to five real, recognizable landmarks of ${subject}, set in its actual geography (river, coast or canals with soft reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
+    "Style: delicate ink linework, translucent washes in pale blue, muted green and warm beige, loose edges fading into the paper. Airy and uncrowded; not photorealistic, saturated or cartoonish.",
+    `Lower third: plain cream paper with ${JSON.stringify(place)} centered in large, widely spaced, ink-blue engraved serif capitals${year ? `, and ${JSON.stringify(year)} beneath it, much smaller, in the same type` : ""}. Leave empty paper below.`,
+    "No other text, punctuation, signage, logos, borders or decorative rules.",
+  ].join(" ");
 }
 
 export default async (req: Request) => {
