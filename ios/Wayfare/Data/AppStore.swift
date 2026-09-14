@@ -310,8 +310,15 @@ import WayfareCore
     }
   }
 
-  public func requestCover(tripId: String) async throws {
+  public func requestCover(tripId: String, regenerate: Bool = false) async throws {
     guard let url = configuration.cover else { throw StoreError.notConfigured }
+    if regenerate {
+      // Owner-only RLS applies. Keep the previous image while allowing a new
+      // claim, without resetting a job already running on another device.
+      let _: [Trip] = try await rest(
+        "trips?id=eq.\(tripId)&cover_status=in.(ready,failed)", method: "PATCH",
+        body: ["cover_status": "idle"], prefer: "return=representation")
+    }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.httpBody = try JSONSerialization.data(withJSONObject: ["tripId": tripId])

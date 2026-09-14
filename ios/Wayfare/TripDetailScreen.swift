@@ -58,6 +58,15 @@ struct TripDetailScreen: View {
             VStack(alignment: .leading, spacing: 24) {
               if let notice = store.notice { Notice(text: notice).padding(.horizontal, 24) }
               tripHeader(trip)
+              if trip.coverStatus == "pending" {
+                Label("Creating your destination cover…", systemImage: "clock")
+                  .typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+                  .padding(.horizontal, 24)
+                  .accessibilityAddTraits(.updatesFrequently)
+              } else if trip.coverStatus == "failed" {
+                Notice(text: "The cover could not be generated. Try again from trip options.")
+                  .padding(.horizontal, 24)
+              }
               bookingPanel(trip).padding(.horizontal, 24)
               if entries.contains(where: { $0.syncState != .failed }) {
                 DisclosureGroup("Spending by category", isExpanded: $breakdownOpen) {
@@ -138,8 +147,8 @@ struct TripDetailScreen: View {
                 Button("Travellers & sharing", systemImage: "person.2") { sharing = true }
                 if trip.userId == store.userId {
                   Button("Edit trip", systemImage: "pencil") { editTrip = true }
-                  Button("Generate destination cover", systemImage: "photo") {
-                    perform { try await store.requestCover(tripId: tripId) }
+                  Button(trip.coverPath == nil ? "Generate destination cover" : "Regenerate destination cover", systemImage: "photo") {
+                    perform { try await store.requestCover(tripId: tripId, regenerate: true) }
                   }
                   Button("Delete trip", systemImage: "trash", role: .destructive) {
                     deleting = true

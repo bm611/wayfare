@@ -307,8 +307,17 @@ class WayfareRepository(
         database.trips().delete(accountId, tripId)
     }
 
-    suspend fun requestCover(tripId: String) {
-        val token = supabase.auth.currentSessionOrNull()?.accessToken ?: return
+    suspend fun requestCover(tripId: String, regenerate: Boolean = false) {
+        val token = supabase.auth.currentSessionOrNull()?.accessToken ?: error("Sign in to generate a cover")
+        if (regenerate) {
+            // Preserve the current image and never reset a running job.
+            supabase.from("trips").update(buildJsonObject { put("cover_status", "idle") }) {
+                filter {
+                    eq("id", tripId)
+                    isIn("cover_status", listOf("ready", "failed"))
+                }
+            }
+        }
         val response = http.post(BuildConfig.COVER_ENDPOINT) {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
@@ -320,7 +329,7 @@ class WayfareRepository(
     /** Show the developing state now rather than a poll interval from now. */
     suspend fun markCoverPending(tripId: String) {
         val accountId = currentUserId() ?: return
-        database.trips().setCover(accountId, tripId, null, "pending")
+        database.trips().markCoverPending(accountId, tripId)
     }
 
     /** Patches cover columns for the trips still drawing; returns the ones still pending. */

@@ -22,6 +22,7 @@ data class TripDetailUiState(
     val loading: Boolean = true,
     /** Only ever true for a refresh the traveller asked for, so the spinner answers a gesture. */
     val refreshing: Boolean = false,
+    val requestingCover: Boolean = false,
     val error: String? = null,
     val query: String = "",
     val category: Category? = null,
@@ -66,6 +67,18 @@ class TripDetailViewModel(
 
     /** Pull-to-refresh and the toolbar button: the traveller asked, so show the indicator. */
     fun refresh() = sync(silent = false)
+
+    fun regenerateCover() {
+        if (_state.value.requestingCover) return
+        _state.value = _state.value.copy(requestingCover = true, error = null)
+        viewModelScope.launch {
+            runCatching {
+                repository.requestCover(tripId, regenerate = true)
+                repository.markCoverPending(tripId)
+            }.onFailure { _state.value = _state.value.copy(error = it.message) }
+            _state.value = _state.value.copy(requestingCover = false)
+        }
+    }
 
     private fun sync(silent: Boolean) {
         // A silent sync is housekeeping; it never fights one already on its way.

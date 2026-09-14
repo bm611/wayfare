@@ -34,6 +34,9 @@ interface TripDao {
             "WHERE accountId = :accountId AND id = :tripId",
     )
     suspend fun setCover(accountId: String, tripId: String, coverPath: String?, coverStatus: String)
+
+    @Query("UPDATE trips SET coverStatus = 'pending' WHERE accountId = :accountId AND id = :tripId")
+    suspend fun markCoverPending(accountId: String, tripId: String)
 }
 
 @Dao

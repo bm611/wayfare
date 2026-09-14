@@ -102,6 +102,41 @@ struct DataTests {
     #expect(store.notice?.contains("cover could not be generated") == true)
   }
 
+  @Test func manualCoverRegenerationResetsCompletedJobAndKeepsImage() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = makeStore(directory: directory, cover: URL(string: "https://test.invalid/cover")!)
+    try store.adopt(account())
+    let trip = Trip(id: "rome", userId: "alice", name: "Rome", coverPath: "rome/old.jpg", coverStatus: "ready")
+    StubProtocol.handler = { _ in (200, try AppStore.encoder.encode([trip])) }
+    _ = try await store.saveTrip(trip, isNew: false)
+    var steps: [String] = []
+    StubProtocol.handler = { request in
+      if request.httpMethod == "PATCH" {
+        #expect(request.url?.query?.contains("cover_status=in.(ready,failed)") == true)
+        var data = request.httpBody ?? Data()
+        if let stream = request.httpBodyStream {
+          stream.open()
+          defer { stream.close() }
+          var bytes = [UInt8](repeating: 0, count: 1024)
+          let count = stream.read(&bytes, maxLength: bytes.count)
+          data = Data(bytes.prefix(max(0, count)))
+        }
+        let body = try #require(JSONSerialization.jsonObject(with: data) as? [String: String])
+        #expect(body == ["cover_status": "idle"])
+        steps.append("reset")
+        return (200, try AppStore.encoder.encode([trip]))
+      }
+      #expect(request.url?.path == "/cover")
+      steps.append("generate")
+      return (202, Data())
+    }
+    try await store.requestCover(tripId: trip.id, regenerate: true)
+    #expect(steps == ["reset", "generate"])
+    #expect(store.trips.first?.coverPath == "rome/old.jpg")
+    #expect(store.trips.first?.coverStatus == "pending")
+  }
+
   @Test func successfulRefreshClearsOnlyItsOwnError() async throws {
     let directory = temporary()
     defer { try? FileManager.default.removeItem(at: directory) }

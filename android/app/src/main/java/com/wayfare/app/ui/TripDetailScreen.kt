@@ -146,6 +146,11 @@ fun TripDetailScreen(
                                     onClick = { showActions = false; showEditTrip = true },
                                 )
                                 DropdownMenuItem(
+                                    text = { Text(if (trip.coverPath == null) "Generate destination cover" else "Regenerate destination cover") },
+                                    enabled = !state.requestingCover,
+                                    onClick = { showActions = false; viewModel.regenerateCover() },
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Delete trip", color = ErrorRed) },
                                     leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = ErrorRed) },
                                     onClick = { showActions = false; showDeleteTrip = true },
@@ -286,7 +291,16 @@ private fun TripDetailContent(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         state.error?.let { item { Notice(it, true, Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) } }
-        item { TripHeader(trip) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                TripHeader(trip)
+                if (state.requestingCover || trip.coverStatus == "pending") {
+                    Notice("Creating your destination cover…", modifier = Modifier.padding(horizontal = 24.dp))
+                } else if (trip.coverStatus == "failed") {
+                    Notice("The cover could not be generated. Try again from trip options.", modifier = Modifier.padding(horizontal = 24.dp))
+                }
+            }
+        }
         item {
             BookingPanel(
                 trip = trip,
