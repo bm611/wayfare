@@ -137,29 +137,29 @@ struct TripsScreen: View {
     let summary = budgetSummary(trip, expenses: expenses)
     let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let isPrint = trip.coverPath?.hasSuffix("-print.jpg") == true
-    return VStack(alignment: .leading, spacing: 0) {
-      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
-        .accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 10) {
-        if !isPrint {
-          Text(destination.isEmpty ? trip.name : destination)
-            .font(.system(.title2, design: .rounded, weight: .bold))
-            .fixedSize(horizontal: false, vertical: true)
+    // The whole card is the cover. Controls rest on the empty paper the print
+    // leaves along its bottom edge, either side of the lettered title.
+    return TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 8 / 5, showStatus: false)
+      .accessibilityHidden(true)
+      .overlay(alignment: .bottom) {
+        VStack(alignment: .leading, spacing: 2) {
+          if !isPrint {
+            Text(destination.isEmpty ? trip.name : destination)
+              .font(.system(.title3, design: .rounded, weight: .bold))
+              .lineLimit(1)
+          }
+          if trip.coverStatus == "pending" {
+            Text("Creating your cover…").font(.caption).foregroundStyle(Palette.ash)
+          }
+          HStack(alignment: .lastTextBaseline, spacing: 12) {
+            Text("\(money(summary.spent, trip.currency)) spent")
+              .font(.subheadline.weight(.semibold)).monospacedDigit()
+            Spacer(minLength: 0)
+            Image(systemName: "arrow.up.right").font(.body.weight(.semibold))
+          }
         }
-        if trip.coverStatus == "pending" {
-          Text("Creating your cover…").font(.caption).foregroundStyle(Palette.ash)
-        }
-        HStack(spacing: 12) {
-          Text("\(money(summary.spent, trip.currency)) spent")
-            .font(.subheadline).monospacedDigit()
-            .frame(maxWidth: .infinity, alignment: .leading)
-          Image(systemName: "arrow.up.right").font(.body.weight(.semibold))
-            .frame(width: 44, height: 44)
-            .background(Palette.softCloud, in: Circle())
-            .accessibilityHidden(true)
-        }
-      }.padding(.horizontal, 18).padding(.vertical, 12)
-    }
+        .padding(.horizontal, 16).padding(.bottom, 12)
+      }
     .foregroundStyle(Palette.ink)
     .background(Palette.canvas)
     .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -169,7 +169,6 @@ struct TripsScreen: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("\(destination.isEmpty ? trip.name : destination), \(money(summary.spent, trip.currency)) spent")
     .accessibilityHint("Opens trip details")
-
   }
 
 }

@@ -279,38 +279,36 @@ fun ListingCard(
     val trip = summary.trip
     val destination = trip.destination?.trim().orEmpty()
     val isPrint = trip.coverPath?.endsWith("-print.jpg") == true
-    Column(
+    // The whole card is the cover. Controls rest on the empty paper the print
+    // leaves along its bottom edge, either side of the lettered title.
+    Box(
         modifier.fillMaxWidth()
             .shadow(4.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
-            .clip(RoundedCornerShape(24.dp)).clickable(onClickLabel = "Open trip", onClick = onClick),
+            .clip(RoundedCornerShape(24.dp)).clickable(onClickLabel = "Open trip", onClick = onClick)
+            .aspectRatio(8f / 5f),
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(8f / 5f)) {
-            DestinationArtwork(Modifier.fillMaxSize(), trip)
-            if (coverUrl != null) AsyncImage(
-                model = coverUrl,
-                contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
-                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
-            )
-        }
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        DestinationArtwork(Modifier.fillMaxSize(), trip)
+        if (coverUrl != null) AsyncImage(
+            model = coverUrl,
+            contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
+            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+        )
+        Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 12.dp)) {
             if (!isPrint) {
-                Text(destination.ifEmpty { trip.name }, color = Ink,
-                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(destination.ifEmpty { trip.name }, color = Ink, maxLines = 1,
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             if (trip.coverStatus == "pending") {
                 Text("Creating your cover…", color = Ash, style = MaterialTheme.typography.labelSmall)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("${money(summary.spent, trip.currency)} spent", Modifier.weight(1f), color = Ink,
-                    style = MaterialTheme.typography.bodyMedium)
-                Box(Modifier.size(44.dp).clip(CircleShape).background(SoftCloud), contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
-                }
+                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
             }
         }
     }
-
 }
 
 /** One small fact beside a glyph, kept on one line. */

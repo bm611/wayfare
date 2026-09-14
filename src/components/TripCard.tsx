@@ -1,21 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { CaretRight, UsersThree } from "@phosphor-icons/react";
-import { Barcode, Ticket } from "./Ticket";
-import { BudgetMeter } from "./BudgetMeter";
-import { money, symbolFor, tripPhase } from "../lib/format";
-import { cx, hash } from "../lib/cx";
+import { ArrowUpRight, UsersThree } from "@phosphor-icons/react";
+import { money, symbolFor } from "../lib/format";
+import { cx } from "../lib/cx";
 import { coverUrl } from "../lib/covers";
 import type { TripWithSpend } from "../hooks/useTrips";
 
 export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared?: boolean }) {
-  const phase = tripPhase(trip);
   const symbol = symbolFor(trip.currency);
-  const remaining = trip.budget - trip.spent;
-  const over = trip.budget > 0 && remaining < 0;
-  const pct = trip.budget > 0 ? Math.round((trip.spent / trip.budget) * 100) : null;
-
   const cover = trip.cover_status === "ready" ? coverUrl(trip.cover_path) : null;
   const [paintedSrc, setPaintedSrc] = useState<string | null>(null);
   const developing = trip.cover_status === "pending";
@@ -31,110 +24,51 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 130, damping: 20 } },
       }}
     >
-      <Link to={`/trip/${trip.id}`} className="press block rounded-ticket">
-        <Ticket
-          stub={
-            <div className="flex items-center gap-3 px-5 py-3.5">
-              <Barcode seed={hash(trip.id)} className="flex-1" />
-              <div className="flex items-center gap-2">
-                {phase.kind === "active" && (
-                  <span className="beacon size-1.5 rounded-full bg-clay" aria-hidden />
-                )}
-                <span className="tabular text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {phaseLabel(phase)}
-                </span>
-                <CaretRight size={13} weight="bold" className="text-ink-faint" />
-              </div>
-            </div>
-          }
+      <Link
+        to={`/trip/${trip.id}`}
+        aria-label={`${place}, ${symbol}${money(trip.spent)} spent`}
+        className="press block rounded-ticket border border-line bg-card p-1 shadow-lift"
+      >
+        {/* The whole card is the cover, in the 8:5 frame it is generated at.
+            Controls rest on the empty paper the print leaves along its bottom
+            edge, either side of the lettered title. */}
+        <div
+          className={cx(
+            "relative aspect-[8/5] overflow-hidden rounded-[calc(var(--radius-ticket)-5px)] bg-paper",
+            developing && "developing",
+          )}
         >
-          {(cover || developing) && (
-            // Same 8:5 frame the cover is generated at, so the whole print —
-            // lettering included — shows without cropping. Clipped one pixel
-            // inside the ticket's radius so it stops exactly at the border.
-            <div
+          {cover && (
+            <img
+              src={cover}
+              alt=""
+              decoding="async"
+              onLoad={() => setPaintedSrc(cover)}
               className={cx(
-                "relative aspect-[8/5] overflow-hidden rounded-t-[calc(var(--radius-ticket)-1px)] bg-paper",
-                developing && "developing",
+                "size-full object-cover transition-opacity duration-700 ease-out",
+                paintedSrc === cover ? "opacity-100" : "opacity-0",
               )}
-            >
-              {cover && (
-                <img
-                  src={cover}
-                  alt={isPrint ? place : ""}
-                  decoding="async"
-                  onLoad={() => setPaintedSrc(cover)}
-                  className={cx(
-                    "size-full object-cover transition-opacity duration-700 ease-out",
-                    paintedSrc === cover ? "opacity-100" : "opacity-0",
-                  )}
-                />
-              )}
-            </div>
+            />
           )}
 
-          <div className="flex flex-col gap-4 p-5">
-            <div className="min-w-0">
-              <p className="tabular flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                {developing
-                  ? "Creating your cover…"
-                  : trip.entries === 0
-                    ? "No entries yet"
-                    : `${trip.entries} ${trip.entries === 1 ? "entry" : "entries"}`}
-                {shared && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <UsersThree size={12} weight="bold" />
-                    <span>Shared</span>
-                  </>
-                )}
-              </p>
-              {!isPrint && (
-                <h3 className="mt-1.5 truncate font-display text-[26px] font-semibold leading-tight tracking-tight text-ink">
-                  {place}
-                </h3>
-              )}
-            </div>
-
-            <BudgetMeter spent={trip.spent} budget={trip.budget} />
-
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="tabular text-[15px] font-medium text-ink">
+          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-4 pb-3 text-ink">
+            {!isPrint && (
+              <h3 className="truncate font-display text-xl font-semibold leading-tight tracking-tight">
+                {place}
+              </h3>
+            )}
+            {developing && <p className="text-xs text-ink-soft">Creating your cover…</p>}
+            <div className="flex items-center justify-between gap-3">
+              <p className="tabular flex items-center gap-1.5 text-[15px] font-semibold">
                 {symbol}
-                {money(trip.spent)}
-                <span className="ml-1.5 text-[13px] font-normal text-ink-faint">
-                  {trip.budget > 0
-                    ? `of ${symbol}${money(trip.budget, { cents: false })}`
-                    : "no budget set"}
-                </span>
+                {money(trip.spent)} spent
+                {shared && <UsersThree size={14} weight="bold" aria-label="Shared" />}
               </p>
-              {pct !== null && (
-                <p
-                  className={cx(
-                    "tabular text-[13px] font-medium",
-                    over ? "text-clay-deep" : "text-ink-soft",
-                  )}
-                >
-                  {over ? `${symbol}${money(Math.abs(remaining), { cents: false })} over` : `${pct}%`}
-                </p>
-              )}
+              <ArrowUpRight size={20} weight="bold" aria-hidden />
             </div>
           </div>
-        </Ticket>
+        </div>
       </Link>
     </motion.li>
   );
-}
-
-function phaseLabel(phase: ReturnType<typeof tripPhase>) {
-  switch (phase.kind) {
-    case "active":
-      return `Day ${phase.day} of ${phase.total}`;
-    case "upcoming":
-      return phase.days === 1 ? "Tomorrow" : `In ${phase.days} days`;
-    case "past":
-      return "Wrapped";
-    default:
-      return "Open ended";
-  }
 }

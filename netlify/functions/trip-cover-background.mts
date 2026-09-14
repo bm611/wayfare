@@ -17,25 +17,43 @@ const HEIGHT = 640;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const SEASONS = ["WINTER", "WINTER", "SPRING", "SPRING", "SPRING", "SUMMER", "SUMMER", "SUMMER", "AUTUMN", "AUTUMN", "AUTUMN", "WINTER"];
+
+/**
+ * The one line lettered onto the print, built here rather than left to the
+ * model, which otherwise invents subtitles and shop names. "Iceland - Winter
+ * '26" as a destination is trimmed back to the place before the season is
+ * added from the trip's own dates.
+ */
+function coverTitle(subject: string, startDate: string | null) {
+  const place = subject
+    .replace(/\s*[-–—·,|/]?\s*\b(spring|summer|autumn|fall|winter)\b.*$/i, "")
+    .replace(/\s*[-–—·,|/]?\s*'?\d{2,4}\s*$/, "")
+    .trim() || subject.trim();
+  const match = startDate?.match(/^(\d{4})-(\d{2})/);
+  if (!match) return place.toUpperCase();
+  const season = SEASONS[Number(match[2]) - 1];
+  return `${place.toUpperCase()} - ${season} '${match[1].slice(2)}`;
+}
+
 /**
  * Keep the watercolor direction consistent while letting the destination
  * determine the landmarks and geography, rather than reusing London's scene.
  */
-function coverPrompt(subject: string) {
+function coverPrompt(subject: string, title: string) {
   return [
-    `Create a premium watercolor-and-ink travel print for ${subject} on textured warm cream paper, in a horizontal 8:5 composition.`,
-    "Use two clear sections: the upper 60 percent is the panoramic illustration; the lower 40 percent is an airy cream-paper typography area. Keep the entire illustration and lettering inside the canvas with generous margins.",
+    `Create an elegant watercolor-and-ink travel print of ${subject} on textured warm cream paper, in a horizontal 8:5 composition.`,
+    "The upper 65 percent is the panoramic illustration. Below it is plain cream paper holding a single line of lettering. Keep the entire illustration and lettering inside the canvas with generous margins.",
     `Show the skyline and clearly recognizable landmarks of ${subject}, selecting three to five iconic architectural features authentic to this destination.`,
     "Arrange the landmarks harmoniously across the scene with locally characteristic architecture and soft clusters of greenery.",
     "Reflect the destination's actual geography: include its river, canals, coast, bridges and small boats only where appropriate, with gentle reflections in any water. For inland places without a defining waterfront, use characteristic streets, squares, gardens or terrain instead. Do not borrow landmarks from other cities.",
     "Style the scene as a sophisticated architectural travel sketch using delicate ink linework, translucent watercolor washes, soft pale blues, muted greens, warm beige stone tones, and subtle gray-blue shadows.",
     "Keep the painting airy and elegant with loose brush edges, minimal detail in the distant skyline, and plenty of clean negative space around the illustration.",
-    "The upper illustration should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Let watercolor edges and reflections dissolve softly into the cream paper above the lettering.",
-    "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a premium museum-shop travel illustration, a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
-    `In the lower section, print the geographic location name from ${JSON.stringify(subject)} in large, beautifully spaced uppercase serif lettering, centered in muted ink blue. If the subject contains holiday names, seasons, dates, or travel companions, omit those from the large lettering and use only the actual place name.`,
-    "Above the large location name, include its country in very small, widely spaced uppercase letters only when unambiguous and different from the main location name. A pair of fine understated horizontal rules may frame the smaller label.",
-    "Keep spelling accurate and typography crisp and legible.",
-    "No other text: no tagline, no slogan, no subtitle, no year, no trip dates, no captions, no signage, no logos, no watermark, no border. Keep the lower paper light and clean, without gradients, shadows or dark panels. High resolution, refined museum-shop travel print.",
+    "The illustration should feel panoramic and balanced, with the landmarks arranged harmoniously rather than crowded together. Let watercolor edges and reflections dissolve softly into the cream paper above the lettering.",
+    "Avoid photorealism, heavy saturation, bold outlines, or cartoon styling. Aim for a timeless architectural editorial aesthetic, hand-painted watercolor texture, subtle paper grain, and understated sophistication.",
+    `Below the illustration, letter exactly this text and nothing else, on one line: ${JSON.stringify(title)}. Use widely spaced uppercase serif lettering in muted ink blue, centered horizontally, sitting about 80 percent of the way down the canvas and spanning no more than the middle half of its width. Copy the characters exactly, including the dash and apostrophe.`,
+    "Leave the bottom 12 percent of the canvas, and both lower corners, as empty cream paper.",
+    "That single line is the only text in the image: no second line, no country label, no tagline, no subtitle, no handwriting, no shop or studio name, no captions, no signage, no logos, no watermark, no border, no decorative rules. Keep the paper light and clean, without gradients, shadows or dark panels. High resolution.",
   ].join(" ");
 }
 
@@ -85,7 +103,7 @@ export default async (req: Request) => {
   try {
     const { data: trip, error } = await supabase
       .from("trips")
-      .select("name, destination")
+      .select("name, destination, start_date")
       .eq("id", tripId)
       .single();
     if (error || !trip) throw new Error(error?.message ?? "Trip is not readable");
@@ -96,7 +114,7 @@ export default async (req: Request) => {
     const together = new Together({ apiKey: togetherKey });
     const result = await together.images.generate({
       model: MODEL,
-      prompt: coverPrompt(subject),
+      prompt: coverPrompt(subject, coverTitle(subject, trip.start_date)),
       width: WIDTH,
       height: HEIGHT,
       response_format: "base64",
