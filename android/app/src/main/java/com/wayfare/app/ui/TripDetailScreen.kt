@@ -16,18 +16,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -274,7 +273,6 @@ private fun TripDetailContent(
     val budget = budgetSummary(trip, state.expenses)
     var searchOpen by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
-    var breakdownOpen by rememberSaveable { mutableStateOf(false) }
     // A control stays on screen while it is narrowing the ledger, and hiding it
     // clears it, so a search or filter can never keep working out of sight.
     val showSearch = searchOpen || state.query.isNotBlank()
@@ -316,23 +314,18 @@ private fun TripDetailContent(
         }
         if (counted.isNotEmpty()) item {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                TextButton(
-                    onClick = { breakdownOpen = !breakdownOpen },
-                    modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (breakdownOpen) "Expanded" else "Collapsed" },
-                ) {
-                    Text("Spending by category", Modifier.weight(1f), color = Ink)
-                    Icon(if (breakdownOpen) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = Ash)
-                }
-                AnimatedVisibility(breakdownOpen, enter = revealEnter, exit = revealExit) {
-                    CategoryBreakdown(counted, trip.currency, {
-                        viewModel.setCategory(it)
-                        filtersOpen = true
-                        breakdownOpen = false
-                        // Header, budget panel, then this breakdown: the ledger controls follow.
-                        val ledgerIndex = (if (state.error != null) 1 else 0) + 3
-                        scope.launch { listState.animateScrollToItem(ledgerIndex) }
-                    })
-                }
+                Text(
+                    "Spending by category",
+                    Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                CategoryBreakdown(counted, trip.currency, {
+                    viewModel.setCategory(it)
+                    filtersOpen = true
+                    // Header, budget panel, then this breakdown: the ledger controls follow.
+                    val ledgerIndex = (if (state.error != null) 1 else 0) + 3
+                    scope.launch { listState.animateScrollToItem(ledgerIndex) }
+                })
             }
         }
         item {
@@ -479,8 +472,8 @@ private fun BookingPanel(
 }
 
 /**
- * The amenity grid: a 24dp outline glyph, a 16sp label, and a hairline between
- * every row. Category glyphs stay monochrome — the palette allows one accent.
+ * A horizontal bar chart: each category's glyph, label, share and amount above
+ * a bar sized to its share of the total. Bars use the palette's one accent.
  */
 @Composable
 private fun CategoryBreakdown(
@@ -493,23 +486,24 @@ private fun CategoryBreakdown(
     val total = expenses.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount }
     val groups = expenses.groupBy(Expense::category).mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { sum, item -> sum + item.amount } }
         .toList().sortedByDescending { it.second }
-    Column(modifier.fillMaxWidth()) {
-        Spacer(Modifier.height(8.dp))
-        groups.forEachIndexed { index, (category, amount) ->
-            if (index > 0) HairlineDivider()
-            Row(
-                Modifier.fillMaxWidth().clickable { onSelect(category) }.padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(categoryIcon(category), null, Modifier.size(24.dp), tint = Ink)
-                val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
-                Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                    Text(category.label, style = MaterialTheme.typography.bodyLarge)
-                    if (largeText) Text("${money(amount, currency)} · $percent%", color = Ash, style = MaterialTheme.typography.bodyMedium)
+    Column(modifier.fillMaxWidth().padding(top = 8.dp)) {
+        groups.forEach { (category, amount) ->
+            val percent = if (total.signum() == 0) 0 else amount.multiply(BigDecimal(100)).divide(total, 0, RoundingMode.HALF_UP).toInt()
+            val share = if (total.signum() == 0) 0f else amount.divide(total, 4, RoundingMode.HALF_UP).toFloat()
+            Column(Modifier.fillMaxWidth().clickable { onSelect(category) }.padding(vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(categoryIcon(category), null, Modifier.size(24.dp), tint = Ink)
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(category.label, style = MaterialTheme.typography.bodyLarge)
+                        if (largeText) Text("${money(amount, currency)} · $percent%", color = Ash, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (!largeText) {
+                        Text("$percent%", color = Ash, style = MaterialTheme.typography.bodyMedium)
+                        Text(money(amount, currency), Modifier.padding(start = 14.dp), style = MaterialTheme.typography.labelMedium)
+                    }
                 }
-                if (!largeText) {
-                    Text("$percent%", color = Ash, style = MaterialTheme.typography.bodyMedium)
-                    Text(money(amount, currency), Modifier.padding(start = 14.dp), style = MaterialTheme.typography.labelMedium)
+                Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(8.dp).clip(CircleShape).background(SoftCloud)) {
+                    Box(Modifier.widthIn(min = 8.dp).fillMaxWidth(share).fillMaxHeight().clip(CircleShape).background(AccentInk))
                 }
             }
         }

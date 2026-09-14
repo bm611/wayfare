@@ -10,7 +10,6 @@ struct TripDetailScreen: View {
   @State private var payer = ""
   @State private var searchOpen = false
   @State private var filtersOpen = false
-  @State private var breakdownOpen = false
   @State private var budgetInfo = false
   @Environment(\.dynamicTypeSize) private var textSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -69,14 +68,15 @@ struct TripDetailScreen: View {
               }
               bookingPanel(trip).padding(.horizontal, 24)
               if entries.contains(where: { $0.syncState != .failed }) {
-                DisclosureGroup("Spending by category", isExpanded: $breakdownOpen) {
+                VStack(alignment: .leading, spacing: 12) {
+                  Text("Spending by category").typeStyle(.headlineSmall)
+                    .accessibilityAddTraits(.isHeader)
                   breakdown(trip) { picked in
                     category = picked.rawValue
                     filtersOpen = true
-                    breakdownOpen = false
                     withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(ledgerAnchor, anchor: .top) }
-                  }.padding(.top, 8)
-                }.typeStyle(.labelMedium).tint(Palette.ink).padding(.horizontal, 24)
+                  }
+                }.padding(.horizontal, 24)
               }
               VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 4) {
@@ -288,8 +288,8 @@ struct TripDetailScreen: View {
     .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
   }
 
-  /// The amenity grid: a 24pt outline glyph, a 16pt label, and a hairline
-  /// between every row. Category glyphs stay monochrome — one accent only.
+  /// A horizontal bar chart: each category's glyph, label, share and amount
+  /// above a bar sized to its share of the total. Bars use the one accent.
   private func breakdown(
     _ trip: Trip, onSelect: @escaping (WayfareCore.Category) -> Void
   ) -> some View {
@@ -301,16 +301,15 @@ struct TripDetailScreen: View {
       )
     }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }
     let total = groups.reduce(Decimal.zero) { $0 + $1.1 }
-    return VStack(alignment: .leading, spacing: 8) {
-      if !groups.isEmpty {
-        ForEach(Array(groups.enumerated()), id: \.element.0) { index, entry in
-          if index > 0 { HairlineDivider() }
-          Button {
-            onSelect(entry.0)
-          } label: {
-            // A plain button only hit-tests what it draws; the content shape
-            // makes the gap between label and amount tappable too.
-            let layout = textSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 16))
+    return VStack(alignment: .leading, spacing: 4) {
+      ForEach(groups, id: \.0) { entry in
+        Button {
+          onSelect(entry.0)
+        } label: {
+          // A plain button only hit-tests what it draws; the content shape
+          // makes the gap between label and amount tappable too.
+          VStack(alignment: .leading, spacing: 8) {
+            let layout = textSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
             layout {
               Image(systemName: entry.0.symbol).font(.system(size: 18))
                 .foregroundStyle(Palette.ink).frame(width: 24)
@@ -319,11 +318,24 @@ struct TripDetailScreen: View {
               Text(percentText(entry.1, of: total)).typeStyle(.bodyMedium)
                 .foregroundStyle(Palette.ash)
               Text(money(entry.1, trip.currency)).typeStyle(.labelMedium).monospacedDigit()
-            }.frame(minHeight: 44).padding(.vertical, 8).contentShape(Rectangle())
-          }.buttonStyle(.plain).foregroundStyle(Palette.ink)
-        }
+            }
+            Capsule().fill(Palette.softCloud).frame(height: 8)
+              .overlay(alignment: .leading) {
+                GeometryReader { bar in
+                  Capsule().fill(Palette.accentInk)
+                    .frame(width: max(8, bar.size.width * share(entry.1, of: total)))
+                }
+              }
+              .accessibilityHidden(true)
+          }.padding(.vertical, 8).contentShape(Rectangle())
+        }.buttonStyle(.plain).foregroundStyle(Palette.ink)
       }
     }
+  }
+
+  private func share(_ amount: Decimal, of total: Decimal) -> CGFloat {
+    guard total > 0 else { return 0 }
+    return CGFloat((amount as NSDecimalNumber).doubleValue / (total as NSDecimalNumber).doubleValue)
   }
 
   private func percentText(_ amount: Decimal, of total: Decimal) -> String {
