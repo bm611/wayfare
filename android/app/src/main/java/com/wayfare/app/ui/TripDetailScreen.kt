@@ -269,7 +269,8 @@ private fun TripDetailContent(
 ) {
     // Failed entries never reached the server, so they stay out of every figure
     // the web app would also show.
-    val counted = state.expenses.filter { it.syncState != SyncState.Failed }
+    val counted = remember(state.expenses) { state.expenses.filter { it.syncState != SyncState.Failed } }
+    val filtered = remember(state.expenses, state.query, state.category, state.payerId) { state.filteredExpenses }
     val budget = budgetSummary(trip, state.expenses)
     var searchOpen by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
@@ -392,7 +393,7 @@ private fun TripDetailContent(
                 }
             }
         }
-        if (state.filteredExpenses.isEmpty()) item {
+        if (filtered.isEmpty()) item {
             Column(
                 Modifier.fillMaxWidth().padding(vertical = 36.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -410,7 +411,7 @@ private fun TripDetailContent(
                 )
             }
         }
-        items(state.filteredExpenses, key = Expense::id) { expense ->
+        items(filtered, key = Expense::id) { expense ->
             Box(Modifier.animateItem().padding(horizontal = 24.dp)) {
                 ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
             }

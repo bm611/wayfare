@@ -133,7 +133,7 @@ struct TripsScreen: View {
 
   /// A photo-led destination card with a native, content-sized overlay.
   private func listingCard(_ trip: Trip) -> some View {
-    let expenses = store.expenses.filter { $0.tripId == trip.id }
+    let expenses = store.expensesByTrip[trip.id] ?? []
     let summary = budgetSummary(trip, expenses: expenses)
     let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let isPrint = trip.coverPath?.hasSuffix("-print.jpg") == true

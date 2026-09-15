@@ -31,6 +31,7 @@ private final class StubProtocol: URLProtocol, @unchecked Sendable {
 struct DataTests {
   private func makeStore(
     directory: URL, cover: URL? = nil,
+    disk: DispatchQueue = DispatchQueue(label: "wayfare.test.snapshot"),
     writeSession: @escaping (Session) throws -> Void = { _ in }
   ) -> AppStore {
     let config = URLSessionConfiguration.ephemeral
@@ -38,7 +39,7 @@ struct DataTests {
     return AppStore(
       configuration: .init(url: URL(string: "https://test.invalid")!, key: "public-test-key", cover: cover),
       http: URLSession(configuration: config), defaults: UserDefaults(suiteName: "wayfare-tests")!,
-      directory: directory, readSession: { nil }, writeSession: writeSession, clearSession: {})
+      directory: directory, readSession: { nil }, writeSession: writeSession, clearSession: {}, disk: disk)
   }
   private func account(_ id: String = "alice") -> Session {
     Session(
@@ -47,6 +48,77 @@ struct DataTests {
   }
   private func temporary() -> URL {
     FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  }
+
+  @Test func housekeepingOnlyFetchesPendingCoversAndStopsWhenReady() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = makeStore(directory: directory)
+    try store.adopt(account())
+    let trip = Trip(id: "rome", userId: "alice", name: "Rome", coverStatus: "pending")
+    StubProtocol.handler = { _ in (200, try AppStore.encoder.encode([trip])) }
+    _ = try await store.saveTrip(trip, isNew: false)
+    StubProtocol.requests = []
+    StubProtocol.handler = { request in
+      #expect(request.url?.path == "/rest/v1/trips")
+      #expect(request.url?.query?.contains("select=id,cover_path,cover_status") == true)
+      return (200, Data(#"[{"id":"rome","cover_path":"rome/new.jpg","cover_status":"ready"}]"#.utf8))
+    }
+    await store.refreshPending()
+    #expect(store.trips.first?.coverPath == "rome/new.jpg")
+    #expect(StubProtocol.requests.count == 1)
+    await store.refreshPending()
+    #expect(StubProtocol.requests.count == 1)
+    let restarted = makeStore(directory: directory)
+    try restarted.adopt(account())
+    #expect(restarted.trips == store.trips)
+  }
+
+  @Test func backgroundSnapshotCannotResurrectASignedOutAccount() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let disk = DispatchQueue(label: "wayfare.test.signout")
+    let store = makeStore(directory: directory, disk: disk)
+    try store.adopt(account())
+    let trip = Trip(id: "rome", userId: "alice", name: "Rome", coverStatus: "ready")
+    StubProtocol.handler = { request in
+      request.url?.path == "/rest/v1/trips"
+        ? (200, try AppStore.encoder.encode([trip])) : (200, Data("[]".utf8))
+    }
+    disk.suspend()
+    let refresh = Task { await store.refresh() }
+    while store.trips.isEmpty { await Task.yield() }
+    DispatchQueue.global().asyncAfter(deadline: .now() + 0.02) { disk.resume() }
+    try await store.signOut()
+    await refresh.value
+    #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("account-alice.json").path))
+    #expect(store.trips.isEmpty)
+    #expect(store.expensesByTrip.isEmpty)
+  }
+
+  @Test func durableEditWinsOverAnOlderQueuedSnapshotEvenWhenReverting() async throws {
+    let directory = temporary()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let disk = DispatchQueue(label: "wayfare.test.edit")
+    let store = makeStore(directory: directory, disk: disk)
+    try store.adopt(account())
+    var remote = Trip(id: "rome", userId: "alice", name: "Original", coverStatus: "ready")
+    StubProtocol.handler = { request in
+      request.url?.path == "/rest/v1/trips"
+        ? (200, try AppStore.encoder.encode([remote])) : (200, Data("[]".utf8))
+    }
+    _ = try await store.saveTrip(remote, isNew: false)
+    remote.name = "Remote edit"
+    disk.suspend()
+    let refresh = Task { await store.refresh() }
+    while store.trips.first?.name != "Remote edit" { await Task.yield() }
+    remote.name = "Original"
+    DispatchQueue.global().asyncAfter(deadline: .now() + 0.02) { disk.resume() }
+    _ = try await store.saveTrip(remote, isNew: false)
+    await refresh.value
+    let restarted = makeStore(directory: directory)
+    try restarted.adopt(account())
+    #expect(restarted.trips.first?.name == "Original")
   }
 
   @Test func editedAndRefreshedTripsRequestMissingCoversOncePerSubject() async throws {

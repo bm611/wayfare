@@ -1,51 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import type { TripMember } from "../lib/types";
 
+import { useRemote } from "./useRemote";
+import { loadPages } from "../lib/pages";
+
 export function useMembers(tripId: string | undefined) {
   const { user } = useAuth();
-  const [members, setMembers] = useState<TripMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!tripId) return;
-    setError(null);
-
-    const { data: rows, error: err } = await supabase
-      .from("trip_members")
-      .select("trip_id, user_id, role, joined_at")
-      .eq("trip_id", tripId)
-      .order("joined_at", { ascending: true });
-
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
+  const fetch = useCallback(async (signal: AbortSignal) => {
+    const rows = await loadPages((from, to) => supabase.from("trip_members")
+      .select("trip_id, user_id, role, joined_at").eq("trip_id", tripId!)
+      .order("joined_at").order("user_id").range(from, to).abortSignal(signal), signal);
+    const profiles = [];
+    for (let offset = 0; offset < rows.length; offset += 100) {
+      profiles.push(...await loadPages((from, to) => supabase.from("profiles").select("id, display_name")
+        .in("id", rows.slice(offset, offset + 100).map((row) => row.user_id)).order("id")
+        .range(from, to).abortSignal(signal), signal));
     }
-
-    // Names live in profiles; RLS lets fellow members read each other's rows.
-    const ids = (rows ?? []).map((r) => r.user_id);
-    const { data: profiles } = ids.length
-      ? await supabase.from("profiles").select("id, display_name").in("id", ids)
-      : { data: [] };
-
-    const names = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
-    setMembers(
-      (rows ?? []).map((row) => ({
-        ...row,
-        display_name: names.get(row.user_id) ?? null,
-        is_you: row.user_id === user?.id,
-      })),
-    );
-    setLoading(false);
+    const names = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
+    return rows.map((row) => ({ ...row, display_name: names.get(row.user_id) ?? null, is_you: row.user_id === user?.id }));
   }, [tripId, user?.id]);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  const { data: members, setData: setMembers, loading, error, reload: load } = useRemote<TripMember[]>(
+    user && tripId ? user.id + "/" + tripId : undefined, [], fetch);
 
   const removeMember = useCallback(
     async (userId: string) => {
@@ -58,7 +35,7 @@ export function useMembers(tripId: string | undefined) {
       if (err) throw err;
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
     },
-    [tripId],
+    [tripId, setMembers],
   );
 
   const leaveTrip = useCallback(async () => {
@@ -75,8 +52,6 @@ export function useMembers(tripId: string | undefined) {
 }
 
 export type Membership = ReturnType<typeof useMembers>;
-
-
 
 /** Redeems an invite code and returns the trip it unlocked. */
 export async function joinTrip(code: string) {

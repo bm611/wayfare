@@ -1,56 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import type { Trip, TripInput } from "../lib/types";
 import type { CoverPatch } from "./useTripCovers";
 import { useAuth } from "./useAuth";
 
+import { useRemote } from "./useRemote";
+import { loadPages } from "../lib/pages";
+
 export type TripWithSpend = Trip & { spent: number; entries: number };
 
 export function useTrips() {
   const { user } = useAuth();
-  const [trips, setTrips] = useState<TripWithSpend[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setError(null);
-    const [tripsRes, expensesRes] = await Promise.all([
-      supabase.from("trips").select("*").order("created_at", { ascending: false }),
-      supabase.from("expenses").select("trip_id, amount"),
-    ]);
-
-    if (tripsRes.error || expensesRes.error) {
-      setError((tripsRes.error ?? expensesRes.error)!.message);
-      setLoading(false);
-      return;
-    }
-
-    const totals = new Map<string, { spent: number; entries: number }>();
-    for (const row of expensesRes.data ?? []) {
-      const prev = totals.get(row.trip_id) ?? { spent: 0, entries: 0 };
-      totals.set(row.trip_id, { spent: prev.spent + Number(row.amount), entries: prev.entries + 1 });
-    }
-
-    setTrips(
-      (tripsRes.data ?? []).map((trip) => ({
-        ...trip,
-        budget: Number(trip.budget),
-        ...(totals.get(trip.id) ?? { spent: 0, entries: 0 }),
-      })),
-    );
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      setTrips([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    void load();
-  }, [user, load]);
+  const fetch = useCallback(async (signal: AbortSignal) => {
+    const rows = await loadPages((from, to) => supabase.from("trip_summaries").select("*")
+      .order("created_at", { ascending: false }).order("id").range(from, to).abortSignal(signal), signal);
+    return rows.map((trip) => ({ ...trip, budget: Number(trip.budget), spent: Number(trip.spent), entries: Number(trip.entries) }));
+  }, []);
+  const { data: trips, setData: setTrips, loading, error, reload: load } = useRemote<TripWithSpend[]>(user?.id, [], fetch);
 
   const createTrip = useCallback(
     async (input: TripInput) => {
@@ -65,14 +31,14 @@ export function useTrips() {
       setTrips((prev) => [trip, ...prev]);
       return trip;
     },
-    [user],
+    [user, setTrips],
   );
 
   const deleteTrip = useCallback(async (id: string) => {
     const { error: err } = await supabase.from("trips").delete().eq("id", id);
     if (err) throw err;
     setTrips((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [setTrips]);
 
   /**
    * Folds cover progress into the list without refetching everything.
@@ -94,30 +60,21 @@ export function useTrips() {
       });
       return changed ? next : prev;
     });
-  }, []);
+  }, [setTrips]);
 
   return { trips, loading, error, reload: load, createTrip, deleteTrip, applyCovers };
 }
 
 export function useTrip(tripId: string | undefined) {
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!tripId) return;
-    setError(null);
-    const { data, error: err } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
-    if (err) setError(err.message);
-    else if (!data) setError("That trip no longer exists.");
-    else setTrip({ ...data, budget: Number(data.budget) });
-    setLoading(false);
+  const { user } = useAuth();
+  const fetch = useCallback(async (signal: AbortSignal) => {
+    const { data, error } = await supabase.from("trips").select("*").eq("id", tripId!).abortSignal(signal).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("That trip no longer exists.");
+    return { ...data, budget: Number(data.budget) };
   }, [tripId]);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  const { data: trip, setData: setTrip, loading, error, reload: load } = useRemote<Trip | null>(
+    user && tripId ? user.id + "/" + tripId : undefined, null, fetch);
 
   const updateTrip = useCallback(
     async (patch: Partial<TripInput>) => {
@@ -131,7 +88,7 @@ export function useTrip(tripId: string | undefined) {
       if (err) throw err;
       setTrip({ ...data, budget: Number(data.budget) });
     },
-    [tripId],
+    [tripId, setTrip],
   );
 
   const removeTrip = useCallback(async () => {

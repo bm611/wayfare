@@ -26,9 +26,12 @@ struct WayfareApp: App {
         await store.refreshFX()
         await store.refresh()
         // Foreground retry is also the iOS offline queue's retry opportunity.
+        var ticks = 0
         while !Task.isCancelled {
           do { try await Task.sleep(for: .seconds(30)) } catch { return }
-          await store.refresh()
+          ticks += 1
+          if ticks.isMultiple(of: 10) { await store.refresh() }
+          else { await store.refreshPending() }
         }
       }
       .onOpenURL { url in

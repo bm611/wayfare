@@ -223,23 +223,9 @@ struct PrimaryButton: View {
       }
       .frame(maxWidth: .infinity).frame(minHeight: 48)
     }
-    .buttonStyle(AccentButtonStyle())
+    .buttonStyle(ControlButtonStyle(accent: true))
     .accessibilityLabel(title).accessibilityValue(busy ? "Saving" : "")
     .disabled(busy)
-  }
-}
-
-private struct AccentButtonStyle: ButtonStyle {
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.isEnabled) private var enabled
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .foregroundStyle(enabled ? Palette.onAccent : Palette.stone)
-      .background(
-        enabled ? Palette.accent : Palette.softCloud,
-        in: RoundedRectangle(cornerRadius: Radius.control))
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-      .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
   }
 }
 
@@ -257,18 +243,21 @@ struct SecondaryButton: View {
       }
       .frame(maxWidth: .infinity).frame(minHeight: 48)
     }
-    .buttonStyle(OutlineButtonStyle(radius: pill ? Radius.panel : Radius.control))
+    .buttonStyle(ControlButtonStyle(radius: pill ? Radius.panel : Radius.control))
   }
 }
 
-private struct OutlineButtonStyle: ButtonStyle {
+private struct ControlButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var enabled
+  var accent = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  let radius: CGFloat
+  var radius: CGFloat = Radius.control
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .foregroundStyle(Palette.ink)
-      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: radius))
-      .overlay(RoundedRectangle(cornerRadius: radius).stroke(Palette.hairline, lineWidth: 1))
+      .foregroundStyle(accent ? (enabled ? Palette.onAccent : Palette.stone) : Palette.ink)
+      .background(accent ? (enabled ? Palette.accent : Palette.softCloud) : Palette.canvas,
+        in: RoundedRectangle(cornerRadius: radius))
+      .overlay { if !accent { RoundedRectangle(cornerRadius: radius).stroke(Palette.hairline, lineWidth: 1) } }
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
       .animation(reduceMotion ? nil : .spring(duration: 0.2), value: configuration.isPressed)
   }
@@ -497,37 +486,6 @@ func dateRange(_ start: String?, _ end: String?) -> String {
 }
 
 // MARK: - Card furniture
-
-/// One small fact beside a glyph, kept on one line.
-struct MetaLabel: View {
-  let symbol: String
-  let text: String
-  var body: some View {
-    HStack(spacing: 6) {
-      Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(Palette.ash)
-      Text(text).typeStyle(.bodyMedium).foregroundStyle(Palette.ash).lineLimit(1)
-    }
-  }
-}
-
-/// Place and dates are two separate facts, so each gets its own glyph rather
-/// than being run together by a dot. A destination long enough to crowd the
-/// dates drops them to a second line instead of truncating them away.
-struct TripMeta: View {
-  let trip: Trip
-  var body: some View {
-    ViewThatFits(in: .horizontal) {
-      HStack(spacing: 14) { labels }
-      VStack(alignment: .leading, spacing: 4) { labels }
-    }
-  }
-  @ViewBuilder private var labels: some View {
-    if let place = trip.destination, !place.isEmpty {
-      MetaLabel(symbol: "mappin.and.ellipse", text: place)
-    }
-    MetaLabel(symbol: "calendar", text: dateRange(trip.startDate, trip.endDate))
-  }
-}
 
 /// A compact budget rail with an optional percentage readout on detail views.
 struct BudgetMeter: View {

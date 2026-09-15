@@ -97,7 +97,7 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<never, never>;
+    Views: { trip_summaries: { Row: Trip & { spent: number; entries: number }; Relationships: [] } };
     Functions: {
       join_trip: {
         Args: { p_code: string };

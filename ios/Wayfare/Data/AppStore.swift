@@ -19,7 +19,10 @@ import WayfareCore
 /// The app's deliberately small Supabase REST client and account-scoped cache.
 @MainActor @Observable public final class AppStore {
   public private(set) var trips: [Trip] = []
-  public private(set) var expenses: [Expense] = []
+  public private(set) var expenses: [Expense] = [] {
+    didSet { expensesByTrip = Dictionary(grouping: expenses, by: \.tripId) }
+  }
+  public private(set) var expensesByTrip: [String: [Expense]] = [:]
   public private(set) var members: [Member] = []
   public private(set) var profiles: [Profile] = []
   public private(set) var loading = false
@@ -35,6 +38,8 @@ import WayfareCore
   private let configuration: Configuration
   private let http: URLSession
   private let defaults: UserDefaults
+  private let disk: DispatchQueue
+  private var persistedSnapshot: Snapshot?
   private let directory: URL
   private let readSession: () -> Session?
   private let writeSession: (Session) throws -> Void
@@ -68,7 +73,8 @@ import WayfareCore
   init(
     configuration: Configuration, http: URLSession, defaults: UserDefaults, directory: URL,
     readSession: @escaping () -> Session?, writeSession: @escaping (Session) throws -> Void,
-    clearSession: @escaping () -> Void
+    clearSession: @escaping () -> Void,
+    disk: DispatchQueue = DispatchQueue(label: "wayfare.snapshot", qos: .utility)
   ) {
     self.configuration = configuration
     configured =
@@ -77,6 +83,7 @@ import WayfareCore
     self.http = http
     self.defaults = defaults
     self.directory = directory
+    self.disk = disk
     self.readSession = readSession
     self.writeSession = writeSession
     self.clearSession = clearSession
@@ -173,8 +180,12 @@ import WayfareCore
     outbox = [:]
     pendingInvite = ""
     recovery = false
-    if let old, FileManager.default.fileExists(atPath: snapshotURL(old).path) {
-      do { try FileManager.default.removeItem(at: snapshotURL(old)) } catch {
+    persistedSnapshot = nil
+    if let old {
+      let url = snapshotURL(old)
+      do { try disk.sync {
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+      } } catch {
         notice = "Signed out, but cached data could not be removed: \(message(error))"
       }
     }
@@ -196,25 +207,17 @@ import WayfareCore
       "trips" + (isNew ? "" : "?id=eq.\(trip.id)"), method: isNew ? "POST" : "PATCH", body: payload,
       prefer: "return=representation")
     guard let saved = rows.first else { throw StoreError.emptyResponse }
-    let old = trips
-    replace(saved, in: &trips)
-    do { try persist() } catch {
-      trips = old
-      throw error
-    }
+    try commit { replace(saved, in: &trips) }
     await requestMissingCovers([saved])
     return saved.id
   }
 
   public func deleteTrip(_ trip: Trip) async throws {
     try await restVoid("trips?id=eq.\(trip.id)", method: "DELETE")
-    let old = (trips, expenses, members)
-    trips.removeAll { $0.id == trip.id }
-    expenses.removeAll { $0.tripId == trip.id }
-    members.removeAll { $0.tripId == trip.id }
-    do { try persist() } catch {
-      (trips, expenses, members) = old
-      throw error
+    try commit {
+      trips.removeAll { $0.id == trip.id }
+      expenses.removeAll { $0.tripId == trip.id }
+      members.removeAll { $0.tripId == trip.id }
     }
   }
 
@@ -229,55 +232,34 @@ import WayfareCore
       guard var saved = rows.first else { throw StoreError.emptyResponse }
       saved.syncState = .synced
       saved.syncError = nil
-      let old = expenses
-      replace(saved, in: &expenses)
-      do { try persist() } catch {
-        expenses = old
-        throw error
-      }
+      try commit { replace(saved, in: &expenses) }
       return
     }
     var pending = expense
     pending.userId = id
     pending.syncState = .pending
     pending.syncError = nil
-    let oldExpenses = expenses
-    let oldOutbox = outbox
-    outbox[pending.id] = pending
-    replace(pending, in: &expenses)
-    do { try persist() } catch {
-      expenses = oldExpenses
-      outbox = oldOutbox
-      throw error
+    try commit {
+      outbox[pending.id] = pending
+      replace(pending, in: &expenses)
     }  // durable before network
     await syncOutbox()
   }
 
   public func deleteExpense(_ expense: Expense) async throws {
     if expense.syncState == .pending { throw StoreError.pendingCannotBeDiscarded }
-    let oldExpenses = expenses
-    let oldOutbox = outbox
-    if expense.syncState != .synced {
-      outbox.removeValue(forKey: expense.id)
-    } else {
+    if expense.syncState == .synced {
       try await restVoid("expenses?id=eq.\(expense.id)", method: "DELETE")
     }
-    expenses.removeAll { $0.id == expense.id }
-    do { try persist() } catch {
-      expenses = oldExpenses
-      outbox = oldOutbox
-      throw error
+    try commit {
+      outbox.removeValue(forKey: expense.id)
+      expenses.removeAll { $0.id == expense.id }
     }
   }
 
   public func removeMember(tripId: String, userId: String) async throws {
     try await restVoid("trip_members?trip_id=eq.\(tripId)&user_id=eq.\(userId)", method: "DELETE")
-    let old = members
-    members.removeAll { $0.tripId == tripId && $0.userId == userId }
-    do { try persist() } catch {
-      members = old
-      throw error
-    }
+    try commit { members.removeAll { $0.tripId == tripId && $0.userId == userId } }
   }
 
   public func retryExpense(_ expense: Expense) async throws {
@@ -285,28 +267,18 @@ import WayfareCore
     var copy = expense
     copy.syncState = .pending
     copy.syncError = nil
-    let oldExpenses = expenses
-    let oldOutbox = outbox
-    outbox[copy.id] = copy
-    replace(copy, in: &expenses)
-    do { try persist() } catch {
-      expenses = oldExpenses
-      outbox = oldOutbox
-      throw error
+    try commit {
+      outbox[copy.id] = copy
+      replace(copy, in: &expenses)
     }
     await syncOutbox()
   }
 
   public func discardExpense(_ expense: Expense) async throws {
     guard expense.syncState == .failed else { throw StoreError.pendingCannotBeDiscarded }
-    let oldExpenses = expenses
-    let oldOutbox = outbox
-    outbox.removeValue(forKey: expense.id)
-    expenses.removeAll { $0.id == expense.id }
-    do { try persist() } catch {
-      expenses = oldExpenses
-      outbox = oldOutbox
-      throw error
+    try commit {
+      outbox.removeValue(forKey: expense.id)
+      expenses.removeAll { $0.id == expense.id }
     }
   }
 
@@ -325,12 +297,7 @@ import WayfareCore
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     try await sendVoid(request)
     if let index = trips.firstIndex(where: { $0.id == tripId }) {
-      let old = trips
-      trips[index].coverStatus = "pending"
-      do { try persist() } catch {
-        trips = old
-        throw error
-      }
+      try commit { trips[index].coverStatus = "pending" }
     }
   }
 
@@ -391,19 +358,48 @@ import WayfareCore
       profiles = remoteProfiles
       let localUnsynced = expenses.filter { $0.syncState != .synced }
       expenses = remoteExpenses
-      for item in localUnsynced where !expenses.contains(where: { $0.id == item.id }) {
-        replace(item, in: &expenses)
-      }
+      let remoteIDs = Set(remoteExpenses.map(\.id))
+      expenses += localUnsynced.filter { !remoteIDs.contains($0.id) }
       guard marker == epoch, account == userId else { return }
       if notice == refreshNotice { notice = nil }
       refreshNotice = nil
-      do { try persist() } catch { notice = "Could not save refreshed data: \(message(error))" }
-      await requestMissingCovers(remoteTrips)
+      do { try await persistInBackground() } catch {
+        if marker == epoch { notice = "Could not save refreshed data: \(message(error))" }
+      }
+      guard marker == epoch else { return }
+      await requestMissingCovers(trips)
     } catch {
       if marker == epoch {
         refreshNotice = message(error)
         notice = refreshNotice
       }
+    }
+  }
+
+  /// Frequent housekeeping only reads pending covers and retries the durable outbox.
+  public func refreshPending() async {
+    let marker = epoch
+    await syncOutbox()
+    guard marker == epoch, userId != nil else { return }
+    let ids = trips.filter { $0.coverStatus == "pending" }.map(\.id)
+    guard !ids.isEmpty else { return }
+    let expectedRevision = revision
+    do {
+      var patches: [CoverPatch] = []
+      for start in stride(from: 0, to: ids.count, by: 100) {
+        let batch = ids[start..<min(start + 100, ids.count)].joined(separator: ",")
+        patches += try await restList("trips?select=id,cover_path,cover_status&id=in.(\(batch))&order=id")
+      }
+      guard marker == epoch, revision == expectedRevision else { return }
+      let byID = Dictionary(uniqueKeysWithValues: patches.map { ($0.id, $0) })
+      let updated = trips.map { trip in
+        var next = trip
+        if let patch = byID[trip.id] { next.coverPath = patch.coverPath; next.coverStatus = patch.coverStatus }
+        return next
+      }
+      if updated != trips { trips = updated; try await persistInBackground() }
+    } catch {
+      if marker == epoch { notice = message(error) }
     }
   }
 
@@ -765,23 +761,55 @@ extension AppStore {
     }
   }
 
-  func persist() throws {
-    guard let id = userId else { return }
-    revision += 1
-    try Self.atomicEncode(
-      Snapshot(
-        trips: trips, expenses: expenses, members: members, profiles: profiles,
-        outbox: Array(outbox.values)), to: snapshotURL(id))
+  private var snapshot: Snapshot {
+    Snapshot(trips: trips, expenses: expenses, members: members, profiles: profiles,
+      outbox: outbox.values.sorted { $0.id < $1.id })
   }
-  func loadSnapshot(_ id: String) {
-    guard let data = try? Data(contentsOf: snapshotURL(id)),
-      let value = try? Self.decoder.decode(Snapshot.self, from: data)
-    else { return }
+  private func restore(_ value: Snapshot) {
     trips = value.trips
     expenses = value.expenses
     members = value.members
     profiles = value.profiles
     outbox = Dictionary(uniqueKeysWithValues: value.outbox.map { ($0.id, $0) })
+  }
+  /// No suspension between mutation, durable save and rollback.
+  private func commit(_ update: () -> Void) throws {
+    let old = snapshot
+    update()
+    do { try persist() } catch { restore(old); throw error }
+  }
+  func persist() throws {
+    guard let id = userId else { return }
+    revision += 1
+    let value = snapshot, url = snapshotURL(id)
+    guard value != persistedSnapshot else { return }
+    try disk.sync { try Self.atomicEncode(value, to: url) }
+    persistedSnapshot = value
+  }
+  /// Refresh writes run off the main actor. The serial queue orders them before
+  /// subsequent durable edits and sign-out deletion, so an old write cannot win.
+  private func persistInBackground() async throws {
+    guard let id = userId else { return }
+    let value = snapshot, url = snapshotURL(id), marker = epoch
+    guard value != persistedSnapshot else { return }
+    revision += 1
+    let expectedRevision = revision
+    persistedSnapshot = nil
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      disk.async {
+        do { try Self.atomicEncode(value, to: url); continuation.resume() }
+        catch { continuation.resume(throwing: error) }
+      }
+    }
+    if marker == epoch, revision == expectedRevision { persistedSnapshot = value }
+  }
+  func loadSnapshot(_ id: String) {
+    let url = snapshotURL(id)
+    guard let data = try? disk.sync(execute: { try Data(contentsOf: url) }),
+      let value = try? Self.decoder.decode(Snapshot.self, from: data)
+    else { persistedSnapshot = nil; return }
+    restore(value)
+    persistedSnapshot = value
   }
   func snapshotURL(_ id: String) -> URL { directory.appendingPathComponent("account-\(id).json") }
   static var cacheDirectory: URL {
@@ -790,7 +818,7 @@ extension AppStore {
     try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     return root
   }
-  static func atomicEncode<T: Encodable>(_ value: T, to url: URL) throws {
+  nonisolated static func atomicEncode<T: Encodable>(_ value: T, to url: URL) throws {
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     #if os(iOS)
@@ -804,7 +832,7 @@ extension AppStore {
     var mutable = url
     try mutable.setResourceValues(values)
   }
-  static let encoder: JSONEncoder = {
+  nonisolated static let encoder: JSONEncoder = {
     let x = JSONEncoder()
     x.keyEncodingStrategy = .convertToSnakeCase
     x.dateEncodingStrategy = .iso8601
@@ -845,12 +873,17 @@ extension AppStore {
   }
 }
 
-private struct Snapshot: Codable {
+private struct Snapshot: Codable, Equatable, Sendable {
   let trips: [Trip]
   let expenses: [Expense]
   let members: [Member]
   let profiles: [Profile]
   let outbox: [Expense]
+}
+private struct CoverPatch: Decodable {
+  let id: String
+  let coverPath: String?
+  let coverStatus: String
 }
 private struct FXResponse: Decodable {
   let date: String

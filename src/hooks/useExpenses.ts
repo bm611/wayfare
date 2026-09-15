@@ -1,33 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import type { Expense, ExpenseInput } from "../lib/types";
 import { useAuth } from "./useAuth";
 
+import { useRemote } from "./useRemote";
+import { loadPages } from "../lib/pages";
+
 export function useExpenses(tripId: string | undefined) {
   const { user } = useAuth();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!tripId) return;
-    setError(null);
-    const { data, error: err } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("trip_id", tripId)
-      .order("spent_on", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (err) setError(err.message);
-    else setExpenses((data ?? []).map((e) => ({ ...e, amount: Number(e.amount) })));
-    setLoading(false);
+  const fetch = useCallback(async (signal: AbortSignal) => {
+    const rows = await loadPages((from, to) => supabase.from("expenses").select("*").eq("trip_id", tripId!)
+      .order("spent_on", { ascending: false }).order("created_at", { ascending: false }).order("id")
+      .range(from, to).abortSignal(signal), signal);
+    return rows.map((expense) => ({ ...expense, amount: Number(expense.amount) }));
   }, [tripId]);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  const { data: expenses, setData: setExpenses, loading, error, reload: load } = useRemote<Expense[]>(
+    user && tripId ? user.id + "/" + tripId : undefined, [], fetch);
 
   const addExpense = useCallback(
     async (input: Omit<ExpenseInput, "trip_id">) => {
@@ -42,7 +30,7 @@ export function useExpenses(tripId: string | undefined) {
       setExpenses((prev) => sortExpenses([created, ...prev]));
       return created;
     },
-    [tripId, user],
+    [tripId, user, setExpenses],
   );
 
   const updateExpense = useCallback(async (id: string, patch: Partial<ExpenseInput>) => {
@@ -56,13 +44,13 @@ export function useExpenses(tripId: string | undefined) {
     const next: Expense = { ...data, amount: Number(data.amount) };
     setExpenses((prev) => sortExpenses(prev.map((e) => (e.id === id ? next : e))));
     return next;
-  }, []);
+  }, [setExpenses]);
 
   const deleteExpense = useCallback(async (id: string) => {
     const { error: err } = await supabase.from("expenses").delete().eq("id", id);
     if (err) throw err;
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+  }, [setExpenses]);
 
   return { expenses, loading, error, reload: load, addExpense, updateExpense, deleteExpense };
 }
