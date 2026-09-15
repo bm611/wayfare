@@ -35,17 +35,16 @@ function coverLettering(subject: string, startDate: string | null) {
 }
 
 /**
- * Keep the painted cover direction consistent while letting the destination
+ * Keep the watercolor direction consistent while letting the destination
  * determine the landmarks and geography, rather than reusing London's scene.
  */
 function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
   return [
-    `A richly detailed, realistic watercolor painting of ${subject}, horizontal 3:2.`,
-    `Upper two thirds: a full-bleed panoramic scene that runs edge to edge, touching the top, left and right edges of the image with no margin, fade or vignette. It shows three to five real, recognizable landmarks of ${subject} with accurate architecture, proportions and perspective, set in its actual geography (river, coast or canals with reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
-    "Style: realistic, finely detailed painting with natural daylight, believable shadows, depth and atmospheric perspective; rich, vibrant color: a luminous blue sky with soft clouds, warm golden stonework, lush deep greens, and deep blue water with vivid reflections. Not pale, faded, washed-out or pastel; not cartoonish, stylized or sketchy.",
-    "The painting ends in a clean straight horizontal edge across the full width where it meets the lower third.",
+    `A watercolor-and-ink travel print of ${subject} on a pure flat white (#FFFFFF) background, horizontal 3:2.`,
+    `Upper two thirds: a panoramic skyline with three to five real, recognizable landmarks of ${subject}, set in its actual geography (river, coast or canals with soft reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
+    "Style: fine ink linework with rich, vibrant, layered watercolor washes: a luminous cerulean and ultramarine sky with billowing clouds, warm golden ochre and sienna stonework, lush deep greens, and deep blue water with vivid reflections. Strong contrast and full color depth, with loose painterly edges fading cleanly into the white only at the outer margins. Not pale, faded, washed-out or pastel; not photorealistic or cartoonish.",
     `Lower third: plain pure white background with ${JSON.stringify(place)} centered in large, widely spaced, ink-blue engraved serif capitals${year ? `, and ${JSON.stringify(year)} beneath it, much smaller, in the same type` : ""}. Leave empty white space below.`,
-    "No paper texture, cream or beige tint, vignette or shadow in the white area. No other text, punctuation, signage, logos, borders or decorative rules.",
+    "No paper texture, cream or beige tint, vignette or shadow anywhere in the background. No other text, punctuation, signage, logos, borders or decorative rules.",
   ].join(" ");
 }
 
