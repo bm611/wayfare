@@ -1,44 +1,26 @@
-import type { ReactNode } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
-import { Auth } from "./routes/Auth";
-import { Trips } from "./routes/Trips";
-import { TripDetail } from "./routes/TripDetail";
-import { Join } from "./routes/Join";
 import { Brand } from "./components/Brand";
+
+const Auth = lazy(() => import("./routes/Auth").then((module) => ({ default: module.Auth })));
+const Trips = lazy(() => import("./routes/Trips").then((module) => ({ default: module.Trips })));
+const TripDetail = lazy(() => import("./routes/TripDetail").then((module) => ({ default: module.TripDetail })));
+const Join = lazy(() => import("./routes/Join").then((module) => ({ default: module.Join })));
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
+        <Suspense fallback={<RouteLoading />}><Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/"
-            element={
-              <RequireAuth>
-                <Trips />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/trip/:id"
-            element={
-              <RequireAuth>
-                <TripDetail />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/join/:code"
-            element={
-              <RequireAuth>
-                <Join />
-              </RequireAuth>
-            }
-          />
+          <Route element={<RequireAuth />}>
+            <Route index element={<Trips />} />
+            <Route path="/trip/:id" element={<TripDetail />} />
+            <Route path="/join/:code" element={<Join />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        </Routes></Suspense>
       </BrowserRouter>
     </AuthProvider>
   );
@@ -46,28 +28,11 @@ export default function App() {
 
 export const REDIRECT_KEY = "wayfare.redirect";
 
-function RequireAuth({ children }: { children: ReactNode }) {
+function RequireAuth() {
   const { session, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return (
-      <div className="grid min-h-[100dvh] place-items-center">
-        <div className="flex flex-col items-center gap-3">
-          <Brand />
-          <div className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="beacon size-1.5 rounded-full bg-clay"
-                style={{ animationDelay: `${i * 180}ms` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <RouteLoading />;
 
   if (!session) {
     // Remember an invite link so signing in lands on the trip, not the list.
@@ -78,5 +43,17 @@ function RequireAuth({ children }: { children: ReactNode }) {
     }
     return <Navigate to="/auth" replace />;
   }
-  return <>{children}</>;
+  return <Outlet key={session.user.id} />;
+}
+
+function RouteLoading() {
+  return <div className="grid min-h-[100dvh] place-items-center" role="status" aria-label="Loading">
+    <div className="flex flex-col items-center gap-3">
+      <Brand />
+      <div className="flex gap-1">
+        {[0, 1, 2].map((i) => <span key={i} className="beacon size-1.5 rounded-full bg-clay"
+          style={{ animationDelay: `${i * 180}ms` }} />)}
+      </div>
+    </div>
+  </div>;
 }

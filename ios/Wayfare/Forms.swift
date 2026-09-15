@@ -12,7 +12,6 @@ struct TripForm: View {
   @State private var busy = false
   @State private var error: String?
   @State private var fieldErrors: [String: String] = [:]
-  @State private var discard = false
 
   init(trip: Trip, isNew: Bool, onSave: @escaping (String) -> Void) {
     self.trip = trip
@@ -49,17 +48,8 @@ struct TripForm: View {
         }
         .navigationTitle(isNew ? "Where are you headed?" : "Update your trip")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { if dirty { discard = true } else { dismiss() } }.disabled(busy)
-          }
-        }
-        .confirmationDialog(
-          "Discard your changes?", isPresented: $discard, titleVisibility: .visible
-        ) {
-          Button("Discard changes", role: .destructive) { dismiss() }
-        }
-    }.interactiveDismissDisabled(dirty || busy)
+        .modifier(FormDismissal(dirty: dirty, busy: busy))
+    }
   }
 
   private func save() {
@@ -154,7 +144,6 @@ struct ExpenseForm: View {
   @State private var busy = false
   @State private var error: String?
   @State private var fieldErrors: [String: String] = [:]
-  @State private var discard = false
   @State private var deleting = false
 
   init(trip: Trip, expense: Expense, isNew: Bool) {
@@ -290,16 +279,8 @@ struct ExpenseForm: View {
         }
         .navigationTitle(readOnly ? "Expense details" : isNew ? "Add expense" : "Update expense")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button(readOnly || unsynced ? "Close" : "Cancel") {
-              if dirty && !readOnly && !unsynced { discard = true } else { dismiss() }
-            }.disabled(busy)
-          }
-        }
-        .confirmationDialog(
-          "Discard your changes?", isPresented: $discard, titleVisibility: .visible
-        ) { Button("Discard changes", role: .destructive) { dismiss() } }
+        .modifier(FormDismissal(dirty: dirty && !readOnly && !unsynced, busy: busy,
+          title: readOnly || unsynced ? "Close" : "Cancel"))
         .confirmationDialog(
           "Delete this expense?", isPresented: $deleting, titleVisibility: .visible
         ) {
@@ -314,7 +295,7 @@ struct ExpenseForm: View {
             }
           }
         }
-    }.interactiveDismissDisabled(busy || (dirty && !readOnly && !unsynced)).task {
+    }.task {
       await store.refreshFX()
     }
   }
@@ -376,4 +357,24 @@ func parseAmount(_ text: String) -> Decimal? {
     return nil
   }
   return Decimal(string: value, locale: Locale(identifier: "en_US_POSIX"))
+}
+
+private struct FormDismissal: ViewModifier {
+  @Environment(\.dismiss) private var dismiss
+  @State private var discard = false
+  let dirty: Bool
+  let busy: Bool
+  var title = "Cancel"
+  func body(content: Content) -> some View {
+    content
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button(title) { if dirty { discard = true } else { dismiss() } }.disabled(busy)
+        }
+      }
+      .confirmationDialog("Discard your changes?", isPresented: $discard, titleVisibility: .visible) {
+        Button("Discard changes", role: .destructive) { dismiss() }
+      }
+      .interactiveDismissDisabled(dirty || busy)
+  }
 }

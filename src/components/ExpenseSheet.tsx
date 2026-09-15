@@ -40,12 +40,9 @@ export function ExpenseSheet({
   const { rates, stale } = useRates();
   const formId = useId();
 
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [paidIn, setPaidIn] = useState(currency);
-  const [category, setCategory] = useState<CategoryKey>("food");
-  const [spentOn, setSpentOn] = useState(todayISO());
-  const [note, setNote] = useState("");
+  const [draft, setDraft] = useState({ title: "", amount: "", paidIn: currency, category: "food" as CategoryKey, spentOn: todayISO(), note: "" });
+  const { title, amount, paidIn, category, spentOn, note } = draft;
+  const set = <K extends keyof typeof draft>(key: K, value: typeof draft[K]) => setDraft((previous) => ({ ...previous, [key]: value }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -53,7 +50,7 @@ export function ExpenseSheet({
   const [initialDraft, setInitialDraft] = useState("");
   const [moreDetails, setMoreDetails] = useState(false);
 
-  const draftKey = JSON.stringify([title, amount, paidIn, category, spentOn, note]);
+  const draftKey = JSON.stringify(draft);
 
   // Reload the draft whenever the sheet opens on a different row.
   useEffect(() => {
@@ -63,17 +60,13 @@ export function ExpenseSheet({
       const stored = localStorage.getItem(`wayfare.paidIn.${tripId}`);
       if (stored && CURRENCIES.includes(stored)) remembered = stored;
     } catch { /* Currency preference is optional when storage is unavailable. */ }
-    setTitle(editing?.title ?? "");
-    setAmount(editing ? String(editing.original_amount ?? editing.amount) : "");
-    const initialCurrency = editing ? editing.original_currency ?? currency : remembered;
-    setPaidIn(initialCurrency);
-    setCategory(editing?.category ?? "food");
-    setSpentOn(editing?.spent_on ?? todayISO());
-    setNote(editing?.note ?? "");
-    setInitialDraft(JSON.stringify([
-      editing?.title ?? "", editing ? String(editing.original_amount ?? editing.amount) : "",
-      initialCurrency, editing?.category ?? "food", editing?.spent_on ?? todayISO(), editing?.note ?? "",
-    ]));
+    const initial = {
+      title: editing?.title ?? "", amount: editing ? String(editing.original_amount ?? editing.amount) : "",
+      paidIn: editing ? editing.original_currency ?? currency : remembered,
+      category: editing?.category ?? "food", spentOn: editing?.spent_on ?? todayISO(), note: editing?.note ?? "",
+    };
+    setDraft(initial);
+    setInitialDraft(JSON.stringify(initial));
     setMoreDetails(!!editing?.note);
     setSaving(false);
     setErrors({});
@@ -180,12 +173,12 @@ export function ExpenseSheet({
             placeholder="0.00"
             prefix={symbolFor(paidIn).trim()}
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => set("amount", e.target.value)}
             error={errors.amount}
             autoFocus={!editing}
             className="tabular text-[19px] font-medium"
           />
-          <Select label="Paid in" value={paidIn} onChange={(e) => setPaidIn(e.target.value)}>
+          <Select label="Paid in" value={paidIn} onChange={(e) => set("paidIn", e.target.value)}>
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -211,7 +204,7 @@ export function ExpenseSheet({
           label="For"
           placeholder="Tram tickets to Belém"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => set("title", e.target.value)}
           error={errors.title}
           maxLength={120}
         />
@@ -228,7 +221,7 @@ export function ExpenseSheet({
                 <button
                   key={meta.key}
                   type="button"
-                  onClick={() => setCategory(meta.key)}
+                  onClick={() => set("category", meta.key)}
                   aria-pressed={active}
                   className="press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium"
                   style={{
@@ -249,7 +242,7 @@ export function ExpenseSheet({
           label="Date"
           type="date"
           value={spentOn}
-          onChange={(e) => setSpentOn(e.target.value)}
+          onChange={(e) => set("spentOn", e.target.value)}
         />
 
         <button type="button" aria-expanded={moreDetails} onClick={() => setMoreDetails(!moreDetails)} className="press min-h-11 self-start text-sm font-medium text-clay underline underline-offset-4">
@@ -259,7 +252,7 @@ export function ExpenseSheet({
           label="Note"
           placeholder="Anything you want to remember"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => set("note", e.target.value)}
           maxLength={500}
         />}
 

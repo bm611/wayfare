@@ -20,9 +20,6 @@ interface TripDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(items: List<TripEntity>)
 
-    @Query("DELETE FROM trips WHERE accountId = :accountId AND id NOT IN (:remoteIds)")
-    suspend fun deleteMissing(accountId: String, remoteIds: List<String>)
-
     @Query("DELETE FROM trips WHERE accountId = :accountId")
     suspend fun deleteAll(accountId: String)
 
@@ -50,8 +47,8 @@ interface ExpenseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(items: List<ExpenseEntity>)
 
-    @Query("DELETE FROM expenses WHERE accountId = :accountId AND syncState = 'Synced' AND id NOT IN (:remoteIds)")
-    suspend fun deleteMissingSynced(accountId: String, remoteIds: List<String>)
+    @Query("DELETE FROM expenses WHERE accountId = :accountId AND tripId = :tripId AND syncState = 'Synced'")
+    suspend fun deleteSyncedTrip(accountId: String, tripId: String)
 
     @Query("DELETE FROM expenses WHERE accountId = :accountId AND syncState = 'Synced'")
     suspend fun deleteAllSynced(accountId: String)

@@ -81,8 +81,8 @@ class TripDetailViewModel(
     }
 
     private fun sync(silent: Boolean) {
-        // A silent sync is housekeeping; it never fights one already on its way.
-        if (silent && refreshJob?.isActive == true) return
+        // Foreground and manual refresh share one in-flight request.
+        if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
             _state.value = _state.value.copy(refreshing = !silent, error = null)
             runCatching { repository.refreshTrip(tripId) }

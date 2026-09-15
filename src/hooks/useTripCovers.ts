@@ -78,6 +78,7 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
     const ids = pending.split(",").filter(Boolean);
     if (ids.length === 0) return;
 
+    const controller = new AbortController();
     let polls = 0;
     let timer: ReturnType<typeof setTimeout>;
 
@@ -86,12 +87,13 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
       const { data } = await supabase
         .from("trips")
         .select("id, cover_path, cover_status")
-        .in("id", ids);
+        .in("id", ids).abortSignal(controller.signal);
+      if (controller.signal.aborted) return;
       if (data && data.length > 0) apply(data as CoverPatch[]);
       if (polls < MAX_POLLS) timer = setTimeout(() => void tick(), POLL_MS);
     };
 
     timer = setTimeout(() => void tick(), POLL_MS);
-    return () => clearTimeout(timer);
+    return () => { controller.abort(); clearTimeout(timer); };
   }, [pending, apply]);
 }

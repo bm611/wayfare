@@ -31,7 +31,13 @@ async function mockApp(page, options = {}) {
     const body = request.postDataJSON();
     requests.push({ path: url.pathname, method: request.method(), body, url: request.url() });
     let data = {};
-    if (url.pathname.endsWith('/trips')) {
+    if (url.pathname.endsWith('/trip_summaries')) {
+      data = [currentTrip,
+        { ...trip, id: 'upcoming', name: 'Autumn in Kyoto', start_date: '2026-10-01', end_date: '2026-10-10' },
+        { ...trip, id: 'past', name: 'Summer in Rome', start_date: '2026-07-01', end_date: '2026-07-07' },
+        { ...trip, id: 'open', name: 'Next adventure', start_date: null, end_date: null },
+      ].map((item) => ({ ...item, spent: item.id === trip.id ? rows.reduce((sum, row) => sum + row.amount, 0) : 0, entries: item.id === trip.id ? rows.length : 0 }));
+    } else if (url.pathname.endsWith('/trips')) {
       if (request.method() === 'PATCH') Object.assign(currentTrip, body);
       data = url.searchParams.has('id') ? currentTrip : [currentTrip,
         { ...trip, id: 'upcoming', name: 'Autumn in Kyoto', start_date: '2026-10-01', end_date: '2026-10-10' },
@@ -57,6 +63,10 @@ async function mockApp(page, options = {}) {
     else if (url.pathname.endsWith('/token')) data = session;
     else if (url.pathname.endsWith('/signup')) data = { user, session: null };
     else if (url.pathname.endsWith('/join_trip')) data = trip.id;
+    if (Array.isArray(data) && request.method() === "GET") {
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      data = data.slice(offset, offset + Number(url.searchParams.get("limit") ?? data.length));
+    }
     await route.fulfill({ json: data });
   });
   await page.route('**/*frankfurter*/**', (route) => route.abort());
@@ -69,7 +79,7 @@ test('budget, grouped trips, ledger search and filters', async ({ page }, testIn
   await page.goto('/');
   for (const name of ['Active trips', 'Upcoming trips', 'Past trips', 'Dates open']) await expect(page.getByRole('heading', { name, exact: false })).toBeVisible();
   await capture(page, { path: testInfo.outputPath('trips.png'), fullPage: true });
-  await page.getByRole('link').filter({ hasText: trip.name }).click();
+  await page.locator('a[href="/trip/lisbon"]').click();
   await expect(page.getByText('Budget remaining', { exact: true })).toBeVisible();
   await expect(page.getByText('€228.00')).toBeVisible();
   await expect(page.getByText('Group budget', { exact: false })).toBeVisible();
@@ -244,7 +254,7 @@ test('expired recovery links offer a fresh reset', async ({ page }, testInfo) =>
 });
 
 test('confirmation resend is throttled and reports success', async ({ page }, testInfo) => {
-  test.setTimeout(90000);
+  await page.clock.install();
   const requests = await mockApp(page, { signedIn: false });
   await page.goto('/auth');
   await page.getByRole('button', { name: 'Create an account' }).click();
@@ -253,11 +263,70 @@ test('confirmation resend is throttled and reports success', async ({ page }, te
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Resend in/ })).toBeDisabled();
-  // Exercise the real cooldown: React schedules its effect through MessageChannel,
-  // so advancing only browser timers does not reliably flush every countdown tick.
-  await expect(page.getByRole('button', { name: 'Resend confirmation email' })).toBeEnabled({ timeout: 65000 });
+  // Let React commit each tick before advancing the next scheduled timeout.
+  for (let remaining = 59; remaining >= 0; remaining--) {
+    await page.clock.runFor(1000);
+    const name = remaining ? `Resend in ${remaining}s` : 'Resend confirmation email';
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole('button', { name: 'Resend confirmation email' })).toBeEnabled();
   await page.getByRole('button', { name: 'Resend confirmation email' }).click();
   await expect(page.getByRole('status')).toHaveText('Confirmation email resent.');
   expect(requests.some((r) => r.path.endsWith('/resend') && r.body.type === 'signup')).toBe(true);
   await capture(page, { path: testInfo.outputPath('confirmation.png'), fullPage: true });
+});
+
+test('trip summaries avoid downloading the expense ledger', async ({ page }) => {
+  const requests = await mockApp(page);
+  await page.goto('/');
+  await expect(page.locator('a[href="/trip/lisbon"]')).toContainText('€360.00');
+  expect(requests.some((request) => request.path.endsWith('/trip_summaries'))).toBe(true);
+  expect(requests.some((request) => request.path.endsWith('/expenses'))).toBe(false);
+});
+
+test('leaving the trips page cancels an in-flight cover poll', async ({ page }) => {
+  await mockApp(page, { trip: { cover_status: 'pending' } });
+  await page.clock.install();
+  let polls = 0;
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route('**/rest/v1/trips?*', async (route) => {
+    if (!new URL(route.request().url()).searchParams.get('select')?.includes('cover_path,')) return route.fallback();
+    polls++;
+    await held;
+    await route.fulfill({ json: [{ id: trip.id, cover_path: null, cover_status: 'pending' }] });
+  });
+  await page.goto('/');
+  await expect(page.locator('a[href="/trip/lisbon"]')).toBeVisible();
+  await page.clock.fastForward(4000);
+  await expect.poll(() => polls).toBe(1);
+  await page.locator('a[href="/trip/lisbon"]').click();
+  await expect(page.getByRole('heading', { name: trip.name })).toBeVisible();
+  release();
+  await page.clock.fastForward(16000);
+  expect(polls).toBe(1);
+});
+
+test('switching trips ignores a late response from the previous ledger', async ({ page }) => {
+  await mockApp(page);
+  let release;
+  let started = false;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route('**/rest/v1/expenses?*', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('trip_id') !== 'eq.lisbon') return route.fallback();
+    started = true;
+    await held;
+    await route.fulfill({ json: [] });
+  });
+  await page.goto('/trip/lisbon');
+  await expect.poll(() => started).toBe(true);
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/trip/kyoto');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.getByRole('button', { name: /Dinner by the river/ })).toBeVisible();
+  release();
+  await expect(page.getByRole('button', { name: /Dinner by the river/ })).toBeVisible();
+  await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveAttribute('aria-valuetext', '24% of budget used');
 });

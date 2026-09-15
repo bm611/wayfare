@@ -130,11 +130,10 @@ fun PrimaryButton(
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Button press")
+    val press = pressFeedback(interactionSource)
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 48.dp).then(press),
         interactionSource = interactionSource,
         enabled = enabled && !busy,
         colors = ButtonDefaults.buttonColors(
@@ -165,26 +164,33 @@ fun SecondaryButton(
     text: String,
     modifier: Modifier = Modifier,
     pill: Boolean = false,
+    busy: Boolean = false,
+    leading: (@Composable () -> Unit)? = null,
     icon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Secondary press")
+    val press = pressFeedback(interactionSource)
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 48.dp).then(press),
         interactionSource = interactionSource,
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = CanvasWhite, contentColor = Ink),
+        enabled = !busy,
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = CanvasWhite, contentColor = Ink,
+            disabledContainerColor = CanvasWhite, disabledContentColor = Mute),
         border = BorderStroke(1.dp, Hairline),
         shape = RoundedCornerShape(if (pill) 20.dp else 8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = if (leading != null) 24.dp else 16.dp, vertical = 12.dp),
     ) {
-        icon?.let {
-            Icon(it, null, Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
+        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Ash)
+        else {
+            leading?.invoke()
+            icon?.let {
+                Icon(it, null, Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+            }
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
-        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -194,31 +200,12 @@ fun SecondaryButton(
  */
 @Composable
 fun GoogleButton(modifier: Modifier = Modifier, busy: Boolean = false, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Google press")
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
-        interactionSource = interactionSource,
-        enabled = !busy,
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = CanvasWhite,
-            contentColor = Ink,
-            disabledContainerColor = CanvasWhite,
-            disabledContentColor = Mute,
-        ),
-        border = BorderStroke(1.dp, Hairline),
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        if (busy) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Ash)
-        } else {
+    SecondaryButton("Continue with Google", modifier = modifier, busy = busy, onClick = onClick,
+        leading = {
             Image(painterResource(R.drawable.ic_google), null, Modifier.size(18.dp))
             Spacer(Modifier.size(10.dp))
-            Text("Continue with Google", style = MaterialTheme.typography.labelLarge)
-        }
-    }
+        },
+    )
 }
 
 /**
@@ -235,12 +222,11 @@ fun CircleIconButton(
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f, spring(stiffness = 600f), label = "Icon press")
+    val press = pressFeedback(interactionSource)
     Box(
         modifier
             .size(48.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .then(press)
             .clip(CircleShape)
             // On photography a 4dp white ring separates the button from whatever
             // colour happens to sit behind it. A toggle that is on takes an Ink
@@ -495,4 +481,15 @@ fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true
         Spacer(Modifier.fillMaxWidth(.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(SoftCloud))
         Spacer(Modifier.fillMaxWidth().height(if (showCover) 4.dp else 180.dp).clip(RoundedCornerShape(14.dp)).background(SoftCloud))
     }
+}
+
+/** Shared feedback retains each button's own interaction source and semantics. */
+@Composable
+private fun pressFeedback(interactionSource: MutableInteractionSource): Modifier {
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed && android.animation.ValueAnimator.areAnimatorsEnabled()) .98f else 1f,
+        spring(stiffness = 600f), label = "Button press",
+    )
+    return Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
 }

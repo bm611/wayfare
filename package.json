@@ -19,7 +19,8 @@
     "ios:device": "bash scripts/ios-device.sh",
     "ios:simulator": "bash scripts/ios-simulator.sh",
     "ios:build": "bash scripts/ios-build.sh",
-    "ios:devices": "bash scripts/ios-devices.sh"
+    "ios:devices": "bash scripts/ios-devices.sh",
+    "test:unit": "node --test tests/unit/*.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

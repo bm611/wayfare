@@ -19,7 +19,7 @@ struct TripDetailScreen: View {
   @State private var deleting = false
   @State private var busy = false
   private var trip: Trip? { store.trips.first { $0.id == tripId } }
-  private var entries: [Expense] { store.expenses.filter { $0.tripId == tripId } }
+  private var entries: [Expense] { store.expensesByTrip[tripId] ?? [] }
   private var filtered: [Expense] {
     entries.filter {
       (category.isEmpty || $0.category.rawValue == category)
@@ -49,6 +49,8 @@ struct TripDetailScreen: View {
   var body: some View {
     Group {
       if let trip {
+        let filtered = filtered
+        let days = Dictionary(grouping: filtered, by: \.spentOn)
         ScrollViewReader { proxy in
           ScrollView {
             // Deliberately not lazy: with the ledger scrolled into view, growing it
@@ -113,12 +115,12 @@ struct TripDetailScreen: View {
                 ledgerEmptyState
               }
               ForEach(
-                Array(Dictionary(grouping: filtered, by: \.spentOn).keys.sorted().reversed()),
+                Array(days.keys.sorted().reversed()),
                 id: \.self
               ) { day in
                 Text(shortDate(day) ?? day).typeStyle(.labelMedium).foregroundStyle(Palette.ash)
                   .padding(.horizontal, 24).padding(.top, 4)
-                ForEach(filtered.filter { $0.spentOn == day }) { entry in
+                ForEach(days[day] ?? []) { entry in
                   Button {
                     editing = entry
                   } label: {
@@ -293,13 +295,11 @@ struct TripDetailScreen: View {
   private func breakdown(
     _ trip: Trip, onSelect: @escaping (WayfareCore.Category) -> Void
   ) -> some View {
-    let groups = WayfareCore.Category.allCases.map { group in
-      (
-        group,
-        entries.filter { $0.category == group && $0.syncState != .failed }
-          .reduce(Decimal.zero) { $0 + $1.amount }
-      )
-    }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }
+    let totals = entries.reduce(into: [WayfareCore.Category: Decimal]()) { totals, entry in
+      if entry.syncState != .failed { totals[entry.category, default: 0] += entry.amount }
+    }
+    let groups = WayfareCore.Category.allCases.map { ($0, totals[$0, default: 0]) }
+      .filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }
     let total = groups.reduce(Decimal.zero) { $0 + $1.1 }
     return VStack(alignment: .leading, spacing: 4) {
       ForEach(groups, id: \.0) { entry in

@@ -42,6 +42,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -60,6 +64,8 @@ class WayfareRepository(
     private val scheduleSync: (String) -> Unit,
 ) {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = true }
+
+    private val refreshGate = Mutex()
 
     fun currentUserId(): String? = supabase.auth.currentUserOrNull()?.id
 
@@ -89,42 +95,56 @@ class WayfareRepository(
     fun observeMembers(accountId: String, tripId: String): Flow<List<TripMember>> =
         database.members().observeTrip(accountId, tripId).map { rows -> rows.map { it.toDomain(accountId) } }
 
-    suspend fun refreshAll() {
+    suspend fun refreshAll() = refreshGate.withLock {
         val accountId = requireUser()
-        val trips = supabase.from("trips").select {
-            order("created_at", Order.DESCENDING)
-        }.decodeList<TripDto>().map(TripDto::toDomain)
-        val expenses = supabase.from("expenses").select {
-            order("spent_on", Order.DESCENDING)
-            order("created_at", Order.DESCENDING)
-        }.decodeList<ExpenseDto>().map(ExpenseDto::toDomain)
+        val (trips, expenses) = coroutineScope {
+            val trips = async {
+                loadPages { from, to -> supabase.from("trips").select {
+                    order("created_at", Order.DESCENDING)
+                    order("id", Order.ASCENDING)
+                    range(from, to)
+                }.decodeList<TripDto>() }.map(TripDto::toDomain)
+            }
+            val expenses = async { fetchExpenses() }
+            trips.await() to expenses.await()
+        }
         database.withTransaction {
-            if (trips.isEmpty()) database.trips().deleteAll(accountId) else {
-                database.trips().upsert(trips.map { it.toEntity(accountId) })
-                database.trips().deleteMissing(accountId, trips.map(Trip::id))
-            }
-            if (expenses.isEmpty()) database.expenses().deleteAllSynced(accountId) else {
-                database.expenses().upsert(expenses.map { it.toEntity(accountId) })
-                database.expenses().deleteMissingSynced(accountId, expenses.map(Expense::id))
-            }
+            check(currentUserId() == accountId) { "Account changed during refresh" }
+            database.trips().deleteAll(accountId)
+            database.trips().upsert(trips.map { it.toEntity(accountId) })
+            database.expenses().deleteAllSynced(accountId)
+            database.expenses().upsert(expenses.map { it.toEntity(accountId) })
         }
     }
 
-    suspend fun refreshTrip(tripId: String) {
+    suspend fun refreshTrip(tripId: String) = refreshGate.withLock {
         val accountId = requireUser()
-        val trip = supabase.from("trips").select { filter { eq("id", tripId) } }
-            .decodeSingle<TripDto>().toDomain()
-        val expenses = supabase.from("expenses").select {
-            filter { eq("trip_id", tripId) }
-            order("spent_on", Order.DESCENDING)
-            order("created_at", Order.DESCENDING)
-        }.decodeList<ExpenseDto>().map(ExpenseDto::toDomain)
+        val (trip, expenses) = coroutineScope {
+            val trip = async {
+                supabase.from("trips").select { filter { eq("id", tripId) } }
+                    .decodeSingle<TripDto>().toDomain()
+            }
+            val expenses = async { fetchExpenses(tripId) }
+            trip.await() to expenses.await()
+        }
         database.withTransaction {
+            check(currentUserId() == accountId) { "Account changed during refresh" }
             database.trips().upsert(listOf(trip.toEntity(accountId)))
+            database.expenses().deleteSyncedTrip(accountId, tripId)
             database.expenses().upsert(expenses.map { it.toEntity(accountId) })
         }
         refreshMembers(tripId)
     }
+
+    private suspend fun fetchExpenses(tripId: String? = null): List<Expense> = loadPages { from, to ->
+        supabase.from("expenses").select {
+            if (tripId != null) filter { eq("trip_id", tripId) }
+            order("spent_on", Order.DESCENDING)
+            order("created_at", Order.DESCENDING)
+            order("id", Order.ASCENDING)
+            range(from, to)
+        }.decodeList<ExpenseDto>()
+    }.map(ExpenseDto::toDomain)
 
     suspend fun createTrip(draft: TripDraft): String {
         val accountId = requireUser()
@@ -228,10 +248,11 @@ class WayfareRepository(
         database.expenses().delete(accountId, expenseId)
     }
 
-    suspend fun syncOutbox(accountId: String): Boolean {
+    suspend fun syncOutbox(accountId: String): Boolean = refreshGate.withLock {
         if (currentUserId() != accountId) return false
         var retry = false
         for (item in database.outbox().pending(accountId)) {
+            if (currentUserId() != accountId) return false
             val payload = json.decodeFromString<ExpenseInsert>(item.payload)
             try {
                 val existing = supabase.from("expenses").select { filter { eq("id", payload.id) } }
@@ -239,6 +260,7 @@ class WayfareRepository(
                 val remote = existing.firstOrNull()
                     ?: supabase.from("expenses").insert(payload) { select() }.decodeSingle<ExpenseDto>()
                 database.withTransaction {
+                    check(currentUserId() == accountId) { "Account changed during sync" }
                     database.expenses().upsert(listOf(remote.toDomain().toEntity(accountId)))
                     database.outbox().delete(item)
                 }
@@ -261,17 +283,24 @@ class WayfareRepository(
                 }
             }
         }
-        return retry
+        retry
     }
 
     suspend fun refreshMembers(tripId: String) {
         val accountId = requireUser()
-        val members = supabase.from("trip_members").select {
+        val members = loadPages { from, to -> supabase.from("trip_members").select {
             filter { eq("trip_id", tripId) }
             order("joined_at", Order.ASCENDING)
-        }.decodeList<MemberDto>()
-        val profiles = supabase.from("profiles").select().decodeList<ProfileDto>()
-            .associateBy(ProfileDto::id)
+            order("user_id", Order.ASCENDING)
+            range(from, to)
+        }.decodeList<MemberDto>() }
+        val profiles = members.map(MemberDto::userId).chunked(100).flatMap { ids ->
+            loadPages { from, to -> supabase.from("profiles").select {
+                filter { isIn("id", ids) }
+                order("id", Order.ASCENDING)
+                range(from, to)
+            }.decodeList<ProfileDto>() }
+        }.associateBy(ProfileDto::id)
         val domain = members.map {
             TripMember(
                 it.tripId, it.userId, it.role, it.joinedAt, profiles[it.userId]?.displayName,
@@ -279,6 +308,7 @@ class WayfareRepository(
             )
         }
         database.withTransaction {
+            check(currentUserId() == accountId) { "Account changed during refresh" }
             database.members().deleteTrip(accountId, tripId)
             database.members().upsert(domain.map { it.toEntity(accountId) })
         }
