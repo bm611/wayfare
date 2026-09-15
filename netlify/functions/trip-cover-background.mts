@@ -42,7 +42,7 @@ function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLe
   return [
     `A watercolor-and-ink travel print of ${subject} on textured warm cream paper, horizontal 3:2.`,
     `Upper two thirds: a panoramic skyline with three to five real, recognizable landmarks of ${subject}, set in its actual geography (river, coast or canals with soft reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
-    "Style: delicate ink linework, translucent washes in pale blue, muted green and warm beige, loose edges fading into the paper. Airy and uncrowded; not photorealistic, saturated or cartoonish.",
+    "Style: fine ink linework with rich, vibrant, layered watercolor washes: a luminous cerulean and ultramarine sky with billowing clouds, warm golden ochre and sienna stonework, lush deep greens, and deep blue water with vivid reflections. Strong contrast and full color depth, with loose painterly edges fading into the paper only at the outer margins. Not pale, faded, washed-out or pastel; not photorealistic or cartoonish.",
     `Lower third: plain cream paper with ${JSON.stringify(place)} centered in large, widely spaced, ink-blue engraved serif capitals${year ? `, and ${JSON.stringify(year)} beneath it, much smaller, in the same type` : ""}. Leave empty paper below.`,
     "No other text, punctuation, signage, logos, borders or decorative rules.",
   ].join(" ");
