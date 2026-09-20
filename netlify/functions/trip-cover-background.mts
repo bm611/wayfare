@@ -4,12 +4,11 @@ import Together from "together-ai";
 /**
  * Draws the destination illustration displayed on trip cards.
  *
- * A background function rather than a plain one: the model takes ~15s, which
- * is past what a synchronous Netlify function is allowed to hold open. The
+ * A background function keeps image generation off the request path. The
  * caller gets a 202 immediately and watches `trips.cover_status` instead.
  */
 
-const MODEL = "google/flash-image-3.1";
+const MODEL = "Qwen/Qwen-Image-2.0";
 // Wide enough to stay sharp on a 2x phone screen, small enough that a list of
 // cards is not megabytes of artwork.
 const WIDTH = 1264;
@@ -35,16 +34,18 @@ function coverLettering(subject: string, startDate: string | null) {
 }
 
 /**
- * Keep the watercolor direction consistent while letting the destination
- * determine the landmarks and geography, rather than reusing London's scene.
+ * Keep the isometric direction consistent while letting the destination
+ * determine the landmarks, architecture and geography.
  */
 function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
   return [
-    `A watercolor-and-ink travel print of ${subject} on a pure flat white (#FFFFFF) background, horizontal 3:2.`,
-    `Upper two thirds: a panoramic skyline with three to five real, recognizable landmarks of ${subject}, set in its actual geography (river, coast or canals with soft reflections only if it has them; otherwise streets, squares or terrain). No landmarks from other places.`,
-    "Style: fine ink linework with rich, vibrant, layered watercolor washes: a luminous cerulean and ultramarine sky with billowing clouds, warm golden ochre and sienna stonework, lush deep greens, and deep blue water with vivid reflections. Strong contrast and full color depth, with loose painterly edges fading cleanly into the white only at the outer margins. Not pale, faded, washed-out or pastel; not photorealistic or cartoonish.",
-    `Lower third: plain pure white background with ${JSON.stringify(place)} centered in large, widely spaced, ink-blue engraved serif capitals${year ? `, and ${JSON.stringify(year)} beneath it, much smaller, in the same type` : ""}. Leave empty white space below.`,
-    "No paper texture, cream or beige tint, vignette or shadow anywhere in the background. No other text, punctuation, signage, logos, borders or decorative rules.",
+    `A premium 3D isometric miniature city diorama of ${subject}, horizontal 3:2 composition on a pure white studio background.`,
+    "Elevated orthographic camera at 35 degrees, no perspective distortion.",
+    `Upper two thirds: one cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${subject}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
+    "Carefully modeled masonry, matte ceramic roofs, warm terracotta accents and deep green foliage, with clear blue-green water where geographically appropriate. Refined architectural scale model, crisp geometry, realistic material textures, soft afternoon sunlight from the upper left, subtle ambient occlusion and a soft contact shadow beneath the model.",
+    "Balanced visual hierarchy, charming small details, ample white margin, every building fully within frame.",
+    `Lower third: ${JSON.stringify(place)} centered in widely spaced dark navy serif capitals${year ? `, with ${JSON.stringify(year)} in smaller type beneath` : ""}.`,
+    "No other text, no logos, no border, no watercolor, no painted brushwork, no floating disconnected landmarks, no exaggerated skyscrapers.",
   ].join(" ");
 }
 
