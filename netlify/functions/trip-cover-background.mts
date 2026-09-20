@@ -17,36 +17,125 @@ const HEIGHT = 848;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * The words lettered onto the print, built here rather than left to the model,
- * which otherwise invents subtitles and drops characters. A destination like
- * "Iceland - Winter '26" is trimmed back to the place; the year comes from the
- * trip's own dates.
+ * The look every cover shares. Holding camera, staging and finish fixed is what
+ * makes a list of trip cards read as one series of prints rather than a pile of
+ * unrelated renders, so only the place and the season below are free to vary.
  */
-function coverLettering(subject: string, startDate: string | null) {
-  const place = subject
-    .replace(/\s*[-–—·,|/]?\s*\b(spring|summer|autumn|fall|winter)\b.*$/i, "")
-    .replace(/\s*[-–—·,|/]?\s*'?\d{2,4}\s*$/, "")
-    .replace(/['’.]/g, "")
-    .replace(/[^\p{L}\p{N} ]+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim() || subject.trim();
-  return { place: place.toUpperCase(), year: startDate?.match(/^\d{4}/)?.[0] ?? null };
+const SERIES_STYLE = [
+  "Elevated orthographic camera at 35 degrees, no perspective distortion.",
+  "Refined architectural scale model: crisp geometry, realistic material textures, subtle ambient occlusion and a single soft contact shadow beneath the base.",
+  "Balanced visual hierarchy, charming small details, ample white margin, every building fully within frame.",
+].join(" ");
+
+/**
+ * Stated as a negative prompt rather than as "no ..." clauses in the prompt
+ * itself, which the model tends to read as an instruction to include the thing.
+ * Deliberately says nothing about text: the base is supposed to be lettered.
+ */
+const NEGATIVE_PROMPT = [
+  "caption bar",
+  "subtitle",
+  "watermark",
+  "logo",
+  "border",
+  "picture frame",
+  "watercolor",
+  "painted brushwork",
+  "floating disconnected landmarks",
+  "exaggerated skyscrapers",
+  "cropped buildings",
+  "cluttered background",
+  "multiple separate dioramas",
+  "vignette",
+].join(", ");
+
+type Season = "winter" | "spring" | "summer" | "autumn";
+
+/**
+ * What a descriptive trip name is allowed to contribute. The vocabulary is
+ * seasonal only on purpose: the destination stays the sole authority on
+ * geography, so "ski" buys snow and low sun, never an invented mountain.
+ *
+ * Mirrored by `trip_cover_season()` in the trip-cover-season migration, which
+ * decides when a rename is worth redrawing for. Words added here belong there.
+ */
+const SEASONS: Array<[RegExp, Season]> = [
+  [/\b(winter|snow|snowy|ski|skiing|christmas|xmas|new year|aurora|northern lights)\b/i, "winter"],
+  [/\b(spring|blossom|blossoms|cherry blossom|easter)\b/i, "spring"],
+  [/\b(summer|beach|seaside|sun|sunny|heatwave)\b/i, "summer"],
+  [/\b(autumn|fall|foliage|harvest)\b/i, "autumn"],
+];
+
+/**
+ * Light, weather and planting for each season. Time of day stays upper-left
+ * across all four so the shadows fall the same way on every card.
+ */
+const SEASON_MOOD: Record<Season, string> = {
+  winter:
+    "Deep winter: snow lying on the roofs, streets and ground, bare trees, water frozen or edged with ice, and a low pale sun from the upper left casting long cool blue shadows.",
+  spring:
+    "Early spring: fresh green foliage, blossoming trees, bright damp ground and clear mild daylight from the upper left.",
+  summer:
+    "High summer: dense green foliage, warm dry ground, awnings and parasols out, and a high bright sun from the upper left casting short crisp shadows.",
+  autumn:
+    "Autumn: amber, rust and gold foliage, fallen leaves gathered along the streets, and a low golden afternoon sun from the upper left.",
+};
+
+const DEFAULT_MOOD =
+  "Soft afternoon sunlight from the upper left with gentle, natural shadows and foliage in unforced seasonal colour.";
+
+/**
+ * Strips the decoration off a subject so the words on the base stay a place.
+ * "Iceland - Winter '26" comes back as "Iceland"; a plain destination is
+ * untouched. Used for the scene description too, so the model is never asked to
+ * draw a diorama "of finland winter '26".
+ */
+function cleanPlace(subject: string) {
+  return (
+    subject
+      .replace(/\s*[-–—·,|/]?\s*\b(spring|summer|autumn|fall|winter)\b.*$/i, "")
+      .replace(/\s*[-–—·,|/]?\s*'?\d{2,4}\s*$/, "")
+      .replace(/['’.]/g, "")
+      .replace(/[^\p{L}\p{N} ]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim() || subject.trim()
+  );
+}
+
+function detectSeason(name: string): Season | null {
+  for (const [pattern, season] of SEASONS) if (pattern.test(name)) return season;
+  return null;
+}
+
+/**
+ * Splits the two form fields into the two things the picture needs. Destination
+ * answers *where*, and only it reaches the landmarks and the lettering; the
+ * trip name answers *when*, and only through the seasonal vocabulary above.
+ * A trip named "finland winter '26" bound for "Finland" draws Finland in snow.
+ */
+export function coverSubject(name: string, destination: string | null, startDate: string | null) {
+  const place = cleanPlace(destination?.trim() || name.trim());
+  return {
+    place,
+    lettering: place.toUpperCase(),
+    year: startDate?.match(/^\d{4}/)?.[0] ?? null,
+    season: detectSeason(name),
+  };
 }
 
 /**
  * Keep the isometric direction consistent while letting the destination
  * determine the landmarks, architecture and geography.
  */
-function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLettering>) {
+export function coverPrompt({ place, lettering, year, season }: ReturnType<typeof coverSubject>) {
   return [
-    `A premium 3D isometric miniature city diorama of ${subject}, horizontal 3:2 composition on a pure white studio background.`,
-    "Elevated orthographic camera at 35 degrees, no perspective distortion.",
-    `One cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${subject}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
-    "Carefully modeled masonry, matte ceramic roofs, warm terracotta accents and deep green foliage, with clear blue-green water where geographically appropriate. Refined architectural scale model, crisp geometry, realistic material textures, soft afternoon sunlight from the upper left, subtle ambient occlusion and a soft contact shadow beneath the model.",
-    "Balanced visual hierarchy, charming small details, ample white margin, every building fully within frame.",
-    `Integrate ${JSON.stringify(place)} into the front face of the diorama's stone base as large, inset navy Roman capitals.${year ? ` Place ${JSON.stringify(year)} beside it in smaller, clearly readable engraved numerals.` : ""}`,
-    "Keep all lettering on one clean architectural surface, facing the viewer with minimal perspective distortion. Use strong contrast and restrained detailing so the lettering remains readable at mobile card size. The typography should feel built into the miniature city. No separate caption or white text band below the scene.",
-    "No other text, no logos, no border, no watercolor, no painted brushwork, no floating disconnected landmarks, no exaggerated skyscrapers.",
+    `A premium 3D isometric miniature city diorama of ${place}, horizontal 3:2 composition on a pure white studio background.`,
+    SERIES_STYLE,
+    `One cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${place}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
+    `Roof shapes, building materials and colours taken from the vernacular architecture of ${place} — what that place genuinely builds with, not a default warm Mediterranean palette of terracotta and ceramic tile.`,
+    season ? SEASON_MOOD[season] : DEFAULT_MOOD,
+    `Integrate ${JSON.stringify(lettering)} into the front face of the diorama's stone base as large, inset navy Roman capitals.${year ? ` Place ${JSON.stringify(year)} beside it in smaller, clearly readable engraved numerals.` : ""}`,
+    "Keep all lettering on one clean architectural surface, facing the viewer with minimal perspective distortion. Use strong contrast and restrained detailing so the lettering remains readable at mobile card size. The typography should feel built into the miniature city, with no separate caption band below the scene.",
   ].join(" ");
 }
 
@@ -101,13 +190,14 @@ export default async (req: Request) => {
       .single();
     if (error || !trip) throw new Error(error?.message ?? "Trip is not readable");
 
-    const subject = trip.destination?.trim() || trip.name.trim();
-    if (!subject) throw new Error("Trip has nothing to draw");
+    const subject = coverSubject(trip.name ?? "", trip.destination, trip.start_date);
+    if (!subject.place) throw new Error("Trip has nothing to draw");
 
     const together = new Together({ apiKey: togetherKey });
     const result = await together.images.generate({
       model: MODEL,
-      prompt: coverPrompt(subject, coverLettering(subject, trip.start_date)),
+      prompt: coverPrompt(subject),
+      negative_prompt: NEGATIVE_PROMPT,
       width: WIDTH,
       height: HEIGHT,
       response_format: "base64",
@@ -135,7 +225,7 @@ export default async (req: Request) => {
     const { error: saveError } = await supabase.rpc("set_trip_cover", {
       p_trip: tripId,
       p_path: path,
-      p_subject: subject,
+      p_subject: subject.place,
     });
     if (saveError) throw new Error(saveError.message);
 
