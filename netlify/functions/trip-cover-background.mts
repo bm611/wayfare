@@ -41,10 +41,11 @@ function coverPrompt(subject: string, { place, year }: ReturnType<typeof coverLe
   return [
     `A premium 3D isometric miniature city diorama of ${subject}, horizontal 3:2 composition on a pure white studio background.`,
     "Elevated orthographic camera at 35 degrees, no perspective distortion.",
-    `Upper two thirds: one cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${subject}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
+    `One cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${subject}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
     "Carefully modeled masonry, matte ceramic roofs, warm terracotta accents and deep green foliage, with clear blue-green water where geographically appropriate. Refined architectural scale model, crisp geometry, realistic material textures, soft afternoon sunlight from the upper left, subtle ambient occlusion and a soft contact shadow beneath the model.",
     "Balanced visual hierarchy, charming small details, ample white margin, every building fully within frame.",
-    `Lower third: ${JSON.stringify(place)} centered in widely spaced dark navy serif capitals${year ? `, with ${JSON.stringify(year)} in smaller type beneath` : ""}.`,
+    `Integrate ${JSON.stringify(place)} into the front face of the diorama's stone base as large, inset navy Roman capitals.${year ? ` Place ${JSON.stringify(year)} beside it in smaller, clearly readable engraved numerals.` : ""}`,
+    "Keep all lettering on one clean architectural surface, facing the viewer with minimal perspective distortion. Use strong contrast and restrained detailing so the lettering remains readable at mobile card size. The typography should feel built into the miniature city. No separate caption or white text band below the scene.",
     "No other text, no logos, no border, no watercolor, no painted brushwork, no floating disconnected landmarks, no exaggerated skyscrapers.",
   ].join(" ");
 }
