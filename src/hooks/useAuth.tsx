@@ -30,9 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
-      setSession(data.session);
+      // A stored session whose refresh token no longer exists server-side (revoked, user
+      // deleted, other project) can never recover; clear it locally so the user lands on sign-in.
+      if (error) void supabase.auth.signOut({ scope: "local" });
+      setSession(error ? null : data.session);
       setLoading(false);
     });
 
