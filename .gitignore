@@ -32,3 +32,6 @@ deno.lock
 # Browser test artifacts
 test-results/
 playwright-report/
+
+# Promo video source and renders (kept local)
+promo/
