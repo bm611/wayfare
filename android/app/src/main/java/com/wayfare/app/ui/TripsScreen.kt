@@ -20,12 +20,14 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +70,7 @@ fun TripsScreen(
     var showJoin by remember { mutableStateOf(false) }
     var inviteSeed by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
+    var showDeleteAccount by remember { mutableStateOf(false) }
 
     LaunchedEffect(pendingInvite) {
         pendingInvite?.let {
@@ -111,6 +114,12 @@ fun TripsScreen(
                                     text = { Text("Sign out") },
                                     leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
                                     onClick = { showMenu = false; onSignOut() },
+                                )
+                                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = Hairline)
+                                DropdownMenuItem(
+                                    text = { Text("Delete account", color = ErrorRed) },
+                                    leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = ErrorRed) },
+                                    onClick = { showMenu = false; showDeleteAccount = true },
                                 )
                             }
                         }
@@ -221,6 +230,93 @@ fun TripsScreen(
                 showJoin = false
                 inviteSeed = ""
                 onOpenTrip(tripId)
+            }
+        },
+    )
+    if (showDeleteAccount) {
+        val accountId = container.repository.currentUserId()
+        val owned = state.trips.filter { it.trip.ownerId == accountId }
+        DeleteAccountDialog(
+            trips = owned.size,
+            expenses = owned.sumOf { it.entries },
+            onDismiss = { showDeleteAccount = false },
+            onDelete = {
+                viewModel.deleteAccount().onSuccess {
+                    container.preferences.setPendingInvite(null)
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Play requires an app that lets people create an account to let them delete it
+ * from inside the app as well.
+ *
+ * The consequence that catches people out is that a trip they own goes for every
+ * traveller on it, so the counts are on screen before the button is reachable.
+ */
+@Composable
+internal fun DeleteAccountDialog(
+    trips: Int,
+    expenses: Int,
+    onDismiss: () -> Unit,
+    onDelete: suspend () -> Result<*>,
+) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        shape = RoundedCornerShape(14.dp),
+        title = { Text("Delete your account?", style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    if (trips == 0) {
+                        "Your account is removed immediately, along with everything stored on it."
+                    } else {
+                        "Your account is removed immediately, along with the " +
+                            "${trips} ${if (trips == 1) "trip" else "trips"} you own and the " +
+                            "${expenses} ${if (expenses == 1) "expense" else "expenses"} logged on them."
+                    },
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "Trips someone else owns stay with them — you just lose access.",
+                    color = Ash,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    error ?: "This cannot be undone.",
+                    color = ErrorRed,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                scope.launch {
+                    busy = true
+                    error = null
+                    // Not the exception text: that is the whole REST exchange, bearer
+                    // token included.
+                    onDelete().onFailure { error = "Could not delete the account. Check your connection and try again." }
+                    busy = false
+                }
+            }) {
+                Text(
+                    if (busy) "Deleting…" else "Delete",
+                    color = ErrorRed,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !busy, onClick = onDismiss) {
+                Text("Cancel", color = Ink, style = MaterialTheme.typography.labelMedium)
             }
         },
     )

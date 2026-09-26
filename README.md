@@ -190,3 +190,25 @@ Both need an OAuth grant or dashboard access, so they cannot be scripted:
    set Site URL to `https://getwayfare.netlify.app` and add both
    `https://getwayfare.netlify.app/**` and `http://localhost:5180/**` as redirect
    URLs. Until this is done, confirmation and recovery emails point at localhost.
+
+---
+
+## Android
+
+A Kotlin/Jetpack Compose client in `android/`, sharing the same Supabase project
+as the website: the same trips and expenses appear in both. Its screens follow the
+native design system in `design.md`, which is deliberately *not* the website's
+boarding-pass styling. The release path is in [`RELEASING.md`](RELEASING.md).
+
+| Script | Does |
+| --- | --- |
+| `npm run android:run` | Build, install and launch on a device or emulator |
+| `npm run android:keystore` | Create the Play upload key (once) |
+| `npm run android:release` | Signed `.aab` for the Play Console |
+| `npm run android:assetlinks` | Regenerate `public/.well-known/assetlinks.json` |
+| `npm run store:render` | Rasterise the store icon and feature graphic |
+| `npm run store:screenshots` | Capture and frame Play screenshots |
+
+Account deletion lives in three places, and they have to agree: the
+`delete_account` migration, the app's Account menu, and the public
+`/delete-account` page that Play requires.

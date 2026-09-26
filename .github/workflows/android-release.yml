@@ -1,0 +1,100 @@
+name: Android release
+
+# Builds the signed App Bundle that goes to the Play Console.
+#
+# Bump, commit and tag to release:
+#   npm run android:release -- --bump   # then commit build.gradle.kts
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Required repository secrets:
+#   KEYSTORE_BASE64            base64 of the upload .jks   (base64 -i keystore.jks)
+#   KEYSTORE_PASSWORD          store password
+#   KEY_ALIAS                  key alias
+#   KEY_PASSWORD               key password
+#   SUPABASE_URL               baked into BuildConfig
+#   SUPABASE_PUBLISHABLE_KEY   baked into BuildConfig
+#
+# GOOGLE_WEB_CLIENT_ID is optional; without it the app signs in through the
+# browser instead of the native Google sheet.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # A release that silently ships without credentials builds fine and fails
+      # on the first screen a user opens, so refuse to start without them.
+      - name: Check required secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          missing=""
+          for name in KEYSTORE_BASE64 SUPABASE_URL SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "See the header of .github/workflows/android-release.yml."
+            exit 1
+          fi
+
+      - name: Materialise the upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Build signed bundle
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        # versionCode is the one checked into build.gradle.kts, bumped with
+        # `npm run android:release -- --bump` and committed before tagging, so a
+        # local build and a CI build of the same commit agree. Play rejects a
+        # reused versionCode, and two counters would eventually collide.
+        # versionName comes from the tag; a manual run keeps the checked-in one.
+        run: |
+          VERSION_ARGS=""
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION_ARGS="-Pwayfare.versionName=${GITHUB_REF_NAME#v}"
+          fi
+          ./gradlew bundleRelease $VERSION_ARGS --stacktrace
+
+      - name: Verify the signature
+        # An unsigned bundle builds happily and is rejected at upload time.
+        run: |
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "$AAB" | grep -q "jar verified"
+          echo "Signed bundle: $(du -h "$AAB" | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wayfare-${{ github.ref_name }}-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

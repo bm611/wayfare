@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launcher icon foreground. Geometry mirrors store/icon.svg — change both together.
+
+  The field is transparent; the pastel accent comes from the background layer.
+  Every point sits within 31.5dp of the canvas centre (54,54), so the 66dp safe
+  circle holds and no launcher mask can clip the nose.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Upper wing. -->
+    <path
+        android:fillColor="#3E6A93"
+        android:pathData="M28.1,58.9 L79.9,36.2 L56.3,60.2 Z" />
+
+    <!-- Folded underside, a step darker so the dart reads as paper and not as a cursor. -->
+    <path
+        android:fillColor="#2A4A66"
+        android:pathData="M79.9,36.2 L65.3,71.8 L56.3,60.2 Z" />
+</vector>

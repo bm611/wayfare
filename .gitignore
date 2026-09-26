@@ -35,3 +35,7 @@ playwright-report/
 
 # Promo video source and renders (kept local)
 promo/
+
+# Unframed device captures and the throwaway framing SVGs. The framed 1080x1920
+# screenshots next to them are the store assets and are committed.
+store/screenshots/raw/

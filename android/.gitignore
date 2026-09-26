@@ -6,3 +6,7 @@ app/build/
 local.properties
 *.jks
 *.keystore
+# Upload key material and its password. Losing these means losing the ability to
+# ship updates under com.wayfare.app, so they are backed up out of band.
+keystore/
+keystore.properties

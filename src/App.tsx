@@ -7,6 +7,9 @@ const Auth = lazy(() => import("./routes/Auth").then((module) => ({ default: mod
 const Trips = lazy(() => import("./routes/Trips").then((module) => ({ default: module.Trips })));
 const TripDetail = lazy(() => import("./routes/TripDetail").then((module) => ({ default: module.TripDetail })));
 const Join = lazy(() => import("./routes/Join").then((module) => ({ default: module.Join })));
+const DeleteAccount = lazy(() =>
+  import("./routes/DeleteAccount").then((module) => ({ default: module.DeleteAccount })),
+);
 
 export default function App() {
   return (
@@ -14,6 +17,9 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<RouteLoading />}><Routes>
           <Route path="/auth" element={<Auth />} />
+          {/* Outside RequireAuth on purpose: Play requires a deletion route that
+              anyone can reach, signed in or not. */}
+          <Route path="/delete-account" element={<DeleteAccount />} />
           <Route element={<RequireAuth />}>
             <Route index element={<Trips />} />
             <Route path="/trip/:id" element={<TripDetail />} />

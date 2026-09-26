@@ -111,6 +111,10 @@ export type Database = {
         Args: { p_trip: string; p_path: string | null; p_subject: string | null };
         Returns: undefined;
       };
+      delete_account: {
+        Args: Record<never, never>;
+        Returns: undefined;
+      };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

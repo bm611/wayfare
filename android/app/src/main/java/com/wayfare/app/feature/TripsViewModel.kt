@@ -61,6 +61,15 @@ class TripsViewModel(
     }
 
     /**
+     * Removes the account and everything on it, then drops the local session, which
+     * is what sends the app back to the sign-in screen. Nothing to do on success
+     * here: the auth state is the navigation.
+     */
+    suspend fun deleteAccount(): Result<Unit> = runCatching {
+        repository.deleteAccount()
+    }
+
+    /**
      * Called when the screen comes back to the foreground, including on the way
      * back from a trip. The ledger catches up quietly: a spinner here would read
      * as the app re-loading a screen the traveller is already looking at.

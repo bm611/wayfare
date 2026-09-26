@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive icon background layer: the system's one pastel accent, as a
+         solid colour rather than a bitmap so any launcher mask renders it
+         without edge artefacts. -->
+    <color name="ic_launcher_background">#C6DAEF</color>
+</resources>

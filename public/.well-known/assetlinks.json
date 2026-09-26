@@ -1,0 +1,12 @@
+[
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.wayfare.app",
+        "sha256_cert_fingerprints": [
+          "AB:F9:C6:30:AC:0D:EB:A5:30:72:55:59:8B:C1:ED:06:BF:E9:E2:A2:DD:54:68:37:CB:82:6B:4D:46:9C:F1:FD"
+        ]
+      }
+    }
+]

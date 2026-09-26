@@ -1,0 +1,14 @@
+<resources>
+    <!--
+      Dark canvas, matching `WayfareDarkColors` in ui/Theme.kt. Without this the
+      app opens on a white window and flips to a dark one once Compose draws.
+    -->
+    <style name="Theme.Wayfare" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#181A1B</item>
+        <item name="android:statusBarColor">#181A1B</item>
+        <item name="android:navigationBarColor">#181A1B</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

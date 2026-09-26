@@ -16,12 +16,25 @@ val local = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use(::load)
 }
+// The Play upload key, created by scripts/android-keystore.sh. Never committed.
+val uploadKey = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
 
 fun configured(name: String, rootName: String = name): String =
     providers.environmentVariable(name).orNull
         ?: local.getProperty(name)
         ?: rootEnv.getProperty(rootName)
         ?: ""
+
+// Env first so CI can keep the key in secrets and materialise it to a temp path.
+fun uploadKeyValue(env: String, property: String): String? =
+    providers.environmentVariable(env).orNull?.takeIf { it.isNotBlank() }
+        ?: uploadKey.getProperty(property)?.takeIf { it.isNotBlank() }
+
+val uploadStoreFile = uploadKeyValue("KEYSTORE_FILE", "storeFile")?.let(::file)
+val hasUploadKey = uploadStoreFile?.exists() == true
 
 fun quoted(value: String) = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
@@ -33,8 +46,12 @@ android {
         applicationId = "com.wayfare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // The default is the source of truth: scripts/android-release.sh --bump
+        // edits it and it is committed before tagging, so local and CI builds of a
+        // commit agree. Play rejects any upload that reuses a versionCode. CI only
+        // overrides versionName, from the tag.
+        versionCode = providers.gradleProperty("wayfare.versionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("wayfare.versionName").orNull ?: "0.1.0"
 
         buildConfigField("String", "SUPABASE_URL", quoted(configured("SUPABASE_URL", "VITE_SUPABASE_URL")))
         buildConfigField(
@@ -59,6 +76,31 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    signingConfigs {
+        // Only defined when the upload key is actually present, so a fresh clone
+        // and CI without secrets can still run tests and lint.
+        if (hasUploadKey) {
+            create("release") {
+                storeFile = uploadStoreFile
+                storePassword = uploadKeyValue("KEYSTORE_PASSWORD", "storePassword")
+                keyAlias = uploadKeyValue("KEY_ALIAS", "keyAlias")
+                keyPassword = uploadKeyValue("KEY_PASSWORD", "keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"

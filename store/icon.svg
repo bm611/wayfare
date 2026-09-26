@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
+  <!--
+    Play Store listing icon (512x512), and the source of truth for the launcher
+    icon geometry in android/app/src/main/res/drawable/ic_launcher_foreground.xml.
+
+    Native palette from design.md: pastel accent field, accent-ink glyph. Every
+    point sits within 31.5dp of the canvas centre, so no launcher mask — circle,
+    squircle or teardrop — can clip the nose. The fold is a full step darker than
+    the wing: at 48dp a lower-contrast fold turns the dart back into a cursor.
+  -->
+  <rect width="108" height="108" fill="#C6DAEF"/>
+  <path d="M28.1,58.9 L79.9,36.2 L56.3,60.2 Z" fill="#3E6A93"/>
+  <path d="M79.9,36.2 L65.3,71.8 L56.3,60.2 Z" fill="#2A4A66"/>
+</svg>

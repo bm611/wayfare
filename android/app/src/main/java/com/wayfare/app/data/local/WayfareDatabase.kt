@@ -34,6 +34,14 @@ interface TripDao {
 
     @Query("UPDATE trips SET coverStatus = 'pending' WHERE accountId = :accountId AND id = :tripId")
     suspend fun markCoverPending(accountId: String, tripId: String)
+
+    /**
+     * Covers of the trips this account owns, so deletion can remove the files.
+     * Only owned trips: a member may delete any cover on a shared trip, and a trip
+     * someone else owns keeps its cover when this account goes.
+     */
+    @Query("SELECT coverPath FROM trips WHERE accountId = :accountId AND ownerId = :accountId AND coverPath IS NOT NULL")
+    suspend fun coverPaths(accountId: String): List<String>
 }
 
 @Dao

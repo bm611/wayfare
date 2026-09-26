@@ -35,6 +35,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.storage.storage
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
@@ -388,12 +389,47 @@ class WayfareRepository(
         }
     }
 
+    /**
+     * Deletes the signed-in account and everything on it. Required by Play for
+     * any app that lets people create an account, and the web page at
+     * /delete-account reaches the same function.
+     *
+     * Cover images go first, through the Storage API: they are files in a bucket
+     * with no foreign key to the ledger, so `delete_account` can only remove their
+     * rows. A cover that refuses to delete must not stop the account from going,
+     * which is why that step is best effort.
+     *
+     * The RPC then takes the user row, and the cascade takes the profile, trips,
+     * expenses, memberships and sessions with it. Afterwards there is nothing left
+     * to sign out of, so the session is dropped locally rather than sent to an
+     * endpoint that would refuse it.
+     *
+     * Held under the refresh gate so a sync in flight cannot write a row back
+     * between the delete and the local cache being cleared.
+     */
+    suspend fun deleteAccount() = refreshGate.withLock {
+        val accountId = requireUser()
+
+        runCatching {
+            val covers = database.trips().coverPaths(accountId)
+            if (covers.isNotEmpty()) supabase.storage.from(CoversBucket).delete(covers)
+        }
+
+        supabase.postgrest.rpc("delete_account")
+
+        supabase.auth.clearSession()
+        clearAccount(accountId)
+    }
+
     fun coverUrl(path: String?): String? = path?.let {
-        "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/trip-covers/$it"
+        "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/$CoversBucket/$it"
     }
 
     private fun requireUser(): String = currentUserId() ?: error("Not signed in")
 }
+
+/** Public bucket holding the generated destination covers. */
+private const val CoversBucket = "trip-covers"
 
 private fun TripDto.toDomain() = Trip(
     id, userId, name, destination, startDate?.let(LocalDate::parse), endDate?.let(LocalDate::parse),

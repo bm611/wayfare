@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <!--
+    Play Store feature graphic (1024x500).
+
+    Native palette from design.md. Play crops this on several surfaces, so all
+    text and the mark stay inside a 48px margin and nothing essential sits in
+    the outer fifth.
+  -->
+  <defs>
+    <clipPath id="canvas">
+      <rect width="1024" height="500"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#canvas)">
+    <rect width="1024" height="500" fill="#F7F7F7"/>
+
+    <!-- The one pastel accent, as a soft field the mark sits on. -->
+    <circle cx="836" cy="250" r="232" fill="#C6DAEF"/>
+
+    <!-- Paper plane, at the same angles as the launcher icon, centred on the field. -->
+    <g transform="translate(663,77) scale(3.2)">
+      <path d="M28.1,58.9 L79.9,36.2 L56.3,60.2 Z" fill="#3E6A93"/>
+      <path d="M79.9,36.2 L65.3,71.8 L56.3,60.2 Z" fill="#2A4A66"/>
+    </g>
+
+    <!-- Wordmark. -->
+    <text x="88" y="210" font-family="Manrope" font-weight="700" font-size="76"
+          letter-spacing="-2.4" fill="#222222">Wayfare</text>
+
+    <!-- Tagline. -->
+    <text x="88" y="268" font-family="Manrope" font-weight="500" font-size="32"
+          letter-spacing="-0.4" fill="#6A6A6A">Track what a trip actually costs.</text>
+
+    <!-- The budget strip: the app's signature, drawn as a meter. -->
+    <g transform="translate(88,332)">
+      <g fill="#3E6A93">
+        <rect x="0" y="0" width="26" height="12" rx="6"/>
+        <rect x="34" y="0" width="26" height="12" rx="6"/>
+        <rect x="68" y="0" width="26" height="12" rx="6"/>
+        <rect x="102" y="0" width="26" height="12" rx="6"/>
+        <rect x="136" y="0" width="26" height="12" rx="6"/>
+        <rect x="170" y="0" width="26" height="12" rx="6"/>
+        <rect x="204" y="0" width="26" height="12" rx="6"/>
+      </g>
+      <g fill="#DDDDDD">
+        <rect x="238" y="0" width="26" height="12" rx="6"/>
+        <rect x="272" y="0" width="26" height="12" rx="6"/>
+        <rect x="306" y="0" width="26" height="12" rx="6"/>
+        <rect x="340" y="0" width="26" height="12" rx="6"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,11 +1,15 @@
 <resources>
+    <!--
+      Window chrome for the cold start, before Compose draws. The canvas colour
+      matches `CanvasWhite` in ui/Theme.kt, so the app opens onto the same white
+      it keeps using rather than flashing a different one first.
+    -->
     <style name="Theme.Wayfare" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Paper, so a cold start does not flash white before Compose draws. -->
-        <item name="android:windowBackground">#F7F2E9</item>
-        <item name="android:statusBarColor">#F7F2E9</item>
-        <item name="android:navigationBarColor">#F7F2E9</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 </resources>

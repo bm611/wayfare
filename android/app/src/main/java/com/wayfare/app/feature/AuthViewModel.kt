@@ -12,6 +12,8 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
+import io.github.jan.supabase.exceptions.HttpRequestException
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -120,7 +122,8 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
             // than waiting on a hop this coroutine never sees.
             _state.value = _state.value.copy(
                 googleBusy = false,
-                error = outcome.exceptionOrNull()?.let { it.message ?: "Could not reach Google. Try again." },
+                error = outcome.exceptionOrNull()
+                    ?.let { readableAuthError(it, "Could not reach Google. Try again.") },
             )
         }
     }
@@ -164,11 +167,42 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
             runCatching { action() }
                 .onSuccess { _state.value = _state.value.copy(busy = false, message = success) }
                 .onFailure { error ->
-                    _state.value = _state.value.copy(
-                        busy = false,
-                        error = error.message ?: "Something went wrong. Try again.",
-                    )
+                    _state.value = _state.value.copy(busy = false, error = readableAuthError(error))
                 }
+        }
+    }
+
+    /**
+     * Auth failures arrive as the whole REST exchange — status line, request URL,
+     * headers, body — which is worth having in logcat and wrong on screen: it is
+     * unreadable, and it shows the traveller a bearer token and a project URL.
+     *
+     * So name the handful of codes worth saying out loud and keep a sentence for
+     * everything else. The exact wording of a code we do not recognise is not
+     * something a traveller can act on.
+     */
+    private fun readableAuthError(
+        error: Throwable,
+        fallback: String = "Something went wrong. Try again.",
+    ): String {
+        val raw = error.message.orEmpty()
+        // By type, not by text: the message carries the request headers, so a word
+        // like "Connection" turns up in every failure, not only network ones.
+        val offline = generateSequence(error, Throwable::cause)
+            .any { it is HttpRequestException || it is IOException }
+        return when {
+            offline -> "No connection. Check your network and try again."
+            raw.contains("invalid_credentials") -> "Email or password is incorrect."
+            raw.contains("email_not_confirmed") -> "Confirm your email first — the link is in your inbox."
+            raw.contains("user_already_exists") || raw.contains("already registered") ->
+                "That email already has an account. Sign in instead."
+            raw.contains("weak_password") -> "Choose a longer password."
+            raw.contains("over_email_send_rate_limit") || raw.contains("over_request_rate_limit") ->
+                "Too many attempts just now. Wait a minute and try again."
+            raw.contains("validation_failed") || raw.contains("invalid format") ->
+                "Check the email address and try again."
+            raw.contains("same_password") -> "That is already your password."
+            else -> fallback
         }
     }
 }
