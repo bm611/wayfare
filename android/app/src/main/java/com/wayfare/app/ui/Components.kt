@@ -283,13 +283,19 @@ fun ListingCard(
         ) {
             Stamp(trip)
             Column(Modifier.padding(start = 20.dp).weight(1f)) {
-                Text(
+                // Past and undated trips sit under a section title that already
+                // says so; only a countdown earns the pill.
+                val counting = when (tripPhase(trip)) {
+                    is TripPhase.Active, is TripPhase.Upcoming -> true
+                    else -> false
+                }
+                if (counting) Text(
                     phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                    modifier = Modifier.padding(bottom = 12.dp).clip(RoundedCornerShape(12.dp))
                         .background(SoftCloud).padding(horizontal = 10.dp, vertical = 6.dp),
                 )
                 Text(
-                    trip.name, Modifier.padding(top = 12.dp), color = Ink, maxLines = 1,
+                    trip.name, color = Ink, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge,
                 )
                 Text(

@@ -4,6 +4,48 @@ The code side of this is done and scripted; the rest is account setup, policy
 forms and review, which only the account owner can do. Work through it in order —
 several later steps are blocked by earlier ones.
 
+## Status (2026-09-26)
+
+Done:
+
+- [x] Signed release build, R8 rules, adaptive icon, release scripts and CI workflow
+- [x] Upload key created (`android/keystore/wayfare-upload.jks` + `keystore.properties`)
+- [x] Account deletion: `delete_account` migration applied, in-app menu item, and
+      `/delete-account` live on the site
+- [x] `assetlinks.json` live, with the upload key fingerprint only
+- [x] Store icon, feature graphic and the first screenshot (`01-sign-in.png`)
+
+Remaining, in order:
+
+1. [ ] **Back up the upload key.** Copy `android/keystore/` and
+       `android/keystore.properties` somewhere off this machine (password manager).
+2. [ ] **Settle the name and package id** (step 0). `com.wayfare.app` is permanent
+       after the first upload.
+3. [ ] **Create the Play developer account** (one-time fee, identity verification).
+       Personal or organisation decides whether step 12 applies.
+4. [ ] **Write the privacy policy page.** There is no `/privacy` route yet; the URL
+       currently falls through to the app. Play requires one before any track.
+5. [ ] **Replace `SUPPORT_EMAIL`** in `src/routes/DeleteAccount.tsx` with a monitored
+       address, and deploy.
+6. [ ] **Create a demo account** with a realistic trip on it. It is used for the
+       screenshots and given to reviewers under App access.
+7. [ ] **Capture screenshots 02–04** with that account (step 5 below).
+8. [ ] **Write the listing text**: app name, short description (≤ 80 characters),
+       full description (≤ 4000).
+9. [ ] **Build the bundle**: `npm run android:release`. For CI builds instead, add
+       the repository secrets listed in step 2; none are set yet.
+10. [ ] **Console setup** (step 6): create the app, fill in App content (privacy
+        policy, ads, content rating, target audience, data safety, deletion URL
+        `https://getwayfare.netlify.app/delete-account`), and the store listing.
+11. [ ] **Internal testing**: upload the `.aab`, enrol in Play App Signing, install
+        from the Play link and test sign-in, joining a trip and adding an expense. Then
+        add the Play signing key everywhere it is needed (step 3): `PLAY_SHA256=…
+        npm run android:assetlinks`, commit and deploy, and register its SHA-1 on the
+        Android OAuth client in Google Cloud.
+12. [ ] **Closed testing**, personal accounts only: 12 testers opted in for 14
+        continuous days before production access can be requested.
+13. [ ] **Production**: apply for access if required, submit, and wait for review.
+
 ## 0. Decisions that become permanent
 
 - **App name and package id.** `com.wayfare.app` is frozen at the first upload.
@@ -65,11 +107,11 @@ The same Play fingerprint is what Google Sign-In needs: the Android OAuth client
 in Google Cloud is registered against a package name and a SHA-1, so add the Play
 one there too, or native Google sign-in stops working for installed builds.
 
-## 4. Account deletion (done in code, needs applying)
+## 4. Account deletion
 
 The app, the website and the database function are in place:
 
-- `supabase/migrations/20260926120000_delete_account.sql` — apply this migration.
+- `supabase/migrations/20260926120000_delete_account.sql` — applied to production.
 - Android: Account menu → Delete account.
 - Web: `/delete-account`, reachable without signing in.
 
@@ -78,8 +120,8 @@ Two follow-ups:
 - Replace `SUPPORT_EMAIL` in `src/routes/DeleteAccount.tsx` with a monitored
   address. The page is what satisfies the policy, and it currently points at a
   placeholder.
-- Play asks for the deletion URL in App content. It will be
-  `https://getwayfare.netlify.app/delete-account` once this is deployed.
+- Play asks for the deletion URL in App content:
+  `https://getwayfare.netlify.app/delete-account` (live).
 
 ## 5. Store listing
 
@@ -127,5 +169,4 @@ covers effectively every device that can install from Play today.
 
 ## Not done yet
 
-- The privacy policy page itself.
 - Tablet (7"/10") screenshots, if the app is distributed to tablets.

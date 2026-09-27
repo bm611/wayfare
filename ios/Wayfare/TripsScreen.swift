@@ -142,10 +142,18 @@ struct TripsScreen: View {
       HStack(spacing: 20) {
         Stamp(trip: trip)
         VStack(alignment: .leading, spacing: 0) {
-          Text(phaseLabel(trip)).typeStyle(.labelSmall).foregroundStyle(Palette.ink)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
-          Text(trip.name).typeStyle(.titleLarge).lineLimit(1).padding(.top, 12)
+          // Past and undated trips sit under a section title that already says
+          // so; only a countdown earns the pill.
+          switch tripPhase(trip) {
+          case .active, .upcoming:
+            Text(phaseLabel(trip)).typeStyle(.labelSmall).foregroundStyle(Palette.ink)
+              .padding(.horizontal, 10).padding(.vertical, 6)
+              .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
+              .padding(.bottom, 12)
+          case .past, .undated:
+            EmptyView()
+          }
+          Text(trip.name).typeStyle(.titleLarge).lineLimit(1)
           Text(dated ? dateRange(trip.startDate, trip.endDate) : (destination.isEmpty ? trip.name : destination))
             .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).lineLimit(1).padding(.top, 4)
         }

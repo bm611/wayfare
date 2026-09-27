@@ -7,6 +7,7 @@ import type { TripWithSpend } from "../hooks/useTrips";
 
 export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared?: boolean }) {
   const phase = tripPhase(trip);
+  const counting = phase.kind === "active" || phase.kind === "upcoming";
   const symbol = symbolFor(trip.currency);
   const place = trip.destination?.trim() || trip.name;
   const dated = trip.start_date || trip.end_date;
@@ -28,13 +29,17 @@ export function TripCard({ trip, shared = false }: { trip: TripWithSpend; shared
         <div className="relative z-10 flex items-center gap-5 rounded-ticket border border-line bg-card py-5 pr-5 pl-4 shadow-lift">
           <Stamp trip={trip} />
           <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-paper px-2.5 py-1.5 text-[11px] font-medium text-ink">
-              {phase.kind === "active" && (
-                <span className="beacon size-1.5 rounded-full bg-clay" aria-hidden />
-              )}
-              {phaseLabel(phase)}
-            </span>
-            <h3 className="mt-3 truncate font-display text-[21px] leading-tight font-semibold tracking-tight text-ink">
+            {/* Past and undated trips sit under a section title that already
+                says so; only a countdown earns the pill. */}
+            {counting && (
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-xl bg-paper px-2.5 py-1.5 text-[11px] font-medium text-ink">
+                {phase.kind === "active" && (
+                  <span className="beacon size-1.5 rounded-full bg-clay" aria-hidden />
+                )}
+                {phaseLabel(phase)}
+              </span>
+            )}
+            <h3 className="truncate font-display text-[21px] leading-tight font-semibold tracking-tight text-ink">
               {trip.name}
             </h3>
             <p className="tabular mt-1 truncate text-[14px] text-ink-soft">
