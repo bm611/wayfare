@@ -279,7 +279,7 @@ test('confirmation resend is throttled and reports success', async ({ page }, te
 test('trip summaries avoid downloading the expense ledger', async ({ page }) => {
   const requests = await mockApp(page);
   await page.goto('/');
-  await expect(page.locator('a[href="/trip/lisbon"]')).toContainText('€360.00');
+  await expect(page.locator('a[href="/trip/lisbon"]')).toContainText('€360');
   expect(requests.some((request) => request.path.endsWith('/trip_summaries'))).toBe(true);
   expect(requests.some((request) => request.path.endsWith('/expenses'))).toBe(false);
 });

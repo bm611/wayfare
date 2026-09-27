@@ -49,6 +49,11 @@
     --stamp-sky: #c7e7f9;
     --stamp-sage: #cdead2;
     --stamp-lilac: #e1d8f9;
+    /* The ink each stamp is pressed in: its own tint, taken deep. */
+    --stamp-peach-ink: #8a4424;
+    --stamp-sky-ink: #1f5a7a;
+    --stamp-sage-ink: #2f6b3c;
+    --stamp-lilac-ink: #5b4596;
   }
 
   html {
@@ -177,7 +182,7 @@
     padding: 0.9rem 0.6rem 0.75rem;
     border-radius: 18px;
     background: var(--tint);
-    color: var(--color-ink);
+    color: var(--ink);
     transform: rotate(var(--tilt));
   }
 
@@ -185,7 +190,7 @@
     content: "";
     position: absolute;
     inset: 5px;
-    border: 1.5px dashed color-mix(in srgb, var(--color-ink) 30%, transparent);
+    border: 1.5px dashed color-mix(in srgb, var(--ink) 35%, transparent);
     border-radius: 13px;
     pointer-events: none;
   }
@@ -218,7 +223,7 @@
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.08em;
-    color: var(--color-ink-soft);
+    color: color-mix(in srgb, var(--ink) 75%, transparent);
   }
 
   /* The stamp presses onto the card, and a drawing that arrives later inks in. */

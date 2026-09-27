@@ -178,6 +178,15 @@ func money(_ amount: Decimal, _ currency: String = "EUR") -> String {
   return formatter.string(from: amount as NSDecimalNumber) ?? "\(amount) \(currency)"
 }
 
+/// Whole units for glanceable totals ("€1,600"); cents belong on the trip itself.
+func moneyShort(_ amount: Decimal, _ currency: String = "EUR") -> String {
+  let formatter = NumberFormatter()
+  formatter.numberStyle = .currency
+  formatter.currencyCode = currency
+  formatter.maximumFractionDigits = 0
+  return formatter.string(from: amount as NSDecimalNumber) ?? "\(amount) \(currency)"
+}
+
 func phaseLabel(_ trip: Trip) -> String {
   switch tripPhase(trip) {
   case .active(let day, let total): "Day \(day) of \(total)"

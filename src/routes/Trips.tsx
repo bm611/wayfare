@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Plus, SignOut, Ticket as TicketIcon } from "@phosphor-icons/react";
 import { Brand, IconButton, IconGroup, IconGroupDivider } from "../components/Brand";
-import { TripCard } from "../components/TripCard";
+import { StampTile, TripCard } from "../components/TripCard";
 import { TripSheet } from "../components/TripSheet";
 import { JoinSheet } from "../components/JoinSheet";
 import { Button } from "../components/Button";
@@ -12,6 +12,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTrips } from "../hooks/useTrips";
 import { useTripCovers } from "../hooks/useTripCovers";
 import { symbolFor, tripPhase } from "../lib/format";
+import { stampArt } from "../lib/stamp";
 import { BASE_CURRENCY } from "../lib/fx";
 
 export function Trips() {
@@ -29,6 +30,10 @@ export function Trips() {
     return {
       spent: trips.reduce((sum, t) => sum + t.spent, 0),
       active: trips.filter((t) => tripPhase(t).kind === "active").length,
+      // Distinct places the stamps name, as the stamp itself would label them.
+      places: new Set(
+        trips.map((t) => (stampArt(t.cover_art)?.label || t.destination?.split(",")[0].trim() || t.name).toLocaleLowerCase()),
+      ).size,
     };
   }, [trips]);
 
@@ -62,7 +67,9 @@ export function Trips() {
             </h1>
             <p className="mt-2.5 text-[14px] text-ink-soft">
               logged across <span className="tabular font-medium text-ink">{trips.length}</span>{" "}
-              {trips.length === 1 ? "trip" : "trips"}
+              {trips.length === 1 ? "stamp" : "stamps"} from{" "}
+              <span className="tabular font-medium text-ink">{summary.places}</span>{" "}
+              {summary.places === 1 ? "place" : "places"}
               {summary.active > 0 && (
                 <>
                   {" · "}
@@ -117,9 +124,17 @@ export function Trips() {
               if (!group.length) return null;
               return <li key={phase} className="mb-4">
                 <h2 className="mb-3 text-sm font-semibold text-ink-soft">{label} <span className="tabular ml-1">{group.length}</span></h2>
-                <ul className="flex flex-col gap-4">
-                  {group.map((trip) => <TripCard key={trip.id} trip={trip} shared={trip.user_id !== user?.id} />)}
-                </ul>
+                {/* Trips still to come get a full card; finished ones are
+                    collected, stamps on a passport page. */}
+                {phase === "past" ? (
+                  <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {group.map((trip) => <StampTile key={trip.id} trip={trip} />)}
+                  </ul>
+                ) : (
+                  <ul className="flex flex-col gap-4">
+                    {group.map((trip) => <TripCard key={trip.id} trip={trip} shared={trip.user_id !== user?.id} />)}
+                  </ul>
+                )}
               </li>;
             })}
           </motion.ul>

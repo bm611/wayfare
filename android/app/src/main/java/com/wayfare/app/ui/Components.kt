@@ -14,8 +14,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +29,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.padding
@@ -78,12 +75,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wayfare.app.R
 import com.wayfare.app.core.Category
+import com.wayfare.app.core.amountText
 import com.wayfare.app.core.SyncState
 import com.wayfare.app.core.Trip
 import com.wayfare.app.core.TripPhase
 import com.wayfare.app.core.TripSummary
 import com.wayfare.app.core.dateRange
-import com.wayfare.app.core.money
+import com.wayfare.app.core.symbolFor
 import com.wayfare.app.core.tripPhase
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -261,7 +259,7 @@ fun Notice(message: String, error: Boolean = false, modifier: Modifier = Modifie
 
 /**
  * A trip card led by its passport stamp. The stamp names the place, so the card
- * names the trip; the numbers ride in a drawer tucked underneath.
+ * names the trip, when it runs, and what it has cost so far.
  */
 @Composable
 fun ListingCard(
@@ -270,64 +268,102 @@ fun ListingCard(
     onClick: () -> Unit,
 ) {
     val trip = summary.trip
-    val destination = trip.destination?.trim().orEmpty()
-    val dated = trip.startDate != null || trip.endDate != null
-    val drawer = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
-    Column(modifier.fillMaxWidth().clickable(onClickLabel = "Open trip", onClick = onClick)) {
-        Row(
-            Modifier.fillMaxWidth().zIndex(1f)
-                .shadow(4.dp, RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp)).background(CanvasWhite)
-                .padding(start = 16.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Stamp(trip)
-            Column(Modifier.padding(start = 20.dp).weight(1f)) {
-                // Past and undated trips sit under a section title that already
-                // says so; only a countdown earns the pill.
-                val counting = when (tripPhase(trip)) {
-                    is TripPhase.Active, is TripPhase.Upcoming -> true
-                    else -> false
-                }
-                if (counting) Text(
-                    phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(bottom = 12.dp).clip(RoundedCornerShape(12.dp))
-                        .background(SoftCloud).padding(horizontal = 10.dp, vertical = 6.dp),
-                )
+    val shape = RoundedCornerShape(28.dp)
+    Row(
+        modifier.fillMaxWidth()
+            .shadow(4.dp, shape)
+            .clip(shape).background(CanvasWhite)
+            // The shadow vanishes on the dark canvas; the hairline keeps the edge.
+            .border(1.dp, Hairline, shape)
+            .clickable(onClickLabel = "Open trip", onClick = onClick)
+            .padding(start = 16.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Stamp(trip)
+        Column(Modifier.padding(start = 20.dp).weight(1f)) {
+            // Past and undated trips sit under a section title that already
+            // says so; only a countdown earns the pill.
+            val counting = when (tripPhase(trip)) {
+                is TripPhase.Active, is TripPhase.Upcoming -> true
+                else -> false
+            }
+            if (counting) Text(
+                phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(bottom = 12.dp).clip(RoundedCornerShape(12.dp))
+                    .background(SoftCloud).padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+            Text(
+                trip.name, color = Ink, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge,
+            )
+            // An undated trip's section and stamp already say so; don't say it a third time.
+            if (trip.startDate != null || trip.endDate != null) Text(
+                dateRange(trip.startDate, trip.endDate),
+                Modifier.padding(top = 4.dp), color = Ash, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+            )
+            // Spend against budget with a rail when there is both, otherwise
+            // whichever one number there is.
+            if (trip.budget.signum() > 0 && summary.spent.signum() > 0) {
+                val ash = Ash
                 Text(
-                    trip.name, color = Ink, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge,
+                    buildAnnotatedString {
+                        append(moneyShort(summary.spent, trip.currency))
+                        withStyle(SpanStyle(color = ash)) { append(" of ${moneyShort(trip.budget, trip.currency)}") }
+                    },
+                    Modifier.padding(top = 14.dp, bottom = 8.dp), color = Ink, maxLines = 1,
+                    style = MaterialTheme.typography.labelMedium,
                 )
+                BudgetMeter(summary.spent, trip.budget)
+            } else {
                 Text(
-                    if (dated) dateRange(trip.startDate, trip.endDate) else destination.ifEmpty { trip.name },
-                    Modifier.padding(top = 4.dp), color = Ash, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                    spendText(summary), Modifier.padding(top = 14.dp),
+                    color = if (summary.spent.signum() > 0) Ink else Ash, maxLines = 1,
+                    style = MaterialTheme.typography.labelMedium,
                 )
             }
         }
-        // Tucked 12dp up under the card, so its top edge disappears behind it.
-        Row(
-            Modifier.padding(horizontal = 14.dp).fillMaxWidth()
-                .layout { measurable, constraints ->
-                    val tuck = 12.dp.roundToPx()
-                    val placeable = measurable.measure(constraints)
-                    layout(placeable.width, placeable.height - tuck) { placeable.place(0, -tuck) }
-                }
-                .clip(drawer).background(SoftCloud).border(1.dp, Hairline, drawer)
-                .padding(start = 18.dp, end = 18.dp, top = 26.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val ash = Ash
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = AccentInk, fontWeight = FontWeight.Bold)) { append(money(summary.spent, trip.currency)) }
-                    withStyle(SpanStyle(color = ash)) { append(" spent") }
-                },
-                Modifier.weight(1f), color = Ash, maxLines = 1,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = Ink)
-        }
+    }
+}
+
+/** A finished trip as a bare stamp on the passport page, its total underneath. */
+@Composable
+fun StampTile(
+    summary: TripSummary,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val trip = summary.trip
+    Column(
+        modifier.clip(RoundedCornerShape(20.dp))
+            .clickable(onClickLabel = "Open trip", onClick = onClick)
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Stamp(trip)
+        Text(
+            trip.name, Modifier.padding(top = 12.dp), color = Ink, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            if (summary.spent.signum() > 0) moneyShort(summary.spent, trip.currency) else "No expenses",
+            Modifier.padding(top = 2.dp), color = Ash, style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+/** Whole units for glanceable totals ("€1,600"); cents belong on the trip itself. */
+fun moneyShort(value: BigDecimal, currency: String = "EUR"): String =
+    symbolFor(currency) + amountText(value, cents = false)
+
+private fun spendText(summary: TripSummary): String {
+    val trip = summary.trip
+    return when {
+        summary.spent.signum() > 0 && trip.budget.signum() > 0 ->
+            "${moneyShort(summary.spent, trip.currency)} of ${moneyShort(trip.budget, trip.currency)}"
+        summary.spent.signum() > 0 -> "${moneyShort(summary.spent, trip.currency)} spent"
+        trip.budget.signum() > 0 -> "${moneyShort(trip.budget, trip.currency)} budget"
+        else -> "No expenses yet"
     }
 }
 

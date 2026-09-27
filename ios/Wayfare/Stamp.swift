@@ -11,6 +11,26 @@ private func tintColor(_ tint: StampTint) -> Color {
   }
 }
 
+/// The ink a stamp is pressed in: its own tint, taken deep enough to read as
+/// text on it (and pale enough on the dark tints). Matches `--stamp-*-ink`.
+private func inkColor(_ tint: StampTint) -> Color {
+  switch tint {
+  case .peach: Color(light: 0x8A4424, dark: 0xF6C7A6)
+  case .sky: Color(light: 0x1F5A7A, dark: 0xA9D6F0)
+  case .sage: Color(light: 0x2F6B3C, dark: 0xB5DFBE)
+  case .lilac: Color(light: 0x5B4596, dark: 0xD0C3F5)
+  }
+}
+
+/// The place a stamp names: the model's label once it has drawn one, until then
+/// the place as typed, less any region after a comma.
+func stampLabel(_ trip: Trip) -> String {
+  if trip.coverStatus == "ready", let art = trip.coverArt, !art.label.isEmpty { return art.label }
+  let place = trip.destination?.split(separator: ",").first
+    .map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+  return (place.isEmpty ? trip.name : place).uppercased()
+}
+
 /// Stamps already pressed onto a card this session, so scrolling a lazy list
 /// back over one does not press it again.
 @MainActor private var pressedStamps = Set<String>()
@@ -19,7 +39,8 @@ private let width: CGFloat = 104
 private let markSize: CGFloat = 52
 
 /// A trip's passport stamp: a tinted card with a dashed inner rule, the drawing,
-/// the place and the month, set at the trip's own angle. Mirrors the web
+/// the place and the month, all pressed in the tint's own ink and set at the
+/// trip's own angle. Mirrors the web
 /// `Stamp.tsx`. Until the drawing lands it is the same stamp, empty, with its
 /// rule breathing while the server draws.
 struct Stamp: View {
@@ -29,29 +50,25 @@ struct Stamp: View {
 
   private var style: StampStyle { StampStyle(tripId: trip.id) }
   private var art: StampArt? { trip.coverStatus == "ready" ? trip.coverArt : nil }
-  private var label: String {
-    if let art, !art.label.isEmpty { return art.label }
-    let place = trip.destination?.split(separator: ",").first
-      .map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
-    return (place.isEmpty ? trip.name : place).uppercased()
-  }
+  private var label: String { stampLabel(trip) }
+
+  private var ink: Color { inkColor(style.tint) }
 
   var body: some View {
     VStack(spacing: 5) {
       StampDrawing(paths: art?.paths ?? [])
-        .stroke(Palette.ink, style: StrokeStyle(lineWidth: 2 * markSize / 64, lineCap: .round, lineJoin: .round))
+        .stroke(ink, style: StrokeStyle(lineWidth: 1.75 * markSize / 64, lineCap: .round, lineJoin: .round))
         .frame(width: markSize, height: markSize)
         .opacity(art == nil ? 0 : 1)
         .animation(.easeOut(duration: 0.36), value: art)
       Text(label)
         .font(.custom(Cereal.semibold, size: 13)).tracking(0.26)
         .lineLimit(1).truncationMode(.tail)
-        .foregroundStyle(Palette.ink)
-      if let month = stampMonth(trip.startDate) {
-        Text(month)
-          .font(.system(size: 10, design: .monospaced)).tracking(0.8)
-          .foregroundStyle(Palette.ash)
-      }
+        .foregroundStyle(ink)
+      // An undated stamp still gets its date line, so it never looks unfinished.
+      Text(stampMonth(trip.startDate ?? trip.endDate) ?? "DATES OPEN")
+        .font(.system(size: 10, design: .monospaced)).tracking(0.8)
+        .foregroundStyle(ink.opacity(0.75))
     }
     .padding(.horizontal, 10).padding(.top, 14).padding(.bottom, 12)
     .frame(width: width)
@@ -74,7 +91,7 @@ struct Stamp: View {
 
   @ViewBuilder private var rule: some View {
     let dashed = shape(corner: 13, width: width - 10)
-      .stroke(Palette.ink.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [4.5, 3]))
+      .stroke(ink.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [4.5, 3]))
     if trip.coverStatus == "pending" && !reduceMotion {
       dashed.phaseAnimator([1.0, 0.35]) { content, phase in content.opacity(phase) } animation: { _ in
         .easeInOut(duration: 0.8)

@@ -64,23 +64,43 @@ private fun tintColor(tint: StampTint, dark: Boolean) = when (tint) {
 }
 
 /**
+ * The ink a stamp is pressed in: its own tint, taken deep enough to read as
+ * text on it (and pale enough on the dark tints). Matches `--stamp-*-ink`.
+ */
+private fun inkColor(tint: StampTint, dark: Boolean) = when (tint) {
+    StampTint.Peach -> if (dark) Color(0xFFF6C7A6) else Color(0xFF8A4424)
+    StampTint.Sky -> if (dark) Color(0xFFA9D6F0) else Color(0xFF1F5A7A)
+    StampTint.Sage -> if (dark) Color(0xFFB5DFBE) else Color(0xFF2F6B3C)
+    StampTint.Lilac -> if (dark) Color(0xFFD0C3F5) else Color(0xFF5B4596)
+}
+
+/**
+ * The place a stamp names: the model's label once it has drawn one, until then
+ * the place as typed, less any region after a comma.
+ */
+fun stampLabel(trip: Trip): String =
+    trip.coverArt?.takeIf { trip.coverStatus == "ready" }?.label?.ifBlank { null }
+        ?: (trip.destination?.substringBefore(',')?.trim()?.ifBlank { null } ?: trip.name).uppercase()
+
+/**
  * A trip's passport stamp: a tinted card with a dashed inner rule, the drawing,
- * the place and the month, set at the trip's own angle. Mirrors the web
+ * the place and the month, all pressed in the tint's own ink and set at the
+ * trip's own angle. Mirrors the web
  * `Stamp.tsx`. Until the drawing lands it is the same stamp, empty, with its
  * rule breathing while the server draws.
  */
 @Composable
 fun Stamp(trip: Trip, modifier: Modifier = Modifier) {
     val style = remember(trip.id) { StampStyle.of(trip.id) }
-    val tint = tintColor(style.tint, isSystemInDarkTheme())
-    val ink = Ink
+    val dark = isSystemInDarkTheme()
+    val tint = tintColor(style.tint, dark)
+    val ink = inkColor(style.tint, dark)
     val art = trip.coverArt?.takeIf { trip.coverStatus == "ready" }
     // Already validated server side; a path that still fails to parse is skipped, not fatal.
     val paths = remember(art) {
         art?.paths.orEmpty().mapNotNull { runCatching { PathParser().parsePathString(it).toPath() }.getOrNull() }
     }
-    val label = art?.label?.ifBlank { null }
-        ?: (trip.destination?.substringBefore(',')?.trim()?.ifBlank { null } ?: trip.name).uppercase()
+    val label = stampLabel(trip)
 
     val outer = stampShape(style.arched, 18)
     val inner = stampShape(style.arched, 13)
@@ -117,7 +137,7 @@ fun Stamp(trip: Trip, modifier: Modifier = Modifier) {
                 translate(inset, inset) {
                     drawOutline(
                         inner.createOutline(Size(size.width - 2 * inset, size.height - 2 * inset), layoutDirection, this),
-                        color = ink.copy(alpha = 0.3f * breathing),
+                        color = ink.copy(alpha = 0.35f * breathing),
                         style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.5.dp.toPx(), 3.dp.toPx()))),
                     )
                 }
@@ -129,7 +149,7 @@ fun Stamp(trip: Trip, modifier: Modifier = Modifier) {
         Canvas(Modifier.size(52.dp).graphicsLayer { alpha = inked }) {
             val unit = size.width / 64f
             scale(unit, unit, pivot = Offset.Zero) {
-                val stroke = Stroke(2f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                val stroke = Stroke(1.75f, cap = StrokeCap.Round, join = StrokeJoin.Round)
                 paths.forEach { drawPath(it, ink, style = stroke) }
             }
         }
@@ -137,9 +157,11 @@ fun Stamp(trip: Trip, modifier: Modifier = Modifier) {
             label, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.02.em),
         )
-        stampMonth(trip.startDate)?.let {
-            Text(it, color = Ash, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 0.08.em))
-        }
+        // An undated stamp still gets its date line, so it never looks unfinished.
+        Text(
+            stampMonth(trip.startDate ?: trip.endDate) ?: "DATES OPEN", color = ink.copy(alpha = 0.75f),
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 0.08.em),
+        )
     }
 }
 

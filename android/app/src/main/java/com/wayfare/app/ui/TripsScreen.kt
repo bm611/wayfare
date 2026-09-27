@@ -1,6 +1,8 @@
 package com.wayfare.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +37,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,13 +51,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wayfare.app.AppContainer
 import com.wayfare.app.core.TripPhase
+import com.wayfare.app.core.TripSummary
 import com.wayfare.app.core.tripPhase
 import com.wayfare.app.feature.TripsViewModel
+import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
 @Composable
@@ -70,6 +81,7 @@ fun TripsScreen(
     var showJoin by remember { mutableStateOf(false) }
     var inviteSeed by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
+    var showAdd by remember { mutableStateOf(false) }
     var showDeleteAccount by remember { mutableStateOf(false) }
 
     LaunchedEffect(pendingInvite) {
@@ -93,14 +105,33 @@ fun TripsScreen(
                 // them is wide enough to be read as canvas.
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                // Top nav: wordmark and circular controls.
+                // Top nav: the wordmark, then add and account as circular controls.
                 item {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Brand(Modifier.weight(1f))
-                        CircleIconButton(Icons.Outlined.ConfirmationNumber, "Join a trip") { showJoin = true }
+                        Box {
+                            Box(
+                                Modifier.size(48.dp).clip(CircleShape).background(Accent)
+                                    .clickable(onClickLabel = "Add a trip") { showAdd = true }
+                                    .semantics { contentDescription = "Add a trip" },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Outlined.Add, null, Modifier.size(20.dp), tint = OnAccent) }
+                            DropdownMenu(expanded = showAdd, onDismissRequest = { showAdd = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("New trip") },
+                                    leadingIcon = { Icon(Icons.Outlined.Add, null) },
+                                    onClick = { showAdd = false; showTripForm = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Join with a code") },
+                                    leadingIcon = { Icon(Icons.Outlined.ConfirmationNumber, null) },
+                                    onClick = { showAdd = false; showJoin = true },
+                                )
+                            }
+                        }
                         Spacer(Modifier.size(8.dp))
                         Box {
                             CircleIconButton(Icons.Outlined.Person, "Account") { showMenu = true }
@@ -128,17 +159,12 @@ fun TripsScreen(
                 item {
                     Column(Modifier.padding(horizontal = 24.dp)) {
                         Text("Your trips", style = MaterialTheme.typography.displaySmall)
-                        Text(
-                            if (state.trips.isEmpty()) "Your first journey is waiting."
-                            else "${state.trips.size} ${if (state.trips.size == 1) "trip" else "trips"}. All your plans, in one place.",
-                            Modifier.padding(top = 6.dp, bottom = 20.dp),
+                        if (state.trips.isEmpty()) Text(
+                            "Your first journey is waiting.",
+                            Modifier.padding(top = 6.dp),
                             color = Ash,
                             style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            PrimaryButton("New trip", Modifier.weight(1f), icon = Icons.Outlined.Add) { showTripForm = true }
-                            SecondaryButton("Join friend", Modifier.weight(1f)) { showJoin = true }
-                        }
+                        ) else PassportSummary(state.trips, container, Modifier.padding(top = 16.dp))
                     }
                 }
                 state.error?.let { message ->
@@ -173,6 +199,7 @@ fun TripsScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                             )
+                            PrimaryButton("New trip", Modifier.padding(top = 20.dp), icon = Icons.Outlined.Add) { showTripForm = true }
                             TextButton(onClick = { showJoin = true }, Modifier.padding(top = 8.dp)) {
                                 Text("I have an invite code", color = Ink, style = MaterialTheme.typography.labelMedium)
                             }
@@ -201,12 +228,28 @@ fun TripsScreen(
                                     )
                                 }
                             }
-                            items(trips, key = { it.trip.id }) { summary ->
-                                ListingCard(
-                                    summary = summary,
-                                    modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
-                                    onClick = { onOpenTrip(summary.trip.id) },
-                                )
+                            // Trips still to come get a full card; finished ones are
+                            // collected, stamps on a passport page, two across.
+                            if (title == "Past trips") {
+                                items(trips.chunked(2), key = { row -> row.first().trip.id }) { row ->
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).animateItem(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    ) {
+                                        row.forEach { summary ->
+                                            StampTile(summary, Modifier.weight(1f)) { onOpenTrip(summary.trip.id) }
+                                        }
+                                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            } else {
+                                items(trips, key = { it.trip.id }) { summary ->
+                                    ListingCard(
+                                        summary = summary,
+                                        modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
+                                        onClick = { onOpenTrip(summary.trip.id) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -244,6 +287,43 @@ fun TripsScreen(
                     container.preferences.setPendingInvite(null)
                 }
             },
+        )
+    }
+}
+
+/**
+ * The passport at a glance: stamps collected, places they name, and what they
+ * cost, in euros whatever each trip is budgeted in.
+ */
+@Composable
+private fun PassportSummary(trips: List<TripSummary>, container: AppContainer, modifier: Modifier = Modifier) {
+    val places = trips.map { stampLabel(it.trip).lowercase() }.toSet().size
+    val spent = trips.fold(BigDecimal.ZERO) { total, summary ->
+        total + (container.fx.convert(summary.spent, summary.trip.currency, "EUR") ?: BigDecimal.ZERO)
+    }
+    val stamps = trips.size
+    Row(
+        modifier.height(IntrinsicSize.Min).clearAndSetSemantics {
+            contentDescription = "$stamps ${if (stamps == 1) "trip" else "trips"}, " +
+                "$places ${if (places == 1) "place" else "places"}, ${moneyShort(spent)} spent"
+        },
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        SummaryStat("$stamps", if (stamps == 1) "STAMP" else "STAMPS")
+        VerticalDivider(color = Hairline)
+        SummaryStat("$places", if (places == 1) "PLACE" else "PLACES")
+        VerticalDivider(color = Hairline)
+        SummaryStat(moneyShort(spent), "SPENT")
+    }
+}
+
+@Composable
+private fun SummaryStat(value: String, label: String) {
+    Column {
+        Text(value, maxLines = 1, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            label, Modifier.padding(top = 4.dp), color = Ash,
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 0.08.em),
         )
     }
 }
