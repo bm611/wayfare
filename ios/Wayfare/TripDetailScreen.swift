@@ -346,7 +346,7 @@ struct TripDetailScreen: View {
   }
 
   /// The review-card row: a circular glyph where an avatar would sit, the title
-  /// in 16/600, its payer in 14/500 ash, and no border of its own.
+  /// in 16/600, and no border of its own.
   private func expenseRow(_ expense: Expense, currency: String) -> some View {
     let layout = textSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
     return layout {
@@ -355,8 +355,6 @@ struct TripDetailScreen: View {
         .background(Palette.softCloud, in: Circle())
       VStack(alignment: .leading, spacing: 2) {
         Text(expense.title).typeStyle(.titleMedium).fixedSize(horizontal: false, vertical: true)
-        Text(store.name(for: expense.userId)).typeStyle(.bodyMedium)
-          .foregroundStyle(Palette.ash)
         if expense.syncState != .synced {
           Text(expense.syncState == .failed ? "Not saved · tap to resolve" : "Waiting to sync")
             .typeStyle(.bodySmall)

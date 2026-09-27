@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Brand } from "../components/Brand";
 import { Button } from "../components/Button";
-import { Ticket } from "../components/Ticket";
 import { ErrorNote } from "../components/States";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -48,54 +47,54 @@ export function DeleteAccount() {
   }
 
   return (
-    <main className="grain mx-auto flex min-h-[100dvh] max-w-[440px] flex-col px-6 pb-10 pt-8">
-      <Brand size="lg" />
+    <main className="mx-auto flex min-h-[100dvh] max-w-[480px] flex-col px-6 pb-10 pt-6">
+      <Brand />
 
       <div className="mt-10">
-        <Ticket>
+        <div className="rounded-card bg-cloud">
           <div className="flex flex-col gap-4 p-6">
             {stage === "done" ? (
               <>
-                <p className="tabular text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+                <p className="type-label text-ash">
                   Account closed
                 </p>
-                <h1 className="font-display text-[22px] font-semibold tracking-tight text-ink">
+                <h1 className="type-headline text-ink">
                   Your account is deleted
                 </h1>
-                <p className="text-[15px] leading-relaxed text-ink-soft">
+                <p className="type-body-lg text-ash">
                   Your trips, expenses and sign-in details are gone. Anything you
                   still have open in the app will stop working the next time it
                   reaches the server.
                 </p>
-                <Link to="/" className="text-[14px] font-medium text-clay underline underline-offset-4">
+                <Link to="/" className="type-label text-accent-ink underline underline-offset-4">
                   Back to Wayfare
                 </Link>
               </>
             ) : (
               <>
-                <p className="tabular text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+                <p className="type-label text-ash">
                   Your data
                 </p>
-                <h1 className="font-display text-[22px] font-semibold tracking-tight text-ink">
+                <h1 className="type-headline text-ink">
                   Delete your account
                 </h1>
 
-                <p className="text-[15px] leading-relaxed text-ink-soft">
+                <p className="type-body-lg text-ash">
                   Deleting removes your account, every trip you own, and all the
                   expenses logged on them. It cannot be undone.
                 </p>
 
-                <ul className="flex flex-col gap-2 text-[14px] leading-relaxed text-ink-soft">
+                <ul className="flex flex-col gap-2 type-body text-ash">
                   <li className="flex gap-2">
-                    <span aria-hidden className="text-clay">—</span>
+                    <span aria-hidden className="text-accent-ink">—</span>
                     Trips you own are deleted for every traveller on them, not just you.
                   </li>
                   <li className="flex gap-2">
-                    <span aria-hidden className="text-clay">—</span>
+                    <span aria-hidden className="text-accent-ink">—</span>
                     Trips someone else owns stay with them; you only lose access.
                   </li>
                   <li className="flex gap-2">
-                    <span aria-hidden className="text-clay">—</span>
+                    <span aria-hidden className="text-accent-ink">—</span>
                     Any entries still waiting to sync on your phone are removed too.
                   </li>
                 </ul>
@@ -105,7 +104,7 @@ export function DeleteAccount() {
                 {user ? (
                   stage === "confirm" || stage === "working" ? (
                     <div className="flex flex-col gap-2 pt-1">
-                      <p className="text-[14px] font-medium text-ink">
+                      <p className="type-label text-ink">
                         Signed in as {user.email}. Delete this account?
                       </p>
                       <div className="flex gap-2">
@@ -128,7 +127,7 @@ export function DeleteAccount() {
                       </Button>
                       <Link
                         to="/"
-                        className="press text-center text-[14px] font-medium text-ink-soft underline underline-offset-4"
+                        className="press text-center type-label text-ash underline underline-offset-4"
                       >
                         Back to your trips
                       </Link>
@@ -136,18 +135,18 @@ export function DeleteAccount() {
                   )
                 ) : (
                   <div className="flex flex-col gap-3 pt-1">
-                    <p className="text-[15px] leading-relaxed text-ink-soft">
+                    <p className="type-body-lg text-ash">
                       Sign in and come back to this page to delete your account
                       yourself.
                     </p>
                     <Button variant="solid" full onClick={() => navigate("/auth")}>
                       Sign in
                     </Button>
-                    <p className="text-[13px] leading-relaxed text-ink-soft">
+                    <p className="type-body-sm text-ash">
                       Locked out, or no longer have the app? Email{" "}
                       <a
                         href={`mailto:${SUPPORT_EMAIL}?subject=Delete%20my%20Wayfare%20account`}
-                        className="font-medium text-clay underline underline-offset-4"
+                        className="font-medium text-accent-ink underline underline-offset-4"
                       >
                         {SUPPORT_EMAIL}
                       </a>{" "}
@@ -158,7 +157,7 @@ export function DeleteAccount() {
               </>
             )}
           </div>
-        </Ticket>
+        </div>
       </div>
     </main>
   );

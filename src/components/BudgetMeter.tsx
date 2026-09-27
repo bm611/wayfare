@@ -1,24 +1,23 @@
 import { memo } from "react";
 import { cx } from "../lib/cx";
 
+/** A compact budget rail with an optional percentage readout on detail views. */
 export const BudgetMeter = memo(function BudgetMeter({
   spent,
   budget,
-  onImage = false,
+  track = "cloud",
   showLabel = false,
 }: {
   spent: number;
   budget: number;
-  /** Over a destination shot the clay fill loses its contrast, so it goes pale. */
-  onImage?: boolean;
+  /** Hairline when the rail sits on a cloud panel, so it still reads. */
+  track?: "cloud" | "hairline";
   showLabel?: boolean;
 }) {
   if (budget <= 0) return null;
 
   const ratio = Math.max(0, spent / budget);
-  const cappedRatio = Math.min(ratio, 1);
   const percentage = Math.round(ratio * 100);
-  const over = ratio > 1;
 
   return (
     <div
@@ -31,18 +30,15 @@ export const BudgetMeter = memo(function BudgetMeter({
       aria-valuetext={`${percentage}% of budget used`}
     >
       {showLabel && (
-        <div className={cx("mb-2 flex items-baseline justify-between text-xs font-medium", onImage ? "text-paper/80" : "text-ink-soft")}>
-          <span>Budget used</span>
-          <span className="tabular">{percentage}%</span>
+        <div className="mb-2 flex items-baseline justify-between">
+          <span className="type-body-sm text-ash">Budget used</span>
+          <span className="tabular type-label text-ash">{percentage}%</span>
         </div>
       )}
-      <div className={cx("h-2 overflow-hidden rounded-full", onImage ? "bg-paper/20" : "bg-line-soft")}>
+      <div className={cx("h-1 overflow-hidden rounded-full", track === "hairline" ? "bg-hairline" : "bg-cloud")}>
         <div
-          className={cx(
-            "h-full origin-left rounded-full transition-transform duration-500",
-            over ? (onImage ? "bg-clay-light" : "bg-clay-deep") : (onImage ? "bg-paper/90" : "bg-clay"),
-          )}
-          style={{ transform: `scaleX(${cappedRatio})` }}
+          className={cx("h-full origin-left rounded-full transition-transform duration-500", ratio > 1 ? "bg-error" : "bg-accent-ink")}
+          style={{ transform: `scaleX(${Math.min(ratio, 1)})` }}
         />
       </div>
     </div>

@@ -57,7 +57,7 @@ function RouteLoading() {
     <div className="flex flex-col items-center gap-3">
       <Brand />
       <div className="flex gap-1">
-        {[0, 1, 2].map((i) => <span key={i} className="beacon size-1.5 rounded-full bg-clay"
+        {[0, 1, 2].map((i) => <span key={i} className="beacon size-1.5 rounded-full bg-accent"
           style={{ animationDelay: `${i * 180}ms` }} />)}
       </div>
     </div>

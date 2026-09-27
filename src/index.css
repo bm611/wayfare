@@ -1,59 +1,93 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------
-   Wayfare — "Boarding Pass" design system
-   Warm paper, ink, a single clay accent. Numbers always monospace.
+   Wayfare — shared token-for-token with the native iOS (Theme.swift) and
+   Android (Theme.kt) apps. One soft pastel accent, one type family,
+   disciplined grayscale for everything else: the passport stamps carry
+   the colour. Dark values follow the system appearance, as on the phones.
    ------------------------------------------------------------------ */
 @theme {
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-paper: #f7f2e9;
-  --color-paper-deep: #efe7d9;
-  --color-card: #fffcf6;
-  --color-ink: #1a1714;
-  --color-ink-soft: #6f6459;
-  --color-ink-faint: #786d61;
-  --color-line: #e3d9ca;
-  --color-line-soft: #efe7db;
+  --color-canvas: #ffffff;
+  /* Subsurface tint for sections that step back from the canvas. */
+  --color-cloud: #f7f7f7;
+  /* The 1px workhorse: every card-to-card and row-to-row divider. */
+  --color-hairline: #dddddd;
+  --color-ink: #222222;
+  --color-charcoal: #3f3f3f;
+  --color-ash: #6a6a6a;
+  --color-mute: #929292;
+  --color-stone: #c1c1c1;
 
-  --color-clay: #b5543c;
-  --color-clay-deep: #8d3d29;
-  --color-clay-wash: #f4e3dc;
-  /* Clay lifted until it survives a photograph behind it. */
-  --color-clay-light: #eb9b7d;
+  /* Pastel blue fill for the one primary action on a surface. */
+  --color-accent: #c6daef;
+  --color-on-accent: #1e2b3a;
+  /* The accent as text, icons and meter fills. */
+  --color-accent-ink: #3e6a93;
+  /* The New trip slot's wash. */
+  --color-accent-wash: #ebf2fa;
 
-  --color-cat-flights: #40697d;
-  --color-cat-stays: #8a5a44;
-  --color-cat-food: #a8761f;
-  --color-cat-activities: #55713f;
-  --color-cat-transport: #66628a;
-  --color-cat-shopping: #9d4f61;
-  --color-cat-other: #7a736a;
+  --color-error: #c13515;
 
-  --radius-ticket: 1.5rem;
+  /* Radius scale: chips, controls, cards, panels, pills. */
+  --radius-chip: 4px;
+  --radius-control: 8px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+  --radius-pill: 32px;
+  --radius-listing: 28px;
 
-  --shadow-lift: 0 1px 2px rgb(26 23 20 / 0.04), 0 12px 28px -14px rgb(26 23 20 / 0.18);
-  --shadow-sheet: 0 -8px 48px -12px rgb(26 23 20 / 0.28);
+  --shadow-lift: 0 6px 12px rgb(0 0 0 / 0.08);
+  --shadow-float: 0 4px 8px rgb(0 0 0 / 0.14);
+  --shadow-sheet: 0 -8px 48px -12px rgb(0 0 0 / 0.28);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @layer base {
-  /* Passport stamp tints, shared with the Android and iOS stamps. Outside
-     @theme because only lib/stamp.ts names them, and Tailwind drops theme
-     variables no utility class uses. */
+  /* Passport stamp tints and inks, shared with the Android and iOS stamps.
+     Outside @theme because only lib/stamp.ts names them, and Tailwind drops
+     theme variables no utility class uses. */
   :root {
+    color-scheme: light dark;
     --stamp-peach: #fcd5b9;
     --stamp-sky: #c7e7f9;
     --stamp-sage: #cdead2;
     --stamp-lilac: #e1d8f9;
-    /* The ink each stamp is pressed in: its own tint, taken deep. */
     --stamp-peach-ink: #8a4424;
     --stamp-sky-ink: #1f5a7a;
     --stamp-sage-ink: #2f6b3c;
     --stamp-lilac-ink: #5b4596;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-canvas: #181a1b;
+      --color-cloud: #242729;
+      --color-hairline: #44484b;
+      --color-ink: #f3f3f2;
+      --color-charcoal: #e2e3e3;
+      --color-ash: #b6b9bb;
+      --color-mute: #94999d;
+      --color-stone: #70777c;
+      --color-accent: #b3cde8;
+      --color-accent-ink: #a9c8e8;
+      --color-accent-wash: #1e2833;
+      --color-error: #ff927d;
+      --shadow-lift: 0 6px 12px rgb(0 0 0 / 0.3);
+      --stamp-peach: #4e2f1c;
+      --stamp-sky: #1c3645;
+      --stamp-sage: #223928;
+      --stamp-lilac: #332b44;
+      --stamp-peach-ink: #f6c7a6;
+      --stamp-sky-ink: #a9d6f0;
+      --stamp-sage-ink: #b5dfbe;
+      --stamp-lilac-ink: #d0c3f5;
+    }
   }
 
   html {
@@ -63,18 +97,16 @@
 
   body {
     margin: 0;
-    background-color: var(--color-paper);
+    background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01";
+    /* The system has no 400: body copy sits a notch heavier than default. */
+    font-weight: 500;
     overscroll-behavior-y: none;
   }
 
-  /* Numerals never jitter while they animate. */
-  .tabular,
-  code,
-  kbd {
-    font-family: var(--font-mono);
+  /* Numerals never jitter while they change. */
+  .tabular {
     font-variant-numeric: tabular-nums;
   }
 
@@ -94,51 +126,47 @@
   }
 
   ::selection {
-    background: var(--color-clay-wash);
-    color: var(--color-clay-deep);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-clay);
+    outline: 2px solid var(--color-accent-ink);
     outline-offset: 2px;
   }
 }
 
 @layer utilities {
-  /* Fixed, non-scrolling paper grain. Never inside a scroll container. */
-  .grain::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    pointer-events: none;
-    opacity: 0.34;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
-  }
-
-  /* Diagonal hatching used on ticket stubs. */
-  .hatch {
-    background-image: repeating-linear-gradient(
-      -45deg,
-      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
-      transparent 1px 7px
-    );
-  }
-
-  .tear {
-    border-top: 1.5px dashed var(--color-line);
-  }
+  /* The type scale, mirroring WayfareTypography / TypeStyle: size, weight
+     and tracking travel together. */
+  .type-display { font-size: 32px; line-height: 1.15; font-weight: 700; letter-spacing: -0.6px; }
+  .type-headline { font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -0.44px; }
+  .type-title-lg { font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.18px; }
+  .type-title { font-size: 16px; line-height: 1.35; font-weight: 600; }
+  .type-body-lg { font-size: 16px; line-height: 1.45; font-weight: 500; }
+  .type-body { font-size: 14px; line-height: 1.45; font-weight: 500; }
+  .type-body-sm { font-size: 13px; line-height: 1.4; font-weight: 500; }
+  .type-label { font-size: 14px; line-height: 1.35; font-weight: 600; }
+  .type-label-sm { font-size: 11px; line-height: 1.3; font-weight: 600; }
 
   .safe-b {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
+  /* Press feedback: a 0.98 scale, as on the native controls. */
   .press {
-    transition: transform 0.16s var(--ease-out-expo), opacity 0.16s var(--ease-out-expo);
+    transition: transform 0.2s var(--ease-out-strong), opacity 0.2s var(--ease-out-strong);
   }
   .press:active {
-    transform: scale(0.975);
+    transform: scale(0.98);
   }
+
+  /* A slow pulse for "working" dots. */
+  @keyframes beacon {
+    0%, 100% { opacity: 0.35; transform: scale(0.82); }
+    50%      { opacity: 1;    transform: scale(1); }
+  }
+  .beacon { animation: beacon 2.4s ease-in-out infinite; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -148,22 +176,6 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-@layer utilities {
-  /* Boarding light on the active trip's stub. */
-  @keyframes beacon {
-    0%, 100% { opacity: 0.35; transform: scale(0.82); }
-    50%      { opacity: 1;    transform: scale(1); }
-  }
-  .beacon { animation: beacon 2.4s ease-in-out infinite; }
-}
-
-@layer utilities {
-  /* Loading placeholders (States.tsx). */
-  @keyframes shimmer {
-    100% { transform: translateX(100%); }
   }
 }
 
@@ -210,7 +222,6 @@
   .stamp-label {
     max-width: 100%;
     overflow: hidden;
-    font-family: var(--font-display);
     font-size: 13px;
     font-weight: 600;
     line-height: 1.1;

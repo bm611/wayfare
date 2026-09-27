@@ -37,7 +37,7 @@ export function todayISO() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function shortDate(iso: string) {
   const d = parseDay(iso);
@@ -82,11 +82,16 @@ export function tripPhase(trip: { start_date: string | null; end_date: string | 
   };
 }
 
-/** Airport-style three letter code derived from the destination or trip name. */
-export function tripCode(trip: { destination: string | null; name: string }) {
-  const source = (trip.destination || trip.name).replace(/[^a-zA-Z ]/g, " ").trim();
-  const words = source.split(/\s+/).filter(Boolean);
-  if (words.length >= 3) return words.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
-  if (words.length === 2) return (words[0].slice(0, 2) + words[1][0]).toUpperCase();
-  return (words[0]?.slice(0, 3) || "WYF").toUpperCase().padEnd(3, "X");
+/** "Day 3 of 7", "In 26 days": the phase as the native apps word it. */
+export function phaseLabel(phase: TripPhase) {
+  switch (phase.kind) {
+    case "active":
+      return `Day ${phase.day} of ${phase.total}`;
+    case "upcoming":
+      return `In ${phase.days} ${phase.days === 1 ? "day" : "days"}`;
+    case "past":
+      return "Past trip";
+    default:
+      return "Dates open";
+  }
 }

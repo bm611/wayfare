@@ -2,7 +2,17 @@ package com.wayfare.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,7 +47,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,21 +60,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wayfare.app.AppContainer
 import com.wayfare.app.core.TripPhase
-import com.wayfare.app.core.TripSummary
 import com.wayfare.app.core.tripPhase
 import com.wayfare.app.feature.TripsViewModel
-import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,7 +83,6 @@ fun TripsScreen(
     var showJoin by remember { mutableStateOf(false) }
     var inviteSeed by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
-    var showAdd by remember { mutableStateOf(false) }
     var showDeleteAccount by remember { mutableStateOf(false) }
 
     LaunchedEffect(pendingInvite) {
@@ -105,33 +106,14 @@ fun TripsScreen(
                 // them is wide enough to be read as canvas.
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                // Top nav: the wordmark, then add and account as circular controls.
+                // Top nav: the wordmark, then join and account as circular controls.
                 item {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Brand(Modifier.weight(1f))
-                        Box {
-                            Box(
-                                Modifier.size(48.dp).clip(CircleShape).background(Accent)
-                                    .clickable(onClickLabel = "Add a trip") { showAdd = true }
-                                    .semantics { contentDescription = "Add a trip" },
-                                contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.Add, null, Modifier.size(20.dp), tint = OnAccent) }
-                            DropdownMenu(expanded = showAdd, onDismissRequest = { showAdd = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("New trip") },
-                                    leadingIcon = { Icon(Icons.Outlined.Add, null) },
-                                    onClick = { showAdd = false; showTripForm = true },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Join with a code") },
-                                    leadingIcon = { Icon(Icons.Outlined.ConfirmationNumber, null) },
-                                    onClick = { showAdd = false; showJoin = true },
-                                )
-                            }
-                        }
+                        CircleIconButton(Icons.Outlined.ConfirmationNumber, "Join a trip") { showJoin = true }
                         Spacer(Modifier.size(8.dp))
                         Box {
                             CircleIconButton(Icons.Outlined.Person, "Account") { showMenu = true }
@@ -159,12 +141,7 @@ fun TripsScreen(
                 item {
                     Column(Modifier.padding(horizontal = 24.dp)) {
                         Text("Your trips", style = MaterialTheme.typography.displaySmall)
-                        if (state.trips.isEmpty()) Text(
-                            "Your first journey is waiting.",
-                            Modifier.padding(top = 6.dp),
-                            color = Ash,
-                            style = MaterialTheme.typography.bodyLarge,
-                        ) else PassportSummary(state.trips, container, Modifier.padding(top = 16.dp))
+                        NewTripButton(Modifier.padding(top = 20.dp)) { showTripForm = true }
                     }
                 }
                 state.error?.let { message ->
@@ -199,7 +176,6 @@ fun TripsScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                             )
-                            PrimaryButton("New trip", Modifier.padding(top = 20.dp), icon = Icons.Outlined.Add) { showTripForm = true }
                             TextButton(onClick = { showJoin = true }, Modifier.padding(top = 8.dp)) {
                                 Text("I have an invite code", color = Ink, style = MaterialTheme.typography.labelMedium)
                             }
@@ -292,40 +268,44 @@ fun TripsScreen(
 }
 
 /**
- * The passport at a glance: stamps collected, places they name, and what they
- * cost, in euros whatever each trip is budgeted in.
+ * The way into a new trip, drawn as the empty slot the next stamp will fill: a
+ * dashed, tilted stamp outline holding the plus, on a wash of the accent.
  */
 @Composable
-private fun PassportSummary(trips: List<TripSummary>, container: AppContainer, modifier: Modifier = Modifier) {
-    val places = trips.map { stampLabel(it.trip).lowercase() }.toSet().size
-    val spent = trips.fold(BigDecimal.ZERO) { total, summary ->
-        total + (container.fx.convert(summary.spent, summary.trip.currency, "EUR") ?: BigDecimal.ZERO)
-    }
-    val stamps = trips.size
+private fun NewTripButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    val accentInk = AccentInk
+    val wash = if (isSystemInDarkTheme()) Color(0xFF1E2833) else Color(0xFFEBF2FA)
     Row(
-        modifier.height(IntrinsicSize.Min).clearAndSetSemantics {
-            contentDescription = "$stamps ${if (stamps == 1) "trip" else "trips"}, " +
-                "$places ${if (places == 1) "place" else "places"}, ${moneyShort(spent)} spent"
-        },
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        modifier.fillMaxWidth().clip(shape).background(wash)
+            .drawBehind { dashedOutline(20.dp.toPx(), accentInk.copy(alpha = 0.3f), 6.dp.toPx(), 4.dp.toPx()) }
+            .clickable(onClickLabel = "Create a trip", onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        SummaryStat("$stamps", if (stamps == 1) "STAMP" else "STAMPS")
-        VerticalDivider(color = Hairline)
-        SummaryStat("$places", if (places == 1) "PLACE" else "PLACES")
-        VerticalDivider(color = Hairline)
-        SummaryStat(moneyShort(spent), "SPENT")
+        Box(
+            Modifier.size(52.dp).rotate(-3f)
+                .drawBehind { dashedOutline(12.dp.toPx(), accentInk.copy(alpha = 0.5f), 4.5.dp.toPx(), 3.dp.toPx()) },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Outlined.Add, null, Modifier.size(22.dp), tint = accentInk) }
+        Column(Modifier.weight(1f).padding(start = 16.dp)) {
+            Text("New trip", style = MaterialTheme.typography.titleMedium)
+            Text("Start your next stamp", Modifier.padding(top = 2.dp), color = Ash, style = MaterialTheme.typography.bodyMedium)
+        }
+        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(20.dp), tint = accentInk)
     }
 }
 
-@Composable
-private fun SummaryStat(value: String, label: String) {
-    Column {
-        Text(value, maxLines = 1, style = MaterialTheme.typography.headlineSmall)
-        Text(
-            label, Modifier.padding(top = 4.dp), color = Ash,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 0.08.em),
-        )
-    }
+private fun DrawScope.dashedOutline(corner: Float, color: Color, dash: Float, gap: Float) {
+    val stroke = 1.5.dp.toPx()
+    drawRoundRect(
+        color,
+        topLeft = Offset(stroke / 2, stroke / 2),
+        size = Size(size.width - stroke, size.height - stroke),
+        cornerRadius = CornerRadius(corner),
+        style = Stroke(stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap))),
+    )
 }
 
 /**

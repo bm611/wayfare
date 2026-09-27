@@ -151,13 +151,13 @@ export function ExpenseSheet({
       {readOnly && editing ? (
         <div className="space-y-5 pb-4">
           <p className="tabular text-3xl font-medium">{symbolFor(currency)}{money(editing.amount)}</p>
-          <p className="text-sm text-ink-soft">Paid by {payer ?? "another traveller"}. Only the person who added this expense can edit or delete it.</p>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <dt className="text-ink-soft">Category</dt><dd>{CATEGORY_LIST.find((c) => c.key === editing.category)?.label}</dd>
-            <dt className="text-ink-soft">Date</dt><dd>{editing.spent_on}</dd>
-            {editing.original_currency && <><dt className="text-ink-soft">Originally paid</dt><dd>{editing.original_currency} {money(editing.original_amount ?? editing.amount)}</dd></>}
+          <p className="type-body text-ash">Paid by {payer ?? "another traveller"}. Only the person who added this expense can edit or delete it.</p>
+          <dl className="grid grid-cols-2 gap-3 type-body">
+            <dt className="text-ash">Category</dt><dd>{CATEGORY_LIST.find((c) => c.key === editing.category)?.label}</dd>
+            <dt className="text-ash">Date</dt><dd>{editing.spent_on}</dd>
+            {editing.original_currency && <><dt className="text-ash">Originally paid</dt><dd>{editing.original_currency} {money(editing.original_amount ?? editing.amount)}</dd></>}
           </dl>
-          {editing.note && <p className="whitespace-pre-wrap break-words text-sm">{editing.note}</p>}
+          {editing.note && <p className="whitespace-pre-wrap break-words type-body">{editing.note}</p>}
         </div>
       ) : (
       <form id={formId} onSubmit={submit} className="flex flex-col gap-5">
@@ -188,12 +188,12 @@ export function ExpenseSheet({
         </div>
 
         {preview && (
-          <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-line bg-paper px-3.5 py-2.5">
-            <span className="tabular text-[15px] font-medium text-ink">
+          <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-hairline bg-canvas px-3.5 py-2.5">
+            <span className="tabular type-body-lg font-medium text-ink">
               = {symbolFor(currency)}
               {money(preview.converted)}
             </span>
-            <span className="tabular text-xs text-ink-faint">
+            <span className="tabular type-body-sm text-ash">
               1 {paidIn} = {preview.rate.toFixed(4)} {currency}
               {stale ? " · offline rate" : ""}
             </span>
@@ -210,7 +210,7 @@ export function ExpenseSheet({
         />
 
         <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-0.5 text-[13px] font-medium text-ink-soft">
+          <legend className="mb-0.5 type-body text-ash">
             Category
           </legend>
           <div className="flex flex-wrap gap-2">
@@ -223,12 +223,10 @@ export function ExpenseSheet({
                   type="button"
                   onClick={() => set("category", meta.key)}
                   aria-pressed={active}
-                  className="press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium"
-                  style={{
-                    backgroundColor: active ? meta.wash : "transparent",
-                    borderColor: active ? meta.color : "var(--color-line)",
-                    color: active ? meta.color : "var(--color-ink-soft)",
-                  }}
+                  // Outlined pills; the chosen one takes the ink ring a focused field does.
+                  className={`press inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-canvas px-3.5 py-2 type-body ${
+                    active ? "border-ink text-ink ring-[0.5px] ring-ink" : "border-hairline text-ash"
+                  }`}
                 >
                   <Icon size={15} weight="bold" />
                   {meta.label}
@@ -245,7 +243,7 @@ export function ExpenseSheet({
           onChange={(e) => set("spentOn", e.target.value)}
         />
 
-        <button type="button" aria-expanded={moreDetails} onClick={() => setMoreDetails(!moreDetails)} className="press min-h-11 self-start text-sm font-medium text-clay underline underline-offset-4">
+        <button type="button" aria-expanded={moreDetails} onClick={() => setMoreDetails(!moreDetails)} className="press min-h-11 self-start type-label text-accent-ink underline underline-offset-4">
           {moreDetails ? "Hide optional note" : "More details · add a note"}
         </button>
         {moreDetails && <TextArea
@@ -258,8 +256,8 @@ export function ExpenseSheet({
 
         {editing &&
           (confirmDelete ? (
-            <div className="flex items-center gap-2.5 rounded-2xl border border-clay/30 bg-clay-wash/50 p-2.5">
-              <p className="flex-1 pl-1.5 text-[13px] text-clay-deep">Delete this entry?</p>
+            <div className="flex items-center gap-2.5 rounded-control border border-error p-2.5">
+              <p className="flex-1 pl-1.5 type-body text-error">Delete this entry?</p>
               <Button type="button" variant="quiet" onClick={() => setConfirmDelete(false)} className="h-10 px-3.5">
                 Keep
               </Button>

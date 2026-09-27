@@ -1,71 +1,46 @@
-import { PaperPlaneTilt } from "@phosphor-icons/react";
+import { AirplaneTakeoff } from "@phosphor-icons/react";
 import { cx } from "../lib/cx";
 
-export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
+/** The accent wordmark from the native top bars. */
+export function Brand() {
   return (
-    <span className="inline-flex items-center gap-2">
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-ink text-paper">
-        <PaperPlaneTilt size={14} weight="fill" />
-      </span>
-      <span
-        className={`font-display font-semibold tracking-tight text-ink ${
-          size === "lg" ? "text-[20px]" : "text-[17px]"
-        }`}
-      >
-        Wayfare
-      </span>
+    <span className="inline-flex items-center gap-2 text-accent-ink">
+      <AirplaneTakeoff size={22} weight="bold" aria-hidden />
+      <span className="type-headline">wayfare</span>
     </span>
   );
 }
 
 /**
- * Icon button for the top bars. Standalone it carries its own card surface so it
- * reads as a sibling of the primary button; inside an IconGroup the shell is the
- * group's, so `flush` drops the border and shrinks it to fit the padding.
+ * The circular icon button that recurs throughout the system: back, share,
+ * options. Always 50%, never any other geometry. An `active` toggle turns
+ * white with an ink ring, the same switch to ink a focused field makes.
  */
 export function IconButton({
   label,
   onClick,
-  tone = "neutral",
-  flush = false,
+  active,
   children,
+  ...rest
 }: {
   label: string;
-  onClick: () => void;
-  tone?: "neutral" | "danger";
-  flush?: boolean;
+  onClick?: () => void;
+  active?: boolean;
   children: React.ReactNode;
-}) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "children">) {
   return (
     <button
+      type="button"
+      {...rest}
       onClick={onClick}
       aria-label={label}
       title={label}
       className={cx(
-        "press grid shrink-0 place-items-center text-ink-soft",
-        flush
-          ? "size-11 rounded-xl"
-          : "size-11 rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]",
-        tone === "danger"
-          ? "hover:bg-clay-wash hover:text-clay-deep"
-          : "hover:bg-paper-deep hover:text-ink",
+        "press grid size-11 shrink-0 place-items-center rounded-full text-ink",
+        active ? "bg-canvas ring-[1.5px] ring-ink ring-inset" : "bg-cloud hover:bg-hairline/60",
       )}
     >
       {children}
     </button>
   );
-}
-
-/** Binds the secondary top-bar actions into one segmented pill. */
-export function IconGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex shrink-0 items-center rounded-2xl border border-line bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]">
-      {children}
-    </div>
-  );
-}
-
-/** Hairline between two buttons sharing an IconGroup. */
-export function IconGroupDivider() {
-  return <span aria-hidden className="mx-px h-4 w-px shrink-0 bg-line" />;
 }

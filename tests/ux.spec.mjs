@@ -80,7 +80,7 @@ test('budget, grouped trips, ledger search and filters', async ({ page }, testIn
   for (const name of ['Active trips', 'Upcoming trips', 'Past trips', 'Dates open']) await expect(page.getByRole('heading', { name, exact: false })).toBeVisible();
   await capture(page, { path: testInfo.outputPath('trips.png'), fullPage: true });
   await page.locator('a[href="/trip/lisbon"]').click();
-  await expect(page.getByText('Budget remaining', { exact: true })).toBeVisible();
+  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
   await expect(page.getByText('€228.00')).toBeVisible();
   await expect(page.getByText('Group budget', { exact: false })).toBeVisible();
   await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveAttribute('aria-valuetext', '24% of budget used');
@@ -95,7 +95,7 @@ test('budget, grouped trips, ledger search and filters', async ({ page }, testIn
   await expect(page.getByRole('button', { name: /Dinner by the river/ })).toBeVisible();
   await page.getByRole('button', { name: 'Show filters' }).click();
   await page.getByLabel('Category', { exact: true }).selectOption('transport');
-  await expect(page.getByText('No expenses match.', { exact: false })).toBeVisible();
+  await expect(page.getByText('No entries match these filters.')).toBeVisible();
   await capture(page, { path: testInfo.outputPath('no-results.png'), fullPage: true });
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.getByText('Spending by category', { exact: true }).click();
@@ -175,7 +175,7 @@ test('other travellers entries are read-only and own entries remain editable', a
   await capture(page, { path: testInfo.outputPath('read-only.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: /^Tram tickets You/ }).click();
+  await page.getByRole('button', { name: /^Tram tickets/ }).click();
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Delete entry' })).toBeVisible();
 });
@@ -201,16 +201,18 @@ test('trip drafts are protected and narrow layouts do not overflow', async ({ pa
 test('over-budget, zero-budget and last-day guidance', async ({ page }, testInfo) => {
   await mockApp(page, { trip: { budget: 300, end_date: '2026-09-05' } });
   await page.goto('/trip/lisbon');
-  await expect(page.getByText('€0.00 available/day remaining')).toBeVisible();
-  await expect(page.getByText('Across 1 day, including today.', { exact: false })).toBeVisible();
-  await expect(page.getByText('over by €60.00', { exact: false })).toBeVisible();
+  // Over budget, the shortfall is the headline and there is no per-day allowance left to offer.
+  await expect(page.getByText('Over budget', { exact: true })).toBeVisible();
+  await expect(page.getByText('€60.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('available per day', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveAttribute('aria-valuetext', '120% of budget used');
   await capture(page, { path: testInfo.outputPath('over-budget.png'), fullPage: true });
-  await page.getByRole('button', { name: 'Edit trip details' }).click();
+  await page.getByRole('button', { name: 'Trip options' }).click();
+  await page.getByRole('menuitem', { name: 'Edit trip' }).click();
   await page.getByLabel('Budget', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText('No budget set', { exact: false })).toBeVisible();
-  await expect(page.getByText('available/day remaining', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Set a budget' })).toBeVisible();
+  await expect(page.getByText('available per day', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('meter', { name: 'Budget used' })).toHaveCount(0);
 });
 
@@ -313,7 +315,7 @@ test('leaving the trips page cancels an in-flight cover poll', async ({ page }) 
   await page.clock.fastForward(4000);
   await expect.poll(() => polls).toBe(1);
   await page.locator('a[href="/trip/lisbon"]').click();
-  await expect(page.getByRole('heading', { name: trip.name })).toBeVisible();
+  await expect(page.getByRole('heading', { name: trip.destination })).toBeVisible();
   release();
   await page.clock.fastForward(16000);
   expect(polls).toBe(1);

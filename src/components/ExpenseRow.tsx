@@ -12,15 +12,12 @@ const SPRING = { type: "spring", stiffness: 420, damping: 40 } as const;
 export function ExpenseRow({
   expense,
   currency,
-  payer,
   canDelete = false,
   onSelect,
   onDelete,
 }: {
   expense: Expense;
   currency: string;
-  /** Only passed once a trip has more than one traveller on it. */
-  payer?: string | null;
   /** Only the person who logged an entry may swipe it away. */
   canDelete?: boolean;
   onSelect: (expense: Expense) => void;
@@ -33,12 +30,13 @@ export function ExpenseRow({
   const [deleting, setDeleting] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // What it cost in the currency it was paid in, and any note. The category
+  // already shows as the glyph, so it is not repeated in words.
   const detail = [
-    payer,
     expense.original_currency && expense.original_amount
       ? `${symbolFor(expense.original_currency)}${money(expense.original_amount)}`
       : null,
-    expense.note?.trim() || meta.label,
+    expense.note?.trim(),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -76,7 +74,7 @@ export function ExpenseRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -18, transition: { duration: 0.18 } }}
       transition={{ type: "spring", stiffness: 220, damping: 26 }}
-      className="relative overflow-hidden border-b border-dashed border-line last:border-b-0"
+      className="relative overflow-hidden"
     >
       {canDelete && (
         <button
@@ -84,7 +82,7 @@ export function ExpenseRow({
           onClick={handleDelete}
           disabled={deleting}
           aria-label={`Delete ${expense.title}`}
-          className="press absolute inset-y-0 right-0 flex w-[76px] items-center justify-center bg-clay-deep text-paper disabled:opacity-70"
+          className="press absolute inset-y-0 right-0 flex w-[76px] items-center justify-center rounded-l-card bg-error text-canvas disabled:opacity-70"
         >
           <Trash size={18} weight="bold" />
         </button>
@@ -97,26 +95,23 @@ export function ExpenseRow({
         dragElastic={0.06}
         onDragEnd={handleDragEnd}
         onClick={() => (revealed ? close() : onSelect(expense))}
-        className="press relative z-10 flex w-full items-center gap-3.5 bg-paper py-3.5 text-left"
+        className="press relative z-10 flex w-full items-center gap-3 bg-canvas py-1.5 text-left"
       >
-        <span
-          className="grid size-9 shrink-0 place-items-center rounded-xl"
-          style={{ backgroundColor: meta.wash, color: meta.color }}
-          aria-hidden
-        >
-          <Icon size={17} weight="bold" />
+        {/* A circular glyph where an avatar would sit. */}
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-cloud text-ink" aria-hidden>
+          <Icon size={18} />
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-medium tracking-[-0.01em] text-ink">
-            {expense.title}
-          </span>
-          <span className="block truncate text-[12.5px] text-ink-faint">
-            {failed ? "Couldn't delete — try again" : detail}
-          </span>
+          <span className="block truncate type-title text-ink">{expense.title}</span>
+          {(failed || detail) && (
+            <span className={`block truncate type-body ${failed ? "text-error" : "text-ash"}`}>
+              {failed ? "Couldn't delete — try again" : detail}
+            </span>
+          )}
         </span>
 
-        <span className="tabular shrink-0 text-[15px] font-medium text-ink">
+        <span className="tabular shrink-0 type-title text-ink">
           {symbolFor(currency)}
           {money(expense.amount)}
         </span>

@@ -2,9 +2,11 @@ import { useId } from "react";
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cx } from "../lib/cx";
 
+/* White behind a hairline at the control radius, switching to ink on focus.
+   The system never tints a field with the accent. */
 const CONTROL =
-  "w-full rounded-xl border border-line bg-card px-3.5 py-3 text-ink placeholder:text-ink-faint " +
-  "transition-colors focus:border-clay";
+  "min-h-12 w-full rounded-control border border-hairline bg-canvas px-4 py-3 text-ink placeholder:text-ash " +
+  "transition-colors focus:border-ink focus:text-charcoal focus:outline-none aria-[invalid=true]:border-error";
 
 function Shell({
   label,
@@ -23,15 +25,15 @@ function Shell({
     <div className="flex flex-col gap-2">
       <label
         htmlFor={htmlFor}
-        className="text-[13px] font-medium text-ink-soft"
+        className="type-body text-ash"
       >
         {label}
       </label>
       {children}
       {error ? (
-        <p id={`${htmlFor}-description`} role="alert" className="text-[12.5px] text-clay-deep">{error}</p>
+        <p id={`${htmlFor}-description`} role="alert" className="type-body-sm text-error">{error}</p>
       ) : hint ? (
-        <p id={`${htmlFor}-description`} className="text-[12.5px] text-ink-faint">{hint}</p>
+        <p id={`${htmlFor}-description`} className="type-body-sm text-ash">{hint}</p>
       ) : null}
     </div>
   );
@@ -56,7 +58,7 @@ export function Field({
     <Shell label={label} hint={hint} error={error} htmlFor={id}>
       <div className="relative">
         {prefix && (
-          <span className="tabular pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint">
+          <span className="tabular pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ash">
             {prefix}
           </span>
         )}
@@ -69,7 +71,6 @@ export function Field({
           className={cx(
             CONTROL,
             prefix && "pl-9",
-            error && "border-clay/55",
             className,
           )}
         />

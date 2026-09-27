@@ -401,7 +401,7 @@ private fun TripDetailContent(
         }
         items(filtered, key = Expense::id) { expense ->
             Box(Modifier.animateItem().padding(horizontal = 24.dp)) {
-                ExpenseRow(expense, trip.currency, viewModel.memberName(expense.userId), state.members.size > 1) { onOpenExpense(expense) }
+                ExpenseRow(expense, trip.currency) { onOpenExpense(expense) }
             }
         }
     }
@@ -501,10 +501,10 @@ private fun CategoryBreakdown(
 
 /**
  * The review-card row: a circular glyph where an avatar would sit, the title in
- * 16/600, its date and payer in 14/500 ash, and no border of its own.
+ * 16/600, its date in 14/500 ash, and no border of its own.
  */
 @Composable
-private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared: Boolean, onClick: () -> Unit) {
+private fun ExpenseRow(expense: Expense, currency: String, onClick: () -> Unit) {
     val largeText = LocalDensity.current.fontScale > 1.3f
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
@@ -517,7 +517,7 @@ private fun ExpenseRow(expense: Expense, currency: String, payer: String, shared
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(expense.title, style = MaterialTheme.typography.titleMedium, maxLines = if (largeText) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
             Text(
-                listOfNotNull(dayLabel(expense.spentOn), payer.takeIf { shared }).joinToString(" · "),
+                dayLabel(expense.spentOn),
                 color = Ash,
                 style = MaterialTheme.typography.bodyMedium,
             )

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { CheckCircle } from "@phosphor-icons/react";
-import { Ticket } from "../components/Ticket";
 import { Field } from "../components/Field";
 import { Button } from "../components/Button";
 import { GoogleMark } from "../components/GoogleMark";
@@ -124,26 +123,27 @@ export function Auth() {
   }
 
   return (
-    <main className="grain mx-auto flex min-h-[100dvh] max-w-[440px] flex-col px-6 pb-10 pt-8">
-      <Brand size="lg" />
+    <main className="relative isolate min-h-[100dvh]">
+      {/* The same photograph as the phones, washed into the canvas so the form
+          always reads. Fixed, so it stays put while the form scrolls. */}
+      <div aria-hidden className="fixed inset-0 -z-10">
+        <img src="/login-background.png" alt="" className="size-full object-cover" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,color-mix(in_srgb,var(--color-canvas)_4%,transparent)_0%,color-mix(in_srgb,var(--color-canvas)_50%,transparent)_28%,color-mix(in_srgb,var(--color-canvas)_82%,transparent)_48%,color-mix(in_srgb,var(--color-canvas)_90%,transparent)_100%)]" />
+      </div>
+    <div className="mx-auto flex min-h-[100dvh] max-w-[480px] flex-col gap-6 px-6 pb-10 pt-6">
+      <Brand />
 
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
-        className="mt-14"
+        className="flex flex-col gap-3.5 py-3"
       >
-        <p className="tabular text-[10.5px] uppercase tracking-[0.24em] text-ink-faint">
-          Trip ledger · est. 2026
-        </p>
-        <h1 className="mt-3 font-display text-[38px] font-semibold leading-[1.04] tracking-tight text-ink">
-          Know what the
-          <br />
-          trip actually cost.
+        <h1 className="whitespace-pre-line type-display text-ink">
+          {mode === "recovery" ? "A fresh start." : "Go places.\nKeep count."}
         </h1>
-        <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-ink-soft">
-          Flights, the room, every coffee and cable car — logged against a budget you set before you
-          leave.
+        <p className="type-body text-ink/75">
+          {mode === "recovery" ? "Choose a new password for your account." : "A little ledger for your next big chapter."}
         </p>
       </motion.div>
 
@@ -151,27 +151,25 @@ export function Auth() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.08 }}
-        className="mt-10"
       >
         {sent ? (
-          <Ticket>
-            <div className="flex flex-col items-start gap-3 p-6">
-              <CheckCircle size={26} weight="duotone" className="text-clay" />
-              <h2 className="font-display text-[20px] font-semibold tracking-tight">
+          <div className="flex flex-col items-start gap-3 rounded-card bg-cloud p-6">
+              <CheckCircle size={26} weight="duotone" className="text-accent-ink" />
+              <h2 className="type-title-lg">
                 Check your inbox
               </h2>
-              <p className="text-[14px] leading-relaxed text-ink-soft">
+              <p className="type-body text-ash">
                 We sent a confirmation link to{" "}
-                <span className="font-medium text-ink">{email}</span>. Open it, then come back and
+                <span className="text-ink">{email}</span>. Open it, then come back and
                 sign in.
               </p>
               {failure && <ErrorNote message={failure} />}
-              {notice && <p role="status" className="text-[13px] text-ink-soft">{notice}</p>}
+              {notice && <p role="status" className="type-body-sm text-ash">{notice}</p>}
               <button
                 type="button"
                 disabled={busy || resendCooldown > 0}
                 onClick={resend}
-                className="press min-h-11 text-[14px] font-medium text-clay underline underline-offset-4 disabled:opacity-45"
+                className="press min-h-11 type-label text-ink underline underline-offset-4 disabled:text-stone"
               >
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend confirmation email"}
               </button>
@@ -180,41 +178,19 @@ export function Auth() {
                   setSent(false);
                   setMode("signin");
                 }}
-                className="press mt-1 min-h-11 text-[14px] font-medium text-clay underline underline-offset-4"
+                className="press mt-1 min-h-11 type-label text-ink underline underline-offset-4"
               >
                 Back to sign in
               </button>
-            </div>
-          </Ticket>
+          </div>
         ) : (
-          <Ticket
-            stub={
-              <div className="flex items-center justify-between px-6 py-4">
-                <p className="text-[13px] text-ink-soft">
-                  {mode === "signin" ? "First trip with us?" : "Already have a ledger?"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mode === "recovery") cancelRecovery();
-                    setMode(mode === "signin" ? "signup" : "signin");
-                    setFailure(null);
-                    setNotice(null);
-                  }}
-                  className="press min-h-11 text-[13px] font-medium text-clay underline underline-offset-4"
-                >
-                  {mode === "signin" ? "Create an account" : "Sign in"}
-                </button>
-              </div>
-            }
-          >
-            <form onSubmit={submit} className="flex flex-col gap-4 p-6">
-              {(mode === "forgot" || mode === "recovery") && <h2 className="font-display text-xl font-semibold">{mode === "forgot" ? "Reset your password" : "Choose a new password"}</h2>}
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              {(mode === "forgot" || mode === "recovery") && <h2 className="type-title-lg">{mode === "forgot" ? "Reset your password" : "Choose a new password"}</h2>}
               {failure && <ErrorNote message={failure} />}
-              {notice && <p role="status" className="text-[13px] leading-relaxed text-ink-soft">{notice}</p>}
-              {mode === "recovery" && !loading && !session && <div className="text-sm text-ink-soft">
+              {notice && <p role="status" className="rounded-control bg-cloud p-3.5 type-body text-ash">{notice}</p>}
+              {mode === "recovery" && !loading && !session && <div className="type-body text-ash">
                 <p>This reset link is invalid or has expired. Request a new one to continue.</p>
-                <button type="button" className="min-h-11 text-clay underline" onClick={() => { cancelRecovery(); setMode("forgot"); }}>Request a new link</button>
+                <button type="button" className="min-h-11 type-label text-ink underline" onClick={() => { cancelRecovery(); setMode("forgot"); }}>Request a new link</button>
               </div>}
 
               {(mode === "signin" || mode === "signup") && (
@@ -231,9 +207,9 @@ export function Auth() {
                     Continue with Google
                   </Button>
                   <div className="flex items-center gap-3" aria-hidden="true">
-                    <span className="h-px flex-1 bg-line" />
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">or</span>
-                    <span className="h-px flex-1 bg-line" />
+                    <span className="h-px flex-1 bg-hairline" />
+                    <span className="type-body-sm text-ash">or</span>
+                    <span className="h-px flex-1 bg-hairline" />
                   </div>
                 </>
               )}
@@ -276,7 +252,7 @@ export function Auth() {
                     type="button"
                     onClick={() => setShowPassword((shown) => !shown)}
                     aria-pressed={showPassword}
-                    className="press min-h-11 self-end text-[13px] font-medium text-ink-soft underline underline-offset-4"
+                    className="press min-h-11 self-end type-body text-ash underline underline-offset-4"
                   >
                     {showPassword ? "Hide password" : "Show password"}
                   </button>
@@ -291,7 +267,7 @@ export function Auth() {
                     setFailure(null);
                     setNotice(null);
                   }}
-                  className="press min-h-11 self-end text-[13px] font-medium text-clay underline underline-offset-4"
+                  className="press min-h-11 self-end type-body text-ash underline underline-offset-4"
                 >
                   Forgot password?
                 </button>
@@ -306,14 +282,31 @@ export function Auth() {
                       ? resendCooldown > 0 ? `Send again in ${resendCooldown}s` : "Send reset link"
                       : "Update password"}
               </Button>
+              <div className="flex flex-col items-center gap-1">
+                <p className="type-body text-ash">
+                  {mode === "signin" ? "New here?" : "Already have an account?"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mode === "recovery") cancelRecovery();
+                    setMode(mode === "signin" ? "signup" : "signin");
+                    setFailure(null);
+                    setNotice(null);
+                  }}
+                  className="press min-h-11 type-label text-ink"
+                >
+                  {mode === "signin" ? "Create an account" : "Sign in"}
+                </button>
+              </div>
             </form>
-          </Ticket>
         )}
       </motion.div>
 
-      <p className="mt-auto pt-10 text-[12px] leading-relaxed text-ink-faint">
+      <p className="mt-auto pt-6 type-body-sm text-ash">
         Only you and people you invite can access your trips.
       </p>
+    </div>
     </main>
   );
 }

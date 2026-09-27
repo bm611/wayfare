@@ -4,29 +4,31 @@ import { cx } from "../lib/cx";
 type Variant = "solid" | "accent" | "quiet" | "danger" | "google";
 type Size = "md" | "sm";
 
+/* Mirrors the native controls: the accent fill for the one primary action on a
+   surface, white behind a hairline for everything else. `solid` is kept as an
+   alias of the accent so there is still only one primary look. */
 const VARIANTS: Record<Variant, string> = {
-  solid:
-    "bg-ink text-paper border-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-ink/92",
-  accent:
-    "bg-clay text-[#fff8f4] border-clay-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] hover:bg-clay-deep",
-  quiet: "bg-transparent text-ink-soft border-line hover:bg-paper-deep hover:text-ink",
-  danger: "bg-transparent text-clay-deep border-clay/35 hover:bg-clay-wash",
-  /* Google requires its mark on a neutral surface, so this one is a card, not a tint. */
-  google: "bg-card text-ink border-line hover:bg-paper-deep",
+  solid: "bg-accent text-on-accent border-transparent hover:brightness-[0.97]",
+  accent: "bg-accent text-on-accent border-transparent hover:brightness-[0.97]",
+  quiet: "bg-canvas text-ink border-hairline hover:bg-cloud",
+  danger: "bg-canvas text-error border-hairline hover:bg-cloud",
+  /* Google requires its mark on a neutral surface. */
+  google: "bg-canvas text-ink border-hairline hover:bg-cloud",
 };
 
 /* Heights live here rather than in a caller's className: same-property utilities
-   can't be overridden from outside, so `h-9` would lose to the base `h-12`. */
+   can't be overridden from outside. */
 const SIZES: Record<Size, string> = {
-  md: "h-12 gap-2 px-5 text-[15px]",
-  sm: "h-11 gap-1.5 px-3 text-[14px]",
+  md: "min-h-12 gap-2 px-5",
+  sm: "min-h-11 gap-1.5 px-3.5",
 };
 
 export function Button({
-  variant = "solid",
+  variant = "accent",
   size = "md",
   loading = false,
   full = false,
+  pill = false,
   children,
   className,
   disabled,
@@ -36,6 +38,8 @@ export function Button({
   size?: Size;
   loading?: boolean;
   full?: boolean;
+  /** The rounder panel radius, for buttons that float over content. */
+  pill?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -43,11 +47,12 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={cx(
-        "press inline-flex items-center justify-center rounded-2xl border",
-        "font-medium tracking-[-0.01em]",
-        "disabled:pointer-events-none disabled:opacity-45",
+        "press inline-flex items-center justify-center border type-body-lg",
+        pill ? "rounded-panel" : "rounded-control",
+        "disabled:pointer-events-none",
         SIZES[size],
-        VARIANTS[variant],
+        // Busy keeps its colour; only a truly unavailable action greys out.
+        disabled && !loading ? "border-transparent bg-cloud text-stone" : VARIANTS[variant],
         full && "w-full",
         className,
       )}

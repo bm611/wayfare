@@ -1,22 +1,28 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Plus, SignOut, Ticket as TicketIcon } from "@phosphor-icons/react";
-import { Brand, IconButton, IconGroup, IconGroupDivider } from "../components/Brand";
-import { StampTile, TripCard } from "../components/TripCard";
+import { ArrowClockwise, Compass, SignOut, Ticket, Trash, UserCircle } from "@phosphor-icons/react";
+import { Brand, IconButton } from "../components/Brand";
+import { Menu } from "../components/Menu";
+import { NewTripButton, StampTile, TripCard } from "../components/TripCard";
 import { TripSheet } from "../components/TripSheet";
 import { JoinSheet } from "../components/JoinSheet";
-import { Button } from "../components/Button";
-import { EmptyState, ErrorNote, RouteArt, TripCardSkeleton } from "../components/States";
-import { CountUp } from "../components/CountUp";
+import { EmptyState, ErrorNote, TripCardSkeleton } from "../components/States";
 import { useAuth } from "../hooks/useAuth";
 import { useTrips } from "../hooks/useTrips";
 import { useTripCovers } from "../hooks/useTripCovers";
-import { symbolFor, tripPhase } from "../lib/format";
-import { stampArt } from "../lib/stamp";
-import { BASE_CURRENCY } from "../lib/fx";
+import { tripPhase } from "../lib/format";
+
+const SECTIONS = [
+  ["active", "Active trips"],
+  ["upcoming", "Upcoming trips"],
+  ["undated", "Dates open"],
+  ["past", "Past trips"],
+] as const;
 
 export function Trips() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const { trips, loading, error, reload, createTrip, applyCovers } = useTrips();
   const [tripSheet, setTripSheet] = useState(false);
   const [joinSheet, setJoinSheet] = useState(false);
@@ -24,120 +30,79 @@ export function Trips() {
   // Draws the passport stamp on each card, and watches for it to land.
   useTripCovers(trips, applyCovers);
 
-  // Every trip is euro-denominated, so a single total is always meaningful.
-  const summary = useMemo(() => {
-    if (trips.length === 0) return null;
-    return {
-      spent: trips.reduce((sum, t) => sum + t.spent, 0),
-      active: trips.filter((t) => tripPhase(t).kind === "active").length,
-      // Distinct places the stamps name, as the stamp itself would label them.
-      places: new Set(
-        trips.map((t) => (stampArt(t.cover_art)?.label || t.destination?.split(",")[0].trim() || t.name).toLocaleLowerCase()),
-      ).size,
-    };
-  }, [trips]);
-
   return (
-    <main className="grain mx-auto max-w-[560px] px-5 pb-16 pt-6">
-      <header className="grid grid-cols-[1fr_auto] items-center gap-2.5 min-[380px]:flex">
-        <div className="col-span-2 flex-1">
-          <Brand size="lg" />
+    <main className="mx-auto max-w-[700px] px-6 pb-16 pt-2">
+      {/* Top nav: the accent wordmark, then join and account as circular controls. */}
+      <header className="flex items-center gap-2 pt-2">
+        <div className="flex-1">
+          <Brand />
         </div>
-        <Button size="sm" variant="accent" onClick={() => setTripSheet(true)}>
-          <Plus size={15} weight="bold" />
-          New trip
-        </Button>
-        <IconGroup>
-          <IconButton flush label="Join a trip with a code" onClick={() => setJoinSheet(true)}>
-            <TicketIcon size={16} weight="bold" />
-          </IconButton>
-          <IconGroupDivider />
-          <IconButton flush label="Sign out" onClick={() => void signOut()}>
-            <SignOut size={16} weight="bold" />
-          </IconButton>
-        </IconGroup>
+        <IconButton label="Join a trip" onClick={() => setJoinSheet(true)}>
+          <Ticket size={18} />
+        </IconButton>
+        <Menu
+          label="Account"
+          icon={<UserCircle size={20} />}
+          items={[
+            { label: "Refresh", icon: <ArrowClockwise size={18} />, onSelect: () => void reload() },
+            { label: "Sign out", icon: <SignOut size={18} />, onSelect: () => void signOut() },
+            { label: "Delete account", icon: <Trash size={18} />, onSelect: () => navigate("/delete-account"), destructive: true },
+          ]}
+        />
       </header>
 
-      <section className="mt-10">
-        {summary ? (
-          <>
-            <h1 className="font-display text-[40px] font-semibold leading-none tracking-tight text-ink">
-              <span className="text-ink-faint">{symbolFor(BASE_CURRENCY).trim()}</span>
-              <CountUp value={summary.spent} cents={false} />
-            </h1>
-            <p className="mt-2.5 text-[14px] text-ink-soft">
-              logged across <span className="tabular font-medium text-ink">{trips.length}</span>{" "}
-              {trips.length === 1 ? "stamp" : "stamps"} from{" "}
-              <span className="tabular font-medium text-ink">{summary.places}</span>{" "}
-              {summary.places === 1 ? "place" : "places"}
-              {summary.active > 0 && (
-                <>
-                  {" · "}
-                  <span className="tabular font-medium text-clay">{summary.active} in motion</span>
-                </>
-              )}
-            </p>
-          </>
-        ) : (
-          <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight text-ink">
-            Nothing booked yet
-          </h1>
-        )}
+      <section className="mt-6 flex flex-col gap-5">
+        <h1 className="type-display text-ink">Your trips</h1>
+        <NewTripButton onClick={() => setTripSheet(true)} />
       </section>
 
-      <div className="mt-8">
+      <div className="mt-6 flex flex-col gap-6">
         {error && <ErrorNote message={error} onRetry={() => void reload()} />}
 
         {loading ? (
-          <div className="flex flex-col gap-4">
-            <TripCardSkeleton />
-            <TripCardSkeleton />
-          </div>
+          <TripCardSkeleton />
         ) : trips.length === 0 && !error ? (
           <EmptyState
-            art={<RouteArt />}
-            title="Your first stub is waiting"
-            body="Add a trip, set what you're willing to spend, and start logging costs as they land. Or join one someone else has already started."
+            icon={<Compass size={28} weight="light" />}
+            title="Good trips start here"
+            body="Add a trip, set a budget, and log each cost as it lands."
             action={
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button variant="accent" onClick={() => setTripSheet(true)}>
-                  Add a trip
-                </Button>
-                <Button variant="quiet" onClick={() => setJoinSheet(true)}>
-                  I have a code
-                </Button>
-              </div>
+              <button onClick={() => setJoinSheet(true)} className="press min-h-11 type-label text-ink">
+                I have an invite code
+              </button>
             }
           />
         ) : (
-          <motion.ul
+          <motion.div
             initial="hidden"
             animate="show"
             variants={{ show: { transition: { staggerChildren: 0.07 } } }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-6"
           >
-            {([
-              ["active", "Active trips"], ["upcoming", "Upcoming trips"],
-              ["undated", "Dates open"], ["past", "Past trips"],
-            ] as const).map(([phase, label]) => {
+            {SECTIONS.map(([phase, label]) => {
               const group = trips.filter((trip) => tripPhase(trip).kind === phase);
               if (!group.length) return null;
-              return <li key={phase} className="mb-4">
-                <h2 className="mb-3 text-sm font-semibold text-ink-soft">{label} <span className="tabular ml-1">{group.length}</span></h2>
-                {/* Trips still to come get a full card; finished ones are
-                    collected, stamps on a passport page. */}
-                {phase === "past" ? (
-                  <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    {group.map((trip) => <StampTile key={trip.id} trip={trip} />)}
-                  </ul>
-                ) : (
-                  <ul className="flex flex-col gap-4">
-                    {group.map((trip) => <TripCard key={trip.id} trip={trip} shared={trip.user_id !== user?.id} />)}
-                  </ul>
-                )}
-              </li>;
+              return (
+                <section key={phase} className="flex flex-col gap-6">
+                  <h2 className="flex items-baseline gap-2 pt-2 type-headline text-ink">
+                    {label}
+                    <span className="tabular type-body-lg text-ash">{group.length}</span>
+                  </h2>
+                  {/* Trips still to come get a full card; finished ones are
+                      collected, stamps on a passport page. */}
+                  {phase === "past" ? (
+                    <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      {group.map((trip) => <StampTile key={trip.id} trip={trip} />)}
+                    </ul>
+                  ) : (
+                    <ul className="flex flex-col gap-6">
+                      {group.map((trip) => <TripCard key={trip.id} trip={trip} />)}
+                    </ul>
+                  )}
+                </section>
+              );
             })}
-          </motion.ul>
+          </motion.div>
         )}
       </div>
 

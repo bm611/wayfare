@@ -32,14 +32,9 @@ struct TripsScreen: View {
         // wide enough to be read as canvas.
         LazyVStack(alignment: .leading, spacing: 24) {
           topNav
-          VStack(alignment: .leading, spacing: 16) {
+          VStack(alignment: .leading, spacing: 20) {
             Text("Your trips").typeStyle(.displaySmall)
-            if store.trips.isEmpty {
-              Text("Your first journey is waiting.").typeStyle(.bodyLarge)
-                .foregroundStyle(Palette.ash)
-            } else {
-              passportSummary
-            }
+            NewTripButton { newTrip = true }
           }.padding(.horizontal, 24)
           if let notice = store.notice { Notice(text: notice).padding(.horizontal, 24) }
           if store.expenses.contains(where: { $0.syncState != .synced }) {
@@ -93,7 +88,7 @@ struct TripsScreen: View {
     }
   }
 
-  /// Top nav: the accent wordmark, then add and account as circular controls.
+  /// Top nav: the accent wordmark, then join and account as circular controls.
   private var topNav: some View {
     HStack(spacing: 8) {
       HStack(spacing: 8) {
@@ -101,14 +96,7 @@ struct TripsScreen: View {
         Text("wayfare").typeStyle(.headlineSmall)
       }.foregroundStyle(Palette.accentInk)
       Spacer(minLength: 0)
-      Menu {
-        Button("New trip", systemImage: "plus") { newTrip = true }
-        Button("Join with a code", systemImage: "ticket") { joining = true }
-      } label: {
-        Image(systemName: "plus").font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(Palette.onAccent).frame(width: 44, height: 44)
-          .background(Palette.accent, in: Circle())
-      }.accessibilityLabel("Add a trip")
+      CircleIconButton(symbol: "ticket", label: "Join a trip") { joining = true }
       Menu {
         Button("Refresh", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
         Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)
@@ -121,35 +109,6 @@ struct TripsScreen: View {
     }.padding(.horizontal, 24).padding(.top, 8)
   }
 
-  /// The passport at a glance: stamps collected, places they name, and what
-  /// they cost, in euros whatever each trip is budgeted in.
-  private var passportSummary: some View {
-    let trips = store.trips
-    let places = Set(trips.map { stampLabel($0).lowercased() }).count
-    let spent = trips.reduce(Decimal.zero) { total, trip in
-      let spent = budgetSummary(trip, expenses: store.expensesByTrip[trip.id] ?? []).spent
-      return total + (convert(amount: spent, from: trip.currency, to: "EUR", rates: store.fx.rates) ?? 0)
-    }
-    return HStack(alignment: .top, spacing: 18) {
-      summaryStat("\(trips.count)", trips.count == 1 ? "STAMP" : "STAMPS")
-      Rectangle().fill(Palette.hairline).frame(width: 1, height: 40)
-      summaryStat("\(places)", places == 1 ? "PLACE" : "PLACES")
-      Rectangle().fill(Palette.hairline).frame(width: 1, height: 40)
-      summaryStat(moneyShort(spent), "SPENT")
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
-      "\(trips.count) \(trips.count == 1 ? "trip" : "trips"), \(places) \(places == 1 ? "place" : "places"), \(moneyShort(spent)) spent")
-  }
-
-  private func summaryStat(_ value: String, _ label: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(value).typeStyle(.headlineSmall).monospacedDigit().lineLimit(1)
-      Text(label).font(.system(size: 10, design: .monospaced)).tracking(0.8)
-        .foregroundStyle(Palette.ash)
-    }
-  }
-
   private var emptyState: some View {
     VStack(spacing: 0) {
       Image(systemName: "safari").font(.system(size: 28, weight: .light))
@@ -159,7 +118,6 @@ struct TripsScreen: View {
       Text("Add a trip, set a budget, and log each cost as it lands.")
         .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).multilineTextAlignment(.center)
         .padding(.top, 6)
-      PrimaryButton(title: "New trip", icon: "plus") { newTrip = true }.padding(.top, 20)
       Button("I have an invite code") { joining = true }
         .typeStyle(.labelMedium).foregroundStyle(Palette.ink).padding(.top, 12)
     }
@@ -270,6 +228,39 @@ struct TripsScreen: View {
     }
   }
 
+}
+
+/// The way into a new trip, drawn as the empty slot the next stamp will fill:
+/// a dashed, tilted stamp outline holding the plus, on a wash of the accent.
+private struct NewTripButton: View {
+  let action: () -> Void
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 16) {
+        Image(systemName: "plus").font(.system(size: 20, weight: .semibold))
+          .foregroundStyle(Palette.accentInk).frame(width: 52, height: 52)
+          .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+              .stroke(Palette.accentInk.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [4.5, 3])))
+          .rotationEffect(.degrees(-3))
+        VStack(alignment: .leading, spacing: 2) {
+          Text("New trip").typeStyle(.titleMedium).foregroundStyle(Palette.ink)
+          Text("Start your next stamp").typeStyle(.bodyMedium).foregroundStyle(Palette.ash)
+        }
+        Spacer(minLength: 0)
+        Image(systemName: "arrow.right").font(.system(size: 15, weight: .semibold))
+          .foregroundStyle(Palette.accentInk)
+      }
+      .padding(.horizontal, 16).padding(.vertical, 14)
+      .background(Color(light: 0xEBF2FA, dark: 0x1E2833), in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
+          .stroke(Palette.accentInk.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("New trip")
+  }
 }
 
 struct JoinForm: View {

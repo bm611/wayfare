@@ -2,7 +2,11 @@ import { CATEGORY_LIST } from "../lib/categories";
 import { money, symbolFor } from "../lib/format";
 import type { CategoryKey, Expense } from "../lib/types";
 
-/** No cards here — hierarchy comes from a single rule and generous spacing. */
+/**
+ * A horizontal bar chart: each category's glyph, label, share and amount above
+ * a bar sized to its share of the total. Bars use the one accent. Choosing a
+ * row filters the ledger to it.
+ */
 export function CategorySplit({
   expenses,
   currency,
@@ -17,9 +21,7 @@ export function CategorySplit({
 
   const rows = CATEGORY_LIST.map((meta) => ({
     meta,
-    amount: expenses
-      .filter((e) => e.category === meta.key)
-      .reduce((sum, e) => sum + e.amount, 0),
+    amount: expenses.filter((e) => e.category === meta.key).reduce((sum, e) => sum + e.amount, 0),
   }))
     .filter((row) => row.amount > 0)
     .sort((a, b) => b.amount - a.amount);
@@ -27,41 +29,37 @@ export function CategorySplit({
   const symbol = symbolFor(currency);
 
   return (
-    <section className="flex flex-col gap-4">
-      <p className="text-xs text-ink-soft">Choose a category to see its expenses.</p>
-
-      <div className="flex h-3 gap-[3px]">
-        {rows.map(({ meta, amount }) => (
-          <span
-            key={meta.key}
-            className="rounded-[2px] transition-[flex-grow] duration-500"
-            style={{ flexGrow: amount, flexBasis: 0, backgroundColor: meta.color }}
-            title={`${meta.label} · ${symbol}${money(amount)}`}
-          />
-        ))}
-      </div>
-
-      <ul className="divide-y divide-line-soft">
-        {rows.map(({ meta, amount }) => (
+    <ul className="flex flex-col gap-1">
+      {rows.map(({ meta, amount }) => {
+        const Icon = meta.icon;
+        const share = amount / total;
+        return (
           <li key={meta.key}>
-            <button type="button" onClick={() => onSelect(meta.key)} className="press flex min-h-11 w-full items-center gap-3 py-2.5 text-left hover:bg-paper">
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: meta.color }}
-              aria-hidden
-            />
-            <span className="flex-1 text-[14px] text-ink">{meta.label}</span>
-            <span className="tabular text-[12px] text-ink-faint">
-              {Math.round((amount / total) * 100)}%
-            </span>
-            <span className="tabular w-[92px] text-right text-[14px] font-medium text-ink">
-              {symbol}
-              {money(amount)}
-            </span>
+            <button
+              type="button"
+              onClick={() => onSelect(meta.key)}
+              aria-label={`${meta.label}, ${Math.round(share * 100)}%, ${symbol}${money(amount)}. Show these expenses`}
+              className="press flex w-full flex-col gap-2 py-2 text-left"
+            >
+              <span className="flex w-full items-center gap-3">
+                <Icon size={20} className="w-6 shrink-0 text-ink" aria-hidden />
+                <span className="flex-1 type-body-lg text-ink">{meta.label}</span>
+                <span className="type-body text-ash">{Math.round(share * 100)}%</span>
+                <span className="tabular type-label text-ink">
+                  {symbol}
+                  {money(amount)}
+                </span>
+              </span>
+              <span className="h-2 w-full overflow-hidden rounded-full bg-cloud" aria-hidden>
+                <span
+                  className="block h-full min-w-2 rounded-full bg-accent-ink transition-[width] duration-500"
+                  style={{ width: `${share * 100}%` }}
+                />
+              </span>
             </button>
           </li>
-        ))}
-      </ul>
-    </section>
+        );
+      })}
+    </ul>
   );
 }

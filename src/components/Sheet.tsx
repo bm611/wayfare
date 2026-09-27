@@ -83,6 +83,9 @@ export function Sheet({
       ).filter((element) => element.getClientRects().length > 0 && !element.closest("[inert]") && element.getAttribute("aria-hidden") !== "true");
 
     const frame = requestAnimationFrame(() => {
+      // Someone quick enough to be in a field already keeps their place;
+      // taking focus now would send their next keystroke somewhere else.
+      if (dialogRef.current?.contains(document.activeElement)) return;
       const initial = dialogRef.current?.querySelector<HTMLElement>("[data-autofocus]") ?? focusable()[0];
       (initial ?? dialogRef.current)?.focus({ preventScroll: true });
     });
@@ -159,7 +162,7 @@ export function Sheet({
           style={viewport ? { height: viewport.height, top: viewport.top } : { insetBlock: 0 }}
         >
           <motion.div
-            className="absolute inset-0 bg-ink/25 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-black/30 backdrop-blur-[3px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -174,7 +177,7 @@ export function Sheet({
             aria-label={title}
             aria-busy={busy || undefined}
             tabIndex={-1}
-            className="relative flex w-full max-w-[560px] flex-col rounded-t-[28px] border border-b-0 border-line bg-card shadow-sheet"
+            className="relative flex w-full max-w-[700px] flex-col rounded-t-[28px] border border-b-0 border-hairline bg-canvas shadow-sheet"
             style={{ maxHeight: viewport ? Math.max(240, viewport.height - 8) : "72dvh" }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -193,17 +196,17 @@ export function Sheet({
               className="cursor-grab touch-none pt-3 pb-1 active:cursor-grabbing"
               onPointerDown={(e) => controls.start(e)}
             >
-              <div className="mx-auto h-1 w-10 rounded-full bg-line" />
+              <div className="mx-auto h-1 w-10 rounded-full bg-hairline" />
             </div>
 
             <header className="flex shrink-0 items-start justify-between gap-4 px-6 pb-4 pt-2">
               <div>
                 {eyebrow && (
-                  <p className="tabular text-[10.5px] uppercase tracking-[0.2em] text-ink-faint">
+                  <p className="type-label text-ash">
                     {eyebrow}
                   </p>
                 )}
-                <h2 className="font-display text-[22px] font-semibold tracking-tight text-ink">
+                <h2 className="type-headline text-ink">
                   {title}
                 </h2>
               </div>
@@ -211,21 +214,21 @@ export function Sheet({
                 onClick={requestClose}
                 disabled={busy}
                 aria-label="Close"
-                className="press -mr-1 grid size-11 shrink-0 place-items-center rounded-full border border-line text-ink-soft hover:bg-paper-deep disabled:cursor-not-allowed disabled:opacity-40"
+                className="press -mr-1 grid size-11 shrink-0 place-items-center rounded-full bg-cloud text-ink disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <X size={16} weight="bold" />
               </button>
             </header>
 
             {confirmingDiscard && (
-              <div role="alert" className="mx-6 mb-4 rounded-2xl border border-line bg-paper-deep p-4">
-                <p className="text-sm font-semibold text-ink">Discard your changes?</p>
-                <p className="mt-1 text-sm text-ink-soft">Anything you changed in this sheet will be lost.</p>
+              <div role="alert" className="mx-6 mb-4 rounded-card bg-cloud p-4">
+                <p className="type-label text-ink">Discard your changes?</p>
+                <p className="mt-1 type-body text-ash">Anything you changed in this sheet will be lost.</p>
                 <div className="mt-3 flex justify-end gap-2">
                   <button
                     ref={keepEditingRef}
                     type="button"
-                    className="press min-h-11 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink"
+                    className="press min-h-11 rounded-control border border-hairline bg-canvas px-4 py-2 type-label text-ink"
                     onClick={() => {
                       setConfirmingDiscard(false);
                       dialogRef.current?.querySelector<HTMLElement>("[data-autofocus], input, button")?.focus();
@@ -236,7 +239,7 @@ export function Sheet({
                   <button
                     type="button"
                     disabled={busy}
-                    className="press min-h-11 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-card disabled:opacity-40"
+                    className="press min-h-11 rounded-control border border-hairline bg-canvas px-4 py-2 type-label text-error disabled:opacity-40"
                     onClick={() => {
                       if (busyRef.current) return;
                       setConfirmingDiscard(false);
@@ -252,7 +255,7 @@ export function Sheet({
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 safe-b">
               {children}
             </div>
-            {footer && <footer className="shrink-0 border-t border-line bg-card px-6 pt-3 safe-b">{footer}</footer>}
+            {footer && <footer className="shrink-0 border-t border-hairline bg-canvas px-6 pt-3 safe-b">{footer}</footer>}
           </motion.div>
         </div>
       )}
