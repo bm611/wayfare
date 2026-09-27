@@ -76,7 +76,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.wayfare.app.R
 import com.wayfare.app.core.Category
 import com.wayfare.app.core.SyncState
@@ -260,39 +259,45 @@ fun Notice(message: String, error: Boolean = false, modifier: Modifier = Modifie
     )
 }
 
-/** A photo-led card with a content-sized overlay and Material touch feedback. */
+/**
+ * A trip card led by its passport stamp. The stamp names the place, so the card
+ * names the trip; the numbers ride in a drawer tucked underneath.
+ */
 @Composable
 fun ListingCard(
     summary: TripSummary,
-    coverUrl: String?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val trip = summary.trip
     val destination = trip.destination?.trim().orEmpty()
-    val isPrint = trip.coverPath?.endsWith("-print.jpg") == true
-    // The cover stays untouched apart from the countdown; the numbers ride in a
-    // drawer tucked under it. Only covers without lettering need the place
-    // named in words.
+    val dated = trip.startDate != null || trip.endDate != null
     val drawer = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
     Column(modifier.fillMaxWidth().clickable(onClickLabel = "Open trip", onClick = onClick)) {
-        Box(
+        Row(
             Modifier.fillMaxWidth().zIndex(1f)
                 .shadow(4.dp, RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp)).background(CanvasWhite).padding(4.dp)
-                .clip(RoundedCornerShape(24.dp)).aspectRatio(3f / 2f),
+                .clip(RoundedCornerShape(28.dp)).background(CanvasWhite)
+                .padding(start = 16.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            DestinationArtwork(Modifier.fillMaxSize(), trip)
-            if (coverUrl != null) AsyncImage(
-                model = coverUrl,
-                contentDescription = if (isPrint) destination.ifEmpty { trip.name } else null,
-                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-            )
-            Text(
-                phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(12.dp))
-                    .background(CanvasWhite).padding(horizontal = 10.dp, vertical = 6.dp),
-            )
+            Stamp(trip)
+            Column(Modifier.padding(start = 20.dp).weight(1f)) {
+                Text(
+                    phaseLabel(trip), color = Ink, style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                        .background(SoftCloud).padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+                Text(
+                    trip.name, Modifier.padding(top = 12.dp), color = Ink, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    if (dated) dateRange(trip.startDate, trip.endDate) else destination.ifEmpty { trip.name },
+                    Modifier.padding(top = 4.dp), color = Ash, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
         // Tucked 12dp up under the card, so its top edge disappears behind it.
         Row(
@@ -308,8 +313,7 @@ fun ListingCard(
         ) {
             val ash = Ash
             Text(
-                if (trip.coverStatus == "pending") AnnotatedString("Creating your cover…") else buildAnnotatedString {
-                    if (!isPrint) withStyle(SpanStyle(color = ash)) { append("${destination.ifEmpty { trip.name }} · ") }
+                buildAnnotatedString {
                     withStyle(SpanStyle(color = AccentInk, fontWeight = FontWeight.Bold)) { append(money(summary.spent, trip.currency)) }
                     withStyle(SpanStyle(color = ash)) { append(" spent") }
                 },
@@ -334,35 +338,6 @@ fun MetaLabel(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-    }
-}
-
-/**
- * Stands in for the cover photograph until one is generated. Deliberately
- * grayscale: a placeholder should read as an unloaded image, not as a second
- * accent colour competing with the real one.
- */
-@Composable
-fun DestinationArtwork(modifier: Modifier = Modifier, trip: Trip? = null) {
-    val coastal = ((trip?.id?.hashCode() ?: 0) and 1) == 0
-    val sky = SoftCloud
-    val far = if (coastal) Color(0xFFE4E4E4) else Color(0xFFEBEBEB)
-    val near = if (coastal) Color(0xFFD2D2D2) else Color(0xFFDCDCDC)
-    Canvas(modifier.background(sky)) {
-        drawCircle(Color(0xFFF0F0F0), size.height * .17f, Offset(size.width * .76f, size.height * .28f))
-        val hills = Path().apply {
-            moveTo(0f, size.height * .72f)
-            cubicTo(size.width * .22f, size.height * .05f, size.width * .4f, size.height * .85f, size.width * .65f, size.height * .52f)
-            quadraticTo(size.width * .86f, size.height * .27f, size.width, size.height * .52f)
-            lineTo(size.width, size.height); lineTo(0f, size.height); close()
-        }
-        drawPath(hills, far)
-        val foreground = Path().apply {
-            moveTo(0f, size.height * .85f)
-            cubicTo(size.width * .3f, size.height * .48f, size.width * .6f, size.height * 1.1f, size.width, size.height * .63f)
-            lineTo(size.width, size.height); lineTo(0f, size.height); close()
-        }
-        drawPath(foreground, near)
     }
 }
 
@@ -471,8 +446,15 @@ fun TripLoadingSkeleton(modifier: Modifier = Modifier, showCover: Boolean = true
                 .clearAndSetSemantics { contentDescription = "Loading trips" }.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Spacer(Modifier.fillMaxWidth().aspectRatio(3f / 2f))
-            Spacer(Modifier.fillMaxWidth(.65f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+            // The shape of a stamp card: the stamp, then the trip's name and dates.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.size(104.dp, 128.dp).clip(RoundedCornerShape(18.dp)).background(Hairline))
+                Column(Modifier.padding(start = 20.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Spacer(Modifier.fillMaxWidth(.4f).height(20.dp).clip(RoundedCornerShape(10.dp)).background(Hairline))
+                    Spacer(Modifier.fillMaxWidth(.85f).height(24.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+                    Spacer(Modifier.fillMaxWidth(.6f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(Hairline))
+                }
+            }
         }
         return
     }

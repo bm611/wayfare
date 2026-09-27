@@ -1,6 +1,6 @@
 # Wayfare for iOS
 
-Native SwiftUI implementation of the Kotlin Android app, targeting iOS 17+ on iPhone and iPad. No WebView, React Native, or embedded web app. Uses the same Supabase tables, membership policies, Auth, Storage, and Netlify cover endpoint as Android/web; no database migration is needed.
+Native SwiftUI implementation of the Kotlin Android app, targeting iOS 17+ on iPhone and iPad. No WebView, React Native, or embedded web app. Uses the same Supabase tables, membership policies, Auth, and Netlify stamp endpoint as Android/web; no database migration is needed.
 
 ## Open and run
 
@@ -33,7 +33,7 @@ xcodegen generate --spec ios/project.yml
 ## Implemented
 
 - Email/password sign-in, signup, confirmation resend, recovery, Google OAuth, Keychain session restoration, and sign-out.
-- Active/upcoming/undated/past trips, creation/editing/deletion, optional dates and budgets, cover display/generation, pull-to-refresh.
+- Active/upcoming/undated/past trips, creation/editing/deletion, optional dates and budgets, passport-stamp display, pull-to-refresh.
 - Expense creation/editing/deletion, seven categories, notes, date groups, title/note search, category and traveller filters.
 - Decimal ledger arithmetic, daily averages and remaining allowance, 30 payment currencies, 12-hour FX cache, explicitly labelled offline estimates, and preserved historical FX rates.
 - Invite-code redemption, native share sheet, travellers, owner removal and member leave. Other travellers' expenses are read-only in the UI.
@@ -46,7 +46,7 @@ This is an initial native port, not an App Store-ready or visually verified rele
 
 - Offline **new expense creation** is supported. Editing/deleting saved expenses and trip/membership mutations require connectivity. The queue retries on refresh, network reconnect while running, and every 30 seconds while foregrounded. It does **not** promise background execution after iOS suspends/terminates the app. Reopen Wayfare to sync. Sign-out explicitly clears local data, including pending entries, after confirmation.
 - HTTPS invite links retain the web fallback. Users can enter the share code in iOS. `wayfare-ios://join/ABCDEFGH` opens the native join form and preserves the invite through login. Verified HTTPS Universal Links still require your Apple Team ID, an Associated Domains entitlement, and a hosted `apple-app-site-association` file; these were not guessed or deployed.
-- Covers use a native placeholder until the existing backend generates an image. Foreground refresh picks up completed covers. Layout follows Android's screen structure but uses native iOS controls/system typography, not pixel-identical Compose rendering.
+- Each trip card carries a passport stamp drawn by the backend as SVG path data and rendered natively (`Stamp.swift`); it shows blank until the drawing lands, and foreground refresh picks up completed stamps. Layout follows Android's screen structure but uses native iOS controls/system typography, not pixel-identical Compose rendering.
 - Store distribution still needs an app icon, signing, privacy/App Store declarations, account-deletion review, and review of Apple's sign-in requirements. No release, deployment, or production write was performed.
 
 Before beta distribution, run on a small iPhone and iPad with large text, inspect screenshots of auth/trips/detail/forms/failed sync, and exercise:

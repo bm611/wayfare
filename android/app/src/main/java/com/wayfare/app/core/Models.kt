@@ -35,7 +35,7 @@ data class Trip(
     val currency: String,
     val accent: String,
     val shareCode: String?,
-    val coverPath: String?,
+    val coverArt: StampArt?,
     val coverSubject: String?,
     val coverStatus: String,
     val createdAt: String,
@@ -123,7 +123,7 @@ data class TripDto(
     val currency: String,
     val accent: String,
     @SerialName("share_code") val shareCode: String? = null,
-    @SerialName("cover_path") val coverPath: String? = null,
+    @SerialName("cover_art") val coverArt: StampArt? = null,
     @SerialName("cover_subject") val coverSubject: String? = null,
     @SerialName("cover_status") val coverStatus: String = "idle",
     @SerialName("created_at") val createdAt: String,
@@ -196,7 +196,7 @@ data class ExpenseUpdate(
 @Serializable
 data class CoverDto(
     val id: String,
-    @SerialName("cover_path") val coverPath: String? = null,
+    @SerialName("cover_art") val coverArt: StampArt? = null,
     @SerialName("cover_status") val coverStatus: String = "idle",
 )
 

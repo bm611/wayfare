@@ -9,7 +9,7 @@ async function capture(page, options) {
 
 const user = { id: 'traveller-you', aud: 'authenticated', role: 'authenticated', email: 'traveller@example.test', user_metadata: {}, app_metadata: {}, created_at: '2026-01-01T00:00:00Z' };
 const session = { access_token: `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify({ sub: user.id, exp: 4102444800 })).toString('base64url')}.test`, refresh_token: 'test-refresh', expires_at: 4102444800, expires_in: 3600, token_type: 'bearer', user };
-const trip = { id: 'lisbon', user_id: user.id, name: 'A week in Lisbon', destination: 'Lisbon, Portugal', start_date: '2026-09-03', end_date: '2026-09-09', budget: 1500, currency: 'EUR', accent: 'clay', share_code: 'BCDF2345', cover_status: 'ready', cover_path: null, created_at: '2026-09-01T00:00:00Z' };
+const trip = { id: 'lisbon', user_id: user.id, name: 'A week in Lisbon', destination: 'Lisbon, Portugal', start_date: '2026-09-03', end_date: '2026-09-09', budget: 1500, currency: 'EUR', accent: 'clay', share_code: 'BCDF2345', cover_status: 'ready', cover_art: null, created_at: '2026-09-01T00:00:00Z' };
 const expenses = [
   { id: 'flight', title: 'Flights to Lisbon', amount: 200, category: 'flights', user_id: user.id, spent_on: '2026-09-01', note: null },
   { id: 'hotel', title: 'Hotel deposit', amount: 50, category: 'stays', user_id: user.id, spent_on: '2026-09-01', note: null },
@@ -284,6 +284,18 @@ test('trip summaries avoid downloading the expense ledger', async ({ page }) => 
   expect(requests.some((request) => request.path.endsWith('/expenses'))).toBe(false);
 });
 
+test('trip cards carry the passport stamp drawn for them', async ({ page }, testInfo) => {
+  const art = { v: 1, label: 'LISBOA', fallback: false, paths: ['M4 52 L60 52', 'M10 52 L10 30 L20 30 L20 52'] };
+  await mockApp(page, { trip: { cover_art: art } });
+  await page.goto('/');
+  const card = page.locator('a[href="/trip/lisbon"]');
+  await expect(card.locator('.stamp-mark path')).toHaveCount(2);
+  await expect(card.locator('.stamp')).toContainText('LISBOA');
+  await expect(card.locator('.stamp')).toContainText('SEP 2026');
+  await expect(card).toContainText('A week in Lisbon');
+  await capture(page, { path: testInfo.outputPath('stamp-card.png'), fullPage: true });
+});
+
 test('leaving the trips page cancels an in-flight cover poll', async ({ page }) => {
   await mockApp(page, { trip: { cover_status: 'pending' } });
   await page.clock.install();
@@ -291,10 +303,10 @@ test('leaving the trips page cancels an in-flight cover poll', async ({ page }) 
   let release;
   const held = new Promise((resolve) => { release = resolve; });
   await page.route('**/rest/v1/trips?*', async (route) => {
-    if (!new URL(route.request().url()).searchParams.get('select')?.includes('cover_path,')) return route.fallback();
+    if (!new URL(route.request().url()).searchParams.get('select')?.includes('cover_art,')) return route.fallback();
     polls++;
     await held;
-    await route.fulfill({ json: [{ id: trip.id, cover_path: null, cover_status: 'pending' }] });
+    await route.fulfill({ json: [{ id: trip.id, cover_art: null, cover_status: 'pending' }] });
   });
   await page.goto('/');
   await expect(page.locator('a[href="/trip/lisbon"]')).toBeVisible();

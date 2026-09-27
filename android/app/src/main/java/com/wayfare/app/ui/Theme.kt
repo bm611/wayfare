@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.wayfare.app.R
 
 // One soft pastel accent, one type family, disciplined grayscale for everything
-// else — the watercolor covers are meant to carry the colour. Token names match
+// else — the passport stamps are meant to carry the colour. Token names match
 // `design.md` and the iOS `Palette` so the two clients stay in step.
 
 /**

@@ -9,7 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Keeps trip covers moving toward 'ready'. Ported from `useTripCovers.ts`.
+ * Keeps trip stamps moving toward 'ready'. Ported from `useTripCovers.ts`.
  *
  * Generation lives in a Netlify background function that answers 202 and
  * reports back through the row, so this asks for the ones that are missing and
@@ -33,13 +33,13 @@ class CoverCoordinator(
         if (pending.isNotEmpty()) startPolling(pending)
     }
 
-    /** What the cover is a picture of — a destination, or the trip's own name. */
+    /** What the stamp is of — a destination, or the trip's own name. */
     private fun subject(trip: Trip): String? =
         trip.destination?.trim()?.ifBlank { null } ?: trip.name.trim().ifBlank { null }
 
     private suspend fun request(trips: List<Trip>) = gate.withLock {
         // One at a time: a first run with several old trips should not fire a
-        // handful of image jobs at once.
+        // handful of drawing jobs at once.
         for (trip in trips) {
             if (!asked.add(trip.id)) continue
             val sent = runCatching { repository.requestCover(trip.id) }
@@ -63,7 +63,7 @@ class CoverCoordinator(
     private companion object {
         const val POLL_MS = 4_000L
 
-        /** Roughly three minutes. Drawing takes ~15s; past this it is not coming. */
+        /** Roughly three minutes. A stamp takes seconds; past this it is not coming. */
         const val MAX_POLLS = 45
     }
 }

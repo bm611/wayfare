@@ -61,11 +61,11 @@ struct DataTests {
     StubProtocol.requests = []
     StubProtocol.handler = { request in
       #expect(request.url?.path == "/rest/v1/trips")
-      #expect(request.url?.query?.contains("select=id,cover_path,cover_status") == true)
-      return (200, Data(#"[{"id":"rome","cover_path":"rome/new.jpg","cover_status":"ready"}]"#.utf8))
+      #expect(request.url?.query?.contains("select=id,cover_art,cover_status") == true)
+      return (200, Data(#"[{"id":"rome","cover_art":{"v":1,"label":"ROMA","paths":["M4 52 L60 52","M8 52 L8 20"],"fallback":false},"cover_status":"ready"}]"#.utf8))
     }
     await store.refreshPending()
-    #expect(store.trips.first?.coverPath == "rome/new.jpg")
+    #expect(store.trips.first?.coverArt?.label == "ROMA")
     #expect(StubProtocol.requests.count == 1)
     await store.refreshPending()
     #expect(StubProtocol.requests.count == 1)
@@ -149,13 +149,14 @@ struct DataTests {
     _ = try await store.saveTrip(trip, isNew: false)
     #expect(coverRequests == 2)
     #expect(store.trips.first?.coverStatus == "pending")
-    // Renaming a trip with an existing destination cover preserves that cover.
+    // Renaming a trip with an existing stamp preserves that stamp.
+    let art = StampArt(label: "FIRENZE", paths: ["M4 52 L60 52", "M20 38 Q20 19 32 14"])
     trip.name = "Italy with friends"
-    trip.coverPath = "rome/cover.jpg"
+    trip.coverArt = art
     trip.coverStatus = "ready"
     _ = try await store.saveTrip(trip, isNew: false)
     #expect(coverRequests == 2)
-    #expect(store.trips.first?.coverPath == "rome/cover.jpg")
+    #expect(store.trips.first?.coverArt == art)
   }
 
   @Test func coverFailureDoesNotFailSavingANameOnlyTrip() async throws {
@@ -171,41 +172,30 @@ struct DataTests {
     let savedID = try await store.saveTrip(trip, isNew: true)
     #expect(savedID == trip.id)
     #expect(store.trips.first?.name == "Rome")
-    #expect(store.notice?.contains("cover could not be generated") == true)
+    // The card keeps its blank stamp; there is nothing for the traveller to do.
+    #expect(store.notice == nil)
   }
 
-  @Test func manualCoverRegenerationResetsCompletedJobAndKeepsImage() async throws {
+  @Test func failedStampsAreAskedForAgain() async throws {
     let directory = temporary()
     defer { try? FileManager.default.removeItem(at: directory) }
     let store = makeStore(directory: directory, cover: URL(string: "https://test.invalid/cover")!)
     try store.adopt(account())
-    let trip = Trip(id: "rome", userId: "alice", name: "Rome", coverPath: "rome/old.jpg", coverStatus: "ready")
-    StubProtocol.handler = { _ in (200, try AppStore.encoder.encode([trip])) }
-    _ = try await store.saveTrip(trip, isNew: false)
-    var steps: [String] = []
+    let trip = Trip(id: "rome", userId: "alice", name: "Rome", coverStatus: "failed")
+    var coverRequests = 0
     StubProtocol.handler = { request in
-      if request.httpMethod == "PATCH" {
-        #expect(request.url?.query?.contains("cover_status=in.(ready,failed)") == true)
-        var data = request.httpBody ?? Data()
-        if let stream = request.httpBodyStream {
-          stream.open()
-          defer { stream.close() }
-          var bytes = [UInt8](repeating: 0, count: 1024)
-          let count = stream.read(&bytes, maxLength: bytes.count)
-          data = Data(bytes.prefix(max(0, count)))
-        }
-        let body = try #require(JSONSerialization.jsonObject(with: data) as? [String: String])
-        #expect(body == ["cover_status": "idle"])
-        steps.append("reset")
+      if request.url?.path == "/cover" {
+        coverRequests += 1
+        return (202, Data())
+      }
+      if request.url?.path == "/rest/v1/trips" {
         return (200, try AppStore.encoder.encode([trip]))
       }
-      #expect(request.url?.path == "/cover")
-      steps.append("generate")
-      return (202, Data())
+      return (200, Data("[]".utf8))
     }
-    try await store.requestCover(tripId: trip.id, regenerate: true)
-    #expect(steps == ["reset", "generate"])
-    #expect(store.trips.first?.coverPath == "rome/old.jpg")
+    // The server's claim decides whether it is too soon; the client just asks.
+    await store.refresh()
+    #expect(coverRequests == 1)
     #expect(store.trips.first?.coverStatus == "pending")
   }
 

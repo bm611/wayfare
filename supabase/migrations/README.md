@@ -10,3 +10,9 @@ out exactly one job at a time, and `set_trip_cover` records the result. Both are
 `SECURITY DEFINER` on purpose — a member who does not own the trip still has to
 be able to finish a job they started, and `trips` is owner-only for updates.
 
+`20260927_trip_cover_stamps` replaces the generated image with a passport stamp:
+a few lines of SVG path data drawn by a text model, validated and normalised to
+absolute M/L/C/Q/Z on a 64×64 grid by the background function, and stored in
+`trips.cover_art`. It drops `cover_path` and the `trip-covers` bucket, and sends
+every trip back to `idle` so the clients ask for a stamp on the next load. The
+claim / set / status handshake above is unchanged.

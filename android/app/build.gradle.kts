@@ -128,8 +128,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.work)
-    implementation(libs.coil.compose)
-    implementation(libs.coil.network)
     implementation(libs.ktor.android)
     implementation(libs.ktor.content.negotiation)
     implementation(libs.ktor.json)
@@ -137,7 +135,6 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.compose.auth)
     implementation(libs.supabase.postgrest)
-    implementation(libs.supabase.storage)
     ksp(libs.androidx.room.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

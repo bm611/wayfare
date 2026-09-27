@@ -3,8 +3,8 @@ import UIKit
 import WayfareCore
 
 /// Shared token-for-token with the native Android theme. One soft pastel accent,
-/// one type family, disciplined grayscale for everything else — the watercolor
-/// covers are meant to carry the colour.
+/// one type family, disciplined grayscale for everything else — the passport
+/// stamps are meant to carry the colour.
 enum Palette {
   /// Pastel blue fill for the one primary action on a surface. Too light for
   /// white text, so anything on it uses ``onAccent``.
@@ -422,45 +422,6 @@ struct ActionBar<Content: View>: View {
   }
 }
 
-// MARK: - Photography
-
-/// Cover photography at the aspect ratio the surface calls for: 4:3 in the
-/// listing grid, 16:9 for a detail-page hero. Text never sits on top of it.
-struct TripArtwork: View {
-  let trip: Trip
-  let url: URL?
-  var aspect: CGFloat = 4 / 3
-  var showStatus = true
-  var body: some View {
-    Color.clear
-      .aspectRatio(aspect, contentMode: .fit)
-      .overlay {
-        ZStack {
-          // A placeholder should read as an unloaded image, not as a second
-          // accent colour competing with the real one.
-          Palette.softCloud
-          Image(systemName: "photo")
-            .font(.system(size: 28, weight: .light))
-            .foregroundStyle(Palette.stone)
-          AsyncImage(url: url) { image in
-            image.resizable().scaledToFill()
-          } placeholder: {
-            Color.clear
-          }
-          if showStatus && trip.coverStatus == "pending" {
-            Text("Developing your cover…").typeStyle(.labelSmall).foregroundStyle(Palette.ink)
-              .padding(.horizontal, 10).padding(.vertical, 6)
-              .background(Palette.canvas, in: RoundedRectangle(cornerRadius: Radius.card))
-              .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-              .padding(12)
-          }
-        }
-      }
-      .clipped()
-      .accessibilityLabel(trip.destination.map { "Destination cover for \($0)" } ?? "Trip cover")
-  }
-}
-
 // MARK: - Dates
 
 private let months = [
@@ -582,9 +543,14 @@ struct FieldError: View {
 
 struct TripLoadingSkeleton: View {
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      RoundedRectangle(cornerRadius: 20).fill(Palette.softCloud).aspectRatio(3 / 2, contentMode: .fit)
-      RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 210, height: 24)
+    // The shape of a stamp card: the stamp, then the trip's name and dates.
+    HStack(spacing: 20) {
+      RoundedRectangle(cornerRadius: 18).fill(Palette.hairline).frame(width: 104, height: 128)
+      VStack(alignment: .leading, spacing: 12) {
+        RoundedRectangle(cornerRadius: 10).fill(Palette.hairline).frame(width: 80, height: 20)
+        RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(maxWidth: 180).frame(height: 24)
+        RoundedRectangle(cornerRadius: 4).fill(Palette.hairline).frame(width: 110, height: 16)
+      }
     }
     .padding(18).frame(maxWidth: .infinity, alignment: .leading)
     .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: 35, style: .continuous))

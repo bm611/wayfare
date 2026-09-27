@@ -1,6 +1,6 @@
 # R8 rules for the release build.
 #
-# Compose, Room, Coil and Supabase each ship consumer rules that travel with the
+# Compose, Room and Supabase each ship consumer rules that travel with the
 # dependency, so this file only covers what is specific to Wayfare.
 
 # ---------------------------------------------------------------------------

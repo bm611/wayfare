@@ -1,60 +1,37 @@
 import { createClient } from "@supabase/supabase-js";
 import Together from "together-ai";
+import {
+  FALLBACKS,
+  FALLBACK_ICONS,
+  MAX_LABEL_CHARS,
+  MAX_PATHS,
+  MIN_PATHS,
+  StampError,
+  isFallback,
+  stampLabel,
+  validatePaths,
+  type Fallback,
+  type StampArt,
+} from "../lib/stamp.mts";
 
 /**
- * Draws the destination illustration displayed on trip cards.
+ * Draws the passport stamp shown on trip cards: a few lines of SVG path data
+ * from a text model, validated and normalised here before anything is stored.
  *
- * A background function keeps image generation off the request path. The
- * caller gets a 202 immediately and watches `trips.cover_status` instead.
+ * A background function keeps the model call off the request path. The caller
+ * gets a 202 immediately and watches `trips.cover_status` instead.
  */
 
-const MODEL = "Qwen/Qwen-Image-2.0";
-// Wide enough to stay sharp on a 2x phone screen, small enough that a list of
-// cards is not megabytes of artwork.
-const WIDTH = 1264;
-const HEIGHT = 848;
+const MODEL = "deepseek-ai/DeepSeek-V4.1-Flash";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * The look every cover shares. Holding camera, staging and finish fixed is what
- * makes a list of trip cards read as one series of prints rather than a pile of
- * unrelated renders, so only the place and the season below are free to vary.
- */
-const SERIES_STYLE = [
-  "Elevated orthographic camera at 35 degrees, no perspective distortion.",
-  "Refined architectural scale model: crisp geometry, realistic material textures, subtle ambient occlusion and a single soft contact shadow beneath the base.",
-  "Balanced visual hierarchy, charming small details, ample white margin, every building fully within frame.",
-].join(" ");
-
-/**
- * Stated as a negative prompt rather than as "no ..." clauses in the prompt
- * itself, which the model tends to read as an instruction to include the thing.
- * Deliberately says nothing about text: the base is supposed to be lettered.
- */
-const NEGATIVE_PROMPT = [
-  "caption bar",
-  "subtitle",
-  "watermark",
-  "logo",
-  "border",
-  "picture frame",
-  "watercolor",
-  "painted brushwork",
-  "floating disconnected landmarks",
-  "exaggerated skyscrapers",
-  "cropped buildings",
-  "cluttered background",
-  "multiple separate dioramas",
-  "vignette",
-].join(", ");
 
 type Season = "winter" | "spring" | "summer" | "autumn";
 
 /**
  * What a descriptive trip name is allowed to contribute. The vocabulary is
  * seasonal only on purpose: the destination stays the sole authority on
- * geography, so "ski" buys snow and low sun, never an invented mountain.
+ * geography, so "ski" buys snow, never an invented mountain.
  *
  * Mirrored by `trip_cover_season()` in the trip-cover-season migration, which
  * decides when a rename is worth redrawing for. Words added here belong there.
@@ -66,29 +43,18 @@ const SEASONS: Array<[RegExp, Season]> = [
   [/\b(autumn|fall|foliage|harvest)\b/i, "autumn"],
 ];
 
-/**
- * Light, weather and planting for each season. Time of day stays upper-left
- * across all four so the shadows fall the same way on every card.
- */
-const SEASON_MOOD: Record<Season, string> = {
-  winter:
-    "Deep winter: snow lying on the roofs, streets and ground, bare trees, water frozen or edged with ice, and a low pale sun from the upper left casting long cool blue shadows.",
-  spring:
-    "Early spring: fresh green foliage, blossoming trees, bright damp ground and clear mild daylight from the upper left.",
-  summer:
-    "High summer: dense green foliage, warm dry ground, awnings and parasols out, and a high bright sun from the upper left casting short crisp shadows.",
-  autumn:
-    "Autumn: amber, rust and gold foliage, fallen leaves gathered along the streets, and a low golden afternoon sun from the upper left.",
+/** A single small touch per season; the landmark stays the subject. */
+const SEASON_TOUCH: Record<Season, string> = {
+  winter: "It is deep winter: add snow — a short snow line on roofs or peaks, or a few falling flakes as tiny strokes.",
+  spring: "It is spring: add one small blossoming branch or a few blossom dots.",
+  summer: "It is high summer: add a sun (a small circle) or a few heat-shimmer strokes.",
+  autumn: "It is autumn: add two or three small falling leaves.",
 };
 
-const DEFAULT_MOOD =
-  "Soft afternoon sunlight from the upper left with gentle, natural shadows and foliage in unforced seasonal colour.";
-
 /**
- * Strips the decoration off a subject so the words on the base stay a place.
+ * Strips the decoration off a subject so the stamp names a place.
  * "Iceland - Winter '26" comes back as "Iceland"; a plain destination is
- * untouched. Used for the scene description too, so the model is never asked to
- * draw a diorama "of finland winter '26".
+ * untouched.
  */
 function cleanPlace(subject: string) {
   return (
@@ -108,35 +74,208 @@ function detectSeason(name: string): Season | null {
 }
 
 /**
- * Splits the two form fields into the two things the picture needs. Destination
- * answers *where*, and only it reaches the landmarks and the lettering; the
- * trip name answers *when*, and only through the seasonal vocabulary above.
+ * Splits the two form fields into the two things the drawing needs.
+ * Destination answers *where*, and only it reaches the landmark and the label;
+ * the trip name answers *when*, and only through the seasonal vocabulary above.
  * A trip named "finland winter '26" bound for "Finland" draws Finland in snow.
  */
-export function coverSubject(name: string, destination: string | null, startDate: string | null) {
-  const place = cleanPlace(destination?.trim() || name.trim());
+export function coverSubject(name: string, destination: string | null) {
   return {
-    place,
-    lettering: place.toUpperCase(),
-    year: startDate?.match(/^\d{4}/)?.[0] ?? null,
+    place: cleanPlace(destination?.trim() || name.trim()),
     season: detectSeason(name),
   };
 }
 
 /**
- * Keep the isometric direction consistent while letting the destination
- * determine the landmarks, architecture and geography.
+ * The portfolio's PlaceMark drawings, reduced to bare path data: circles and
+ * rects written as paths, Pisa's rotation applied to its points, and the
+ * dashed tow line drawn solid. They set the style the model should match.
  */
-export function coverPrompt({ place, lettering, year, season }: ReturnType<typeof coverSubject>) {
+const EXAMPLES: Array<{ place: string; label: string; fallback: Fallback; paths: string[] }> = [
+  {
+    place: "Mount Hood, Oregon",
+    label: "MT HOOD",
+    fallback: "mountain",
+    paths: [
+      "M6 52 L30 13 L38 25 L42 20 L58 52",
+      "M23 24 L27 28 L31 23 L35 28 L37 25",
+      "M45 14 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Rome",
+    label: "ROMA",
+    fallback: "temple",
+    paths: [
+      "M8 52 V20 Q28 14 46 17 V24 H52 V32 H56 V52",
+      "M8 30 Q28 25 46 27 H52 M8 41 H56",
+      "M12 52 v-6 a3 3 0 0 1 6 0 v6 M22 52 v-6 a3 3 0 0 1 6 0 v6 M32 52 v-6 a3 3 0 0 1 6 0 v6 M42 52 v-6 a3 3 0 0 1 6 0 v6",
+      "M12 41 v-5 a3 3 0 0 1 6 0 v5 M22 41 v-5 a3 3 0 0 1 6 0 v5 M32 41 v-5 a3 3 0 0 1 6 0 v5 M42 41 v-5 a3 3 0 0 1 6 0 v5",
+      "M14 24 v2 M22 22 v2 M30 22 v2 M38 22 v2",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Florence",
+    label: "FIRENZE",
+    fallback: "temple",
+    paths: [
+      "M18 52 V38 H46 V52",
+      "M20 38 Q20 19 32 14 Q44 19 44 38",
+      "M26 38 Q25 23 32 14 Q39 23 38 38",
+      "M29 14 V9 H35 V14 M32 9 V5",
+      "M8 52 V43 H18 M46 43 H56 V52",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Pisa",
+    label: "PISA",
+    fallback: "tower",
+    paths: [
+      "M28.6 14.3 L44.4 16.3 L39.9 53 L24.1 51 Z",
+      "M31.8 8.7 L42.7 10 L42 15.9 L31.1 14.6 Z",
+      "M27.7 21.2 L43.6 23.2 M27 27.2 L42.9 29.2 M26.3 33.2 L42.1 35.1 M25.5 39.1 L41.4 41.1 M24.8 45.1 L40.7 47",
+      "M31.7 21.7 L31 27.7 M35.7 22.2 L34.9 28.2 M30.2 33.6 L29.5 39.6 M34.2 34.1 L33.5 40.1",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Dubrovnik",
+    label: "DUBROVNIK",
+    fallback: "castle",
+    paths: [
+      "M6 52 V34 H9 V31 H12 V34 H15 V31 H18 V34 H21 V31 H24 V34 H27 V31 H30 V34 H34",
+      "M34 52 V16 H37 V19 H40 V16 H44 V19 H47 V16 H50 V52",
+      "M34 36 H50 M42 25 v5",
+      "M16 52 v-7 a4 4 0 0 1 8 0 v7",
+      "M50 42 L55 37 L60 42 V52",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Koločep, Croatia",
+    label: "KOLOČEP",
+    fallback: "island",
+    paths: [
+      "M8 45 Q20 32 31 37 Q42 28 56 45",
+      "M41 32 V25 M35 27 Q41 18 47 27",
+      "M6 11 L52 23 M28 17 v5",
+      "M26 24 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0",
+      "M4 51 q4 -3 8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0",
+    ],
+  },
+  {
+    place: "Mysore",
+    label: "MYSORE",
+    fallback: "temple",
+    paths: [
+      "M8 52 V36 H56 V52",
+      "M26 36 V22 H38 V36 M26 22 Q26 13 32 10 Q38 13 38 22 M32 10 V6",
+      "M10 36 V28 H18 V36 M10 28 Q14 21 18 28 M14 24.5 V21",
+      "M46 36 V28 H54 V36 M46 28 Q50 21 54 28 M50 24.5 V21",
+      "M13 52 v-6 a3 3 0 0 1 6 0 v6 M29 52 v-7 a3 3 0 0 1 6 0 v7 M45 52 v-6 a3 3 0 0 1 6 0 v6",
+      "M4 52 H60",
+    ],
+  },
+  {
+    place: "Varkala, Kerala",
+    label: "VARKALA",
+    fallback: "beach",
+    paths: [
+      "M4 52 V30 H20 L22 36 L21 42 L25 52",
+      "M12 30 Q13 22 11 16 M11 16 Q6 14 4 18 M11 16 Q16 13 19 17 M11 16 Q9 11 5 11 M11 16 Q14 10 18 11",
+      "M38 14 Q46 6 54 14 M38 14 L46 24 M54 14 L46 24",
+      "M44.5 25.5 a1.5 1.5 0 1 0 3 0 a1.5 1.5 0 1 0 -3 0 M46 27 L56 46",
+      "M26 51 q4 -3 8 0 t8 0 t8 0 t8 0",
+    ],
+  },
+];
+
+const RULES = [
+  "You draw minimalist passport-stamp line art of travel destinations.",
+  "Canvas: a 64×64 grid, viewBox 0 0 64 64, y grows downward. Every coordinate — including curve control points — must stay between 0 and 64.",
+  "Style: stroke-only line drawing, 2px round strokes, no fills, no text. One recognisable landmark or landscape of the place, simple enough to read at 48px. Stand it on a ground line at y=52 (usually \"M4 52 H60\"; a wavy sea line near y=51 for coasts).",
+  `Output ${MIN_PATHS}–${MAX_PATHS} path strings (aim for 3–6), each an SVG path "d" attribute using only the commands M L H V C S Q T A Z (absolute or relative). No <path> tags, no circle or rect elements — write circles as two arcs, e.g. "M45 14 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0". Keep each path under 400 characters.`,
+  `label: the place's short name as a local would write it on a stamp, uppercase, at most ${MAX_LABEL_CHARS} characters.`,
+  `fallback: the generic icon closest to this place, chosen from: ${FALLBACKS.join(", ")}. It is used only if your drawing cannot be rendered.`,
+  "Answer with JSON only.",
+].join("\n");
+
+export function coverMessages({ place, season }: ReturnType<typeof coverSubject>, feedback?: string) {
+  const examples = EXAMPLES.flatMap((example) => [
+    { role: "user" as const, content: `Destination: ${example.place}` },
+    {
+      role: "assistant" as const,
+      content: JSON.stringify({ label: example.label, fallback: example.fallback, paths: example.paths }),
+    },
+  ]);
+  const ask = [`Destination: ${place}`, season ? SEASON_TOUCH[season] : null].filter(Boolean).join("\n");
   return [
-    `A premium 3D isometric miniature city diorama of ${place}, horizontal 3:2 composition on a pure white studio background.`,
-    SERIES_STYLE,
-    `One cohesive compact diorama with recognizable landmarks, local architecture, streets and trees of ${place}, grounded in its actual geography. Include rivers, coast or canals only if the destination has them; otherwise use local streets, squares or terrain. No landmarks from other places.`,
-    `Roof shapes, building materials and colours taken from the vernacular architecture of ${place} — what that place genuinely builds with, not a default warm Mediterranean palette of terracotta and ceramic tile.`,
-    season ? SEASON_MOOD[season] : DEFAULT_MOOD,
-    `Integrate ${JSON.stringify(lettering)} into the front face of the diorama's stone base as large, inset navy Roman capitals.${year ? ` Place ${JSON.stringify(year)} beside it in smaller, clearly readable engraved numerals.` : ""}`,
-    "Keep all lettering on one clean architectural surface, facing the viewer with minimal perspective distortion. Use strong contrast and restrained detailing so the lettering remains readable at mobile card size. The typography should feel built into the miniature city, with no separate caption band below the scene.",
-  ].join(" ");
+    { role: "system" as const, content: RULES },
+    ...examples,
+    { role: "user" as const, content: ask },
+    ...(feedback
+      ? [{ role: "user" as const, content: `That drawing was rejected: ${feedback}. Draw it again, following the rules exactly.` }]
+      : []),
+  ];
+}
+
+const RESPONSE_FORMAT = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "stamp",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        label: { type: "string" },
+        fallback: { type: "string", enum: FALLBACKS },
+        paths: { type: "array", items: { type: "string" } },
+      },
+      required: ["label", "fallback", "paths"],
+      additionalProperties: false,
+    },
+  },
+};
+
+/**
+ * Asks for a drawing, retries once with the reason it was rejected, and then
+ * settles for the generic icon the model picked. An API error on the first
+ * call is thrown, so the row is marked failed and retried later; once the
+ * model has answered at all, the trip always ends up with a stamp.
+ */
+export async function drawStamp(
+  subject: ReturnType<typeof coverSubject>,
+  complete: (messages: ReturnType<typeof coverMessages>) => Promise<string>,
+): Promise<StampArt> {
+  let feedback: string | undefined;
+  let fallback: Fallback | null = null;
+  let label: unknown = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let content: string;
+    try {
+      content = await complete(coverMessages(subject, feedback));
+    } catch (err) {
+      if (attempt === 0) throw err;
+      break;
+    }
+    try {
+      const parsed = JSON.parse(content) as { label?: unknown; fallback?: unknown; paths?: unknown };
+      if (isFallback(parsed.fallback)) fallback = parsed.fallback;
+      if (typeof parsed.label === "string") label = parsed.label;
+      const paths = validatePaths(parsed.paths);
+      return { v: 1, label: stampLabel(label, subject.place), paths, fallback: false };
+    } catch (err) {
+      feedback = err instanceof StampError ? err.message : "the response was not valid JSON";
+      console.warn(`trip-cover: attempt ${attempt + 1} rejected — ${feedback}`);
+    }
+  }
+
+  const icon = fallback ?? "city";
+  return { v: 1, label: stampLabel(label, subject.place), paths: FALLBACK_ICONS[icon], fallback: true };
 }
 
 export default async (req: Request) => {
@@ -185,61 +324,39 @@ export default async (req: Request) => {
   try {
     const { data: trip, error } = await supabase
       .from("trips")
-      .select("name, destination, start_date")
+      .select("name, destination")
       .eq("id", tripId)
       .single();
     if (error || !trip) throw new Error(error?.message ?? "Trip is not readable");
 
-    const subject = coverSubject(trip.name ?? "", trip.destination, trip.start_date);
+    const subject = coverSubject(trip.name ?? "", trip.destination);
     if (!subject.place) throw new Error("Trip has nothing to draw");
 
     const together = new Together({ apiKey: togetherKey });
-    const result = await together.images.generate({
-      model: MODEL,
-      prompt: coverPrompt(subject),
-      negative_prompt: NEGATIVE_PROMPT,
-      width: WIDTH,
-      height: HEIGHT,
-      response_format: "base64",
-      output_format: "jpeg",
-      disable_safety_checker: true,
-    });
-
-    const b64 = (result.data?.[0] as { b64_json?: string } | undefined)?.b64_json;
-    if (!b64) throw new Error("Model returned no image data");
-
-    // A fresh name per generation, so a regenerated cover is never served from
-    // a stale CDN cache under the old URL.
-    // Native cards recognize the print suffix and omit their duplicate title.
-    const file = `${Date.now()}-print.jpg`;
-    const path = `${tripId}/${file}`;
-    const { error: uploadError } = await supabase.storage
-      .from("trip-covers")
-      .upload(path, Buffer.from(b64, "base64"), {
-        contentType: "image/jpeg",
-        cacheControl: "31536000",
-        upsert: true,
+    const art = await drawStamp(subject, async (messages) => {
+      const result = await together.chat.completions.create({
+        model: MODEL,
+        messages,
+        response_format: RESPONSE_FORMAT,
+        temperature: 0.4,
+        max_tokens: 4000,
       });
-    if (uploadError) throw new Error(uploadError.message);
+      const content = result.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Model returned no content");
+      return content;
+    });
 
     const { error: saveError } = await supabase.rpc("set_trip_cover", {
       p_trip: tripId,
-      p_path: path,
+      p_art: art,
       p_subject: subject.place,
     });
     if (saveError) throw new Error(saveError.message);
 
-    // Regenerating would otherwise leave every previous frame behind.
-    const { data: existing } = await supabase.storage.from("trip-covers").list(tripId);
-    const stale = (existing ?? [])
-      .filter((object) => object.name !== file)
-      .map((object) => `${tripId}/${object.name}`);
-    if (stale.length) await supabase.storage.from("trip-covers").remove(stale);
-
-    console.log(`trip-cover: ${tripId} ready at ${path}`);
+    console.log(`trip-cover: ${tripId} ready${art.fallback ? " (fallback icon)" : ""}`);
   } catch (err) {
     console.error(`trip-cover: ${tripId} failed —`, err instanceof Error ? err.message : err);
     // Record the failure so the card stops waiting and the retry clock starts.
-    await supabase.rpc("set_trip_cover", { p_trip: tripId, p_path: null, p_subject: null });
+    await supabase.rpc("set_trip_cover", { p_trip: tripId, p_art: null, p_subject: null });
   }
 };

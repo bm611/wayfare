@@ -1,12 +1,15 @@
 package com.wayfare.app.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
+import androidx.room.DeleteColumn
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.migration.AutoMigrationSpec
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -27,21 +30,13 @@ interface TripDao {
     suspend fun delete(accountId: String, tripId: String)
 
     @Query(
-        "UPDATE trips SET coverPath = :coverPath, coverStatus = :coverStatus " +
+        "UPDATE trips SET coverArt = :coverArt, coverStatus = :coverStatus " +
             "WHERE accountId = :accountId AND id = :tripId",
     )
-    suspend fun setCover(accountId: String, tripId: String, coverPath: String?, coverStatus: String)
+    suspend fun setCover(accountId: String, tripId: String, coverArt: String?, coverStatus: String)
 
     @Query("UPDATE trips SET coverStatus = 'pending' WHERE accountId = :accountId AND id = :tripId")
     suspend fun markCoverPending(accountId: String, tripId: String)
-
-    /**
-     * Covers of the trips this account owns, so deletion can remove the files.
-     * Only owned trips: a member may delete any cover on a shared trip, and a trip
-     * someone else owns keeps its cover when this account goes.
-     */
-    @Query("SELECT coverPath FROM trips WHERE accountId = :accountId AND ownerId = :accountId AND coverPath IS NOT NULL")
-    suspend fun coverPaths(accountId: String): List<String>
 }
 
 @Dao
@@ -110,10 +105,17 @@ interface OutboxDao {
     suspend fun deleteAll(accountId: String)
 }
 
+@DeleteColumn(tableName = "trips", columnName = "coverPath")
+class StampMigration : AutoMigrationSpec
+
 @Database(
     entities = [TripEntity::class, ExpenseEntity::class, MemberEntity::class, OutboxEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // Trip covers became passport stamps: the image path gave way to the drawing.
+        AutoMigration(from = 1, to = 2, spec = StampMigration::class),
+    ],
 )
 abstract class WayfareDatabase : RoomDatabase() {
     abstract fun trips(): TripDao

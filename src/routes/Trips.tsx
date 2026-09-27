@@ -20,7 +20,7 @@ export function Trips() {
   const [tripSheet, setTripSheet] = useState(false);
   const [joinSheet, setJoinSheet] = useState(false);
 
-  // Draws the destination shot behind each pass, and watches for it to land.
+  // Draws the passport stamp on each card, and watches for it to land.
   useTripCovers(trips, applyCovers);
 
   // Every trip is euro-denominated, so a single total is always meaningful.

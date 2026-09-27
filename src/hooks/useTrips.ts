@@ -52,11 +52,11 @@ export function useTrips() {
       const next = prev.map((trip) => {
         const patch = byId.get(trip.id);
         if (!patch) return trip;
-        if (patch.cover_status === trip.cover_status && patch.cover_path === trip.cover_path) {
+        if (patch.cover_status === trip.cover_status && patch.cover_art === trip.cover_art) {
           return trip;
         }
         changed = true;
-        return { ...trip, cover_path: patch.cover_path, cover_status: patch.cover_status };
+        return { ...trip, cover_art: patch.cover_art, cover_status: patch.cover_status };
       });
       return changed ? next : prev;
     });

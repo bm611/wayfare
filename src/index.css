@@ -41,6 +41,16 @@
 }
 
 @layer base {
+  /* Passport stamp tints, shared with the Android and iOS stamps. Outside
+     @theme because only lib/stamp.ts names them, and Tailwind drops theme
+     variables no utility class uses. */
+  :root {
+    --stamp-peach: #fcd5b9;
+    --stamp-sky: #c7e7f9;
+    --stamp-sage: #cdead2;
+    --stamp-lilac: #e1d8f9;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
@@ -146,24 +156,100 @@
 }
 
 @layer utilities {
+  /* Loading placeholders (States.tsx). */
   @keyframes shimmer {
     100% { transform: translateX(100%); }
   }
+}
 
-  /* A pass whose destination shot is still being drawn. Reads as a photograph
-     coming up in the tray rather than as a generic loading skeleton. */
-  .developing::after {
+@layer components {
+  /* Passport stamps: a tinted card with a dashed inner rule, set at an angle.
+     Tint, tilt and shape come from the trip id (lib/stamp.ts). */
+  .stamp {
+    --tilt: -3deg;
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    width: 6.5rem;
+    padding: 0.9rem 0.6rem 0.75rem;
+    border-radius: 18px;
+    background: var(--tint);
+    color: var(--color-ink);
+    transform: rotate(var(--tilt));
+  }
+
+  .stamp::before {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: 5px;
+    border: 1.5px dashed color-mix(in srgb, var(--color-ink) 30%, transparent);
+    border-radius: 13px;
     pointer-events: none;
-    background: linear-gradient(
-      100deg,
-      transparent 25%,
-      color-mix(in srgb, var(--color-clay-wash) 65%, transparent) 50%,
-      transparent 75%
-    );
-    transform: translateX(-100%);
-    animation: shimmer 2.8s var(--ease-out-expo) infinite;
+  }
+
+  .stamp-arched {
+    border-radius: 999px 999px 18px 18px;
+  }
+  .stamp-arched::before {
+    border-radius: 999px 999px 13px 13px;
+  }
+
+  .stamp-mark {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .stamp-label {
+    max-width: 100%;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stamp-date {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-soft);
+  }
+
+  /* The stamp presses onto the card, and a drawing that arrives later inks in. */
+  @media (prefers-reduced-motion: no-preference) {
+    .stamp {
+      animation: stamp-in 420ms var(--ease-out-expo) backwards;
+    }
+    .stamp-ink {
+      animation: stamp-ink 360ms ease-out backwards;
+    }
+    .stamp-developing::before {
+      animation: stamp-breathe 1.6s ease-in-out infinite;
+    }
+  }
+
+  @keyframes stamp-in {
+    from {
+      opacity: 0;
+      transform: rotate(var(--tilt)) scale(1.12);
+    }
+  }
+
+  @keyframes stamp-ink {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes stamp-breathe {
+    50% {
+      opacity: 0.35;
+    }
   }
 }

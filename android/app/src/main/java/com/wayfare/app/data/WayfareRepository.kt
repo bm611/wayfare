@@ -35,7 +35,6 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.storage.storage
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
@@ -338,17 +337,8 @@ class WayfareRepository(
         database.trips().delete(accountId, tripId)
     }
 
-    suspend fun requestCover(tripId: String, regenerate: Boolean = false) {
-        val token = supabase.auth.currentSessionOrNull()?.accessToken ?: error("Sign in to generate a cover")
-        if (regenerate) {
-            // Preserve the current image and never reset a running job.
-            supabase.from("trips").update(buildJsonObject { put("cover_status", "idle") }) {
-                filter {
-                    eq("id", tripId)
-                    isIn("cover_status", listOf("ready", "failed"))
-                }
-            }
-        }
+    suspend fun requestCover(tripId: String) {
+        val token = supabase.auth.currentSessionOrNull()?.accessToken ?: error("Sign in to draw a stamp")
         val response = http.post(BuildConfig.COVER_ENDPOINT) {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
@@ -366,11 +356,11 @@ class WayfareRepository(
     /** Patches cover columns for the trips still drawing; returns the ones still pending. */
     suspend fun refreshCovers(tripIds: List<String>): List<String> {
         val accountId = requireUser()
-        val rows = supabase.from("trips").select(Columns.list("id", "cover_path", "cover_status")) {
+        val rows = supabase.from("trips").select(Columns.list("id", "cover_art", "cover_status")) {
             filter { isIn("id", tripIds) }
         }.decodeList<CoverDto>()
         database.withTransaction {
-            rows.forEach { database.trips().setCover(accountId, it.id, it.coverPath, it.coverStatus) }
+            rows.forEach { database.trips().setCover(accountId, it.id, it.coverArt?.encode(), it.coverStatus) }
         }
         return rows.filter { it.coverStatus == "pending" }.map(CoverDto::id)
     }
@@ -394,12 +384,7 @@ class WayfareRepository(
      * any app that lets people create an account, and the web page at
      * /delete-account reaches the same function.
      *
-     * Cover images go first, through the Storage API: they are files in a bucket
-     * with no foreign key to the ledger, so `delete_account` can only remove their
-     * rows. A cover that refuses to delete must not stop the account from going,
-     * which is why that step is best effort.
-     *
-     * The RPC then takes the user row, and the cascade takes the profile, trips,
+     * The RPC takes the user row, and the cascade takes the profile, trips,
      * expenses, memberships and sessions with it. Afterwards there is nothing left
      * to sign out of, so the session is dropped locally rather than sent to an
      * endpoint that would refuse it.
@@ -410,30 +395,18 @@ class WayfareRepository(
     suspend fun deleteAccount() = refreshGate.withLock {
         val accountId = requireUser()
 
-        runCatching {
-            val covers = database.trips().coverPaths(accountId)
-            if (covers.isNotEmpty()) supabase.storage.from(CoversBucket).delete(covers)
-        }
-
         supabase.postgrest.rpc("delete_account")
 
         supabase.auth.clearSession()
         clearAccount(accountId)
     }
 
-    fun coverUrl(path: String?): String? = path?.let {
-        "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/$CoversBucket/$it"
-    }
-
     private fun requireUser(): String = currentUserId() ?: error("Not signed in")
 }
 
-/** Public bucket holding the generated destination covers. */
-private const val CoversBucket = "trip-covers"
-
 private fun TripDto.toDomain() = Trip(
     id, userId, name, destination, startDate?.let(LocalDate::parse), endDate?.let(LocalDate::parse),
-    BigDecimal.valueOf(budget), currency, accent, shareCode, coverPath, coverSubject, coverStatus, createdAt,
+    BigDecimal.valueOf(budget), currency, accent, shareCode, coverArt, coverSubject, coverStatus, createdAt,
 )
 
 private fun ExpenseDto.toDomain() = Expense(

@@ -282,15 +282,8 @@ import WayfareCore
     }
   }
 
-  public func requestCover(tripId: String, regenerate: Bool = false) async throws {
+  public func requestCover(tripId: String) async throws {
     guard let url = configuration.cover else { throw StoreError.notConfigured }
-    if regenerate {
-      // Owner-only RLS applies. Keep the previous image while allowing a new
-      // claim, without resetting a job already running on another device.
-      let _: [Trip] = try await rest(
-        "trips?id=eq.\(tripId)&cover_status=in.(ready,failed)", method: "PATCH",
-        body: ["cover_status": "idle"], prefer: "return=representation")
-    }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.httpBody = try JSONSerialization.data(withJSONObject: ["tripId": tripId])
@@ -301,21 +294,20 @@ import WayfareCore
     }
   }
 
-  /// Pick up covers invalidated by edits as well as trips created on another device.
+  /// Pick up stamps invalidated by edits, trips created on another device, and
+  /// earlier failures (the server's claim spaces those retries an hour apart).
   private func requestMissingCovers(_ candidates: [Trip]) async {
     guard configuration.cover != nil, let account = userId else { return }
-    for trip in candidates where trip.coverStatus == "idle" && trip.coverPath == nil {
+    for trip in candidates where trip.coverStatus == "idle" || trip.coverStatus == "failed" {
       let subject = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         ?? trip.name.trimmingCharacters(in: .whitespacesAndNewlines)
       let key = "\(account)/\(trip.id)"
       guard !subject.isEmpty, requestedCoverSubjects[key] != subject else { continue }
       guard userId == account else { return }
-      // One automatic attempt per subject per session; manual retry remains available.
+      // One attempt per subject per session. A stamp that could not be asked
+      // for leaves the card's blank stamp in place; there is nothing to act on.
       requestedCoverSubjects[key] = subject
-      do { try await requestCover(tripId: trip.id) } catch {
-        guard userId == account else { return }
-        notice = "Trip saved. The cover could not be generated; retry from trip options."
-      }
+      try? await requestCover(tripId: trip.id)
     }
   }
 
@@ -388,13 +380,13 @@ import WayfareCore
       var patches: [CoverPatch] = []
       for start in stride(from: 0, to: ids.count, by: 100) {
         let batch = ids[start..<min(start + 100, ids.count)].joined(separator: ",")
-        patches += try await restList("trips?select=id,cover_path,cover_status&id=in.(\(batch))&order=id")
+        patches += try await restList("trips?select=id,cover_art,cover_status&id=in.(\(batch))&order=id")
       }
       guard marker == epoch, revision == expectedRevision else { return }
       let byID = Dictionary(uniqueKeysWithValues: patches.map { ($0.id, $0) })
       let updated = trips.map { trip in
         var next = trip
-        if let patch = byID[trip.id] { next.coverPath = patch.coverPath; next.coverStatus = patch.coverStatus }
+        if let patch = byID[trip.id] { next.coverArt = patch.coverArt; next.coverStatus = patch.coverStatus }
         return next
       }
       if updated != trips { trips = updated; try await persistInBackground() }
@@ -463,11 +455,6 @@ import WayfareCore
     }
   }
 
-  public func coverURL(_ path: String?) -> URL? {
-    guard let path, let base = configuration.url else { return nil }
-    return base.appendingPathComponent("storage/v1/object/public/trip-covers")
-      .appendingPathComponent(path)
-  }
 
   public func name(for userId: String) -> String {
     profiles.first { $0.id == userId }?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -882,7 +869,7 @@ private struct Snapshot: Codable, Equatable, Sendable {
 }
 private struct CoverPatch: Decodable {
   let id: String
-  let coverPath: String?
+  let coverArt: StampArt?
   let coverStatus: String
 }
 private struct FXResponse: Decodable {

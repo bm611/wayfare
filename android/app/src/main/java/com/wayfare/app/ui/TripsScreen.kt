@@ -204,7 +204,6 @@ fun TripsScreen(
                             items(trips, key = { it.trip.id }) { summary ->
                                 ListingCard(
                                     summary = summary,
-                                    coverUrl = container.repository.coverUrl(summary.trip.coverPath),
                                     modifier = Modifier.padding(horizontal = 24.dp).animateItem(),
                                     onClick = { onOpenTrip(summary.trip.id) },
                                 )

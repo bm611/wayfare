@@ -34,25 +34,6 @@ export function DeleteAccount() {
     setStage("working");
     setFailure(null);
     try {
-      // Covers are bucket files with no foreign key to the ledger, and Supabase
-      // refuses direct deletes on storage tables, so the database function cannot
-      // reach them. Only trips this account owns: members may delete any cover on
-      // a shared trip, and someone else's trip keeps its cover. Best effort: it
-      // must not block the account going.
-      try {
-        const { data } = await supabase
-          .from("trips")
-          .select("cover_path")
-          .eq("user_id", user.id)
-          .not("cover_path", "is", null);
-        const paths = (data ?? [])
-          .map((row) => (row as { cover_path: string | null }).cover_path)
-          .filter((path): path is string => Boolean(path));
-        if (paths.length) await supabase.storage.from("trip-covers").remove(paths);
-      } catch {
-        // Ignored on purpose — see above.
-      }
-
       const { error } = await supabase.rpc("delete_account");
       if (error) throw error;
 
@@ -115,8 +96,7 @@ export function DeleteAccount() {
                   </li>
                   <li className="flex gap-2">
                     <span aria-hidden className="text-clay">—</span>
-                    Generated destination covers and any entries still waiting to sync
-                    on your phone are removed too.
+                    Any entries still waiting to sync on your phone are removed too.
                   </li>
                 </ul>
 

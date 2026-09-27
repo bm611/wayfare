@@ -15,7 +15,7 @@ class TripPhaseTest {
     private fun trip(start: LocalDate?, end: LocalDate?) = Trip(
         id = "t", ownerId = "u", name = "Lisbon", destination = "Lisbon",
         startDate = start, endDate = end, budget = BigDecimal("1000"), currency = "EUR",
-        accent = "clay", shareCode = null, coverPath = null, coverSubject = null,
+        accent = "clay", shareCode = null, coverArt = null, coverSubject = null,
         coverStatus = "idle", createdAt = "2026-09-01T00:00:00Z",
     )
 

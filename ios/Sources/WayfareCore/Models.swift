@@ -19,7 +19,8 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
   public var currency: String
   public var accent: String
   public var shareCode: String?
-  public var coverPath: String?
+  /// The passport-stamp drawing, once there is one.
+  public var coverArt: StampArt?
   public var coverSubject: String?
   public var coverStatus: String
   public var createdAt: String
@@ -28,7 +29,7 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
     id: String = UUID().uuidString.lowercased(), userId: String = "", name: String = "",
     destination: String? = nil,
     startDate: String? = nil, endDate: String? = nil, budget: Decimal = 0, currency: String = "EUR",
-    accent: String = "clay", shareCode: String? = nil, coverPath: String? = nil,
+    accent: String = "clay", shareCode: String? = nil, coverArt: StampArt? = nil,
     coverSubject: String? = nil, coverStatus: String = "idle", createdAt: String = ""
   ) {
     self.id = id
@@ -41,7 +42,7 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
     self.currency = currency
     self.accent = accent
     self.shareCode = shareCode
-    self.coverPath = coverPath
+    self.coverArt = coverArt
     self.coverSubject = coverSubject
     self.coverStatus = coverStatus
     self.createdAt = createdAt
@@ -59,7 +60,7 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
     currency = try c.decode(String.self, forKey: .currency)
     accent = try c.decode(String.self, forKey: .accent)
     shareCode = try c.decodeIfPresent(String.self, forKey: .shareCode)
-    coverPath = try c.decodeIfPresent(String.self, forKey: .coverPath)
+    coverArt = try? c.decodeIfPresent(StampArt.self, forKey: .coverArt)
     coverSubject = try c.decodeIfPresent(String.self, forKey: .coverSubject)
     coverStatus = try c.decodeIfPresent(String.self, forKey: .coverStatus) ?? "idle"
     createdAt = try c.decode(String.self, forKey: .createdAt)

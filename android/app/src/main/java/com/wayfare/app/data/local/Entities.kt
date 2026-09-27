@@ -5,6 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.wayfare.app.core.Category
 import com.wayfare.app.core.Expense
+import com.wayfare.app.core.StampArt
 import com.wayfare.app.core.SyncState
 import com.wayfare.app.core.Trip
 import com.wayfare.app.core.TripMember
@@ -24,7 +25,8 @@ data class TripEntity(
     val currency: String,
     val accent: String,
     val shareCode: String?,
-    val coverPath: String?,
+    /** [StampArt] as JSON, exactly as the server sent it. */
+    val coverArt: String?,
     val coverSubject: String?,
     val coverStatus: String,
     val createdAt: String,
@@ -74,12 +76,12 @@ data class OutboxEntity(
 
 fun TripEntity.toDomain() = Trip(
     id, ownerId, name, destination, startDate?.let(LocalDate::parse), endDate?.let(LocalDate::parse),
-    budget.toBigDecimal(), currency, accent, shareCode, coverPath, coverSubject, coverStatus, createdAt,
+    budget.toBigDecimal(), currency, accent, shareCode, StampArt.decode(coverArt), coverSubject, coverStatus, createdAt,
 )
 
 fun Trip.toEntity(accountId: String) = TripEntity(
     accountId, id, ownerId, name, destination, startDate?.toString(), endDate?.toString(),
-    budget.toPlainString(), currency, accent, shareCode, coverPath, coverSubject, coverStatus, createdAt,
+    budget.toPlainString(), currency, accent, shareCode, coverArt?.encode(), coverSubject, coverStatus, createdAt,
 )
 
 fun ExpenseEntity.toDomain() = Expense(

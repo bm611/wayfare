@@ -28,8 +28,8 @@ struct TripsScreen: View {
   var body: some View {
     NavigationStack(path: $path) {
       ScrollView {
-        // Photographs read as distinct objects only if the canvas between them
-        // is wide enough to be read as canvas.
+        // Cards read as distinct objects only if the canvas between them is
+        // wide enough to be read as canvas.
         LazyVStack(alignment: .leading, spacing: 24) {
           topNav
           VStack(alignment: .leading, spacing: 6) {
@@ -131,35 +131,34 @@ struct TripsScreen: View {
     .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
   }
 
-  /// A photo-led destination card with a native, content-sized overlay.
+  /// A trip card led by its passport stamp. The stamp names the place, so the
+  /// card names the trip; the numbers ride in a drawer tucked underneath.
   private func listingCard(_ trip: Trip) -> some View {
     let expenses = store.expensesByTrip[trip.id] ?? []
     let summary = budgetSummary(trip, expenses: expenses)
     let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    let isPrint = trip.coverPath?.hasSuffix("-print.jpg") == true
-    // The cover stays untouched apart from the countdown; the numbers ride in a
-    // drawer tucked under it. Only covers without lettering need the place
-    // named in words.
+    let dated = trip.startDate != nil || trip.endDate != nil
     return VStack(spacing: 0) {
-      TripArtwork(trip: trip, url: store.coverURL(trip.coverPath), aspect: 3 / 2, showStatus: false)
-        .accessibilityHidden(true)
-        .overlay(alignment: .topLeading) { PhaseBadge(trip: trip).padding(12) }
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .padding(5)
-        .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 31, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
-        .zIndex(1)
-      HStack(spacing: 12) {
-        Group {
-          if trip.coverStatus == "pending" {
-            Text("Creating your cover…").foregroundColor(Palette.ash)
-          } else {
-            Text(isPrint ? "" : "\(destination.isEmpty ? trip.name : destination) · ").foregroundColor(Palette.ash)
-              + Text(money(summary.spent, trip.currency)).fontWeight(.bold).foregroundColor(Palette.accentInk)
-              + Text(" spent").foregroundColor(Palette.ash)
-          }
+      HStack(spacing: 20) {
+        Stamp(trip: trip)
+        VStack(alignment: .leading, spacing: 0) {
+          Text(phaseLabel(trip)).typeStyle(.labelSmall).foregroundStyle(Palette.ink)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(Palette.softCloud, in: RoundedRectangle(cornerRadius: Radius.card))
+          Text(trip.name).typeStyle(.titleLarge).lineLimit(1).padding(.top, 12)
+          Text(dated ? dateRange(trip.startDate, trip.endDate) : (destination.isEmpty ? trip.name : destination))
+            .typeStyle(.bodyMedium).foregroundStyle(Palette.ash).lineLimit(1).padding(.top, 4)
         }
-        .font(.subheadline).monospacedDigit().lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .padding(.leading, 16).padding(.trailing, 20).padding(.vertical, 20)
+      .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+      .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
+      .zIndex(1)
+      HStack(spacing: 12) {
+        (Text(money(summary.spent, trip.currency)).fontWeight(.bold).foregroundColor(Palette.accentInk)
+          + Text(" spent").foregroundColor(Palette.ash))
+          .font(.subheadline).monospacedDigit().lineLimit(1)
         Spacer(minLength: 0)
         Image(systemName: "arrow.up.right").font(.subheadline.weight(.semibold))
           .foregroundStyle(Palette.ink)
@@ -172,7 +171,7 @@ struct TripsScreen: View {
     }
     .foregroundStyle(Palette.ink)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("\(destination.isEmpty ? trip.name : destination), \(phaseLabel(trip)), \(money(summary.spent, trip.currency)) spent")
+    .accessibilityLabel("\(trip.name), \(destination.isEmpty ? trip.name : destination), \(phaseLabel(trip)), \(money(summary.spent, trip.currency)) spent")
     .accessibilityHint("Opens trip details")
   }
 

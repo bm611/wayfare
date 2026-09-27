@@ -1,19 +1,18 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { coverSubject } from "../lib/covers";
 import type { Trip } from "../lib/types";
 
 const ENDPOINT = "/.netlify/functions/trip-cover-background";
 const POLL_MS = 4000;
-/** Roughly three minutes. Drawing takes ~15s; past this it is not coming. */
+/** Roughly three minutes. A stamp takes seconds; past this it is not coming. */
 const MAX_POLLS = 45;
 
-export type CoverPatch = Pick<Trip, "id" | "cover_path" | "cover_status">;
+export type CoverPatch = Pick<Trip, "id" | "cover_art" | "cover_status">;
 
 type Watchable = Pick<Trip, "id" | "name" | "destination" | "cover_status">;
 
 /**
- * Keeps trip covers moving toward 'ready'.
+ * Keeps trip stamps moving toward 'ready'.
  *
  * Generation lives in a background function that answers 202 and reports back
  * through the row, so this asks for the ones that are missing and then watches
@@ -25,7 +24,7 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
   const asked = useRef(new Set<string>());
 
   const wanted = trips
-    .filter((t) => coverSubject(t) && (t.cover_status === "idle" || t.cover_status === "failed"))
+    .filter((t) => (t.destination?.trim() || t.name.trim()) && (t.cover_status === "idle" || t.cover_status === "failed"))
     .map((t) => t.id)
     .join(",");
 
@@ -46,7 +45,7 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
 
       const started: string[] = [];
       // One at a time: a first run with several old trips should not fire a
-      // handful of image jobs at once.
+      // handful of drawing jobs at once.
       for (const tripId of todo) {
         if (cancelled) return;
         asked.current.add(tripId);
@@ -65,7 +64,7 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
 
       // Show the developing state now rather than a poll interval from now.
       if (!cancelled && started.length > 0) {
-        apply(started.map((id) => ({ id, cover_path: null, cover_status: "pending" as const })));
+        apply(started.map((id) => ({ id, cover_art: null, cover_status: "pending" as const })));
       }
     })();
 
@@ -86,7 +85,7 @@ export function useTripCovers(trips: Watchable[], apply: (patches: CoverPatch[])
       polls += 1;
       const { data } = await supabase
         .from("trips")
-        .select("id, cover_path, cover_status")
+        .select("id, cover_art, cover_status")
         .in("id", ids).abortSignal(controller.signal);
       if (controller.signal.aborted) return;
       if (data && data.length > 0) apply(data as CoverPatch[]);

@@ -1,3 +1,5 @@
+import type { StampArt } from "./stamp";
+
 export const CATEGORY_KEYS = [
   "flights",
   "stays",
@@ -21,8 +23,8 @@ export type Trip = {
   currency: string;
   accent: string;
   share_code: string | null;
-  /** Storage path of the generated destination shot, once there is one. */
-  cover_path: string | null;
+  /** The passport-stamp drawing, once there is one (see lib/stamp.ts). */
+  cover_art: StampArt | null;
   /** The string the cover was drawn from, so we can tell when it went stale. */
   cover_subject: string | null;
   cover_status: CoverStatus;

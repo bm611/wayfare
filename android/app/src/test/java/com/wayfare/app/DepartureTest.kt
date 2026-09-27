@@ -19,7 +19,7 @@ class DepartureTest {
     private fun trip(name: String = "Lisbon & Porto", destination: String? = "Lisbon & Porto") = Trip(
         id = "t", ownerId = "u", name = name, destination = destination,
         startDate = null, endDate = null, budget = BigDecimal.ZERO, currency = "EUR",
-        accent = "clay", shareCode = null, coverPath = null, coverSubject = null,
+        accent = "clay", shareCode = null, coverArt = null, coverSubject = null,
         coverStatus = "idle", createdAt = "2026-09-01T00:00:00Z",
     )
 
